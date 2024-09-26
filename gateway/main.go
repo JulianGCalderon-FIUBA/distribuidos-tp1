@@ -5,14 +5,16 @@ import (
 )
 
 type config struct {
-	// aca pueden ir los parametros
-	// de configuracion inicial
+	connectionEndpointPort int
+	dataEndpointPort       int
 }
 
 func getConfig() (config, error) {
-	// aca ser deberia al config de algun archivo
-	// lo dejo vacio como placeholder
-	return config{}, nil
+	// todo: read from file
+	return config{
+		connectionEndpointPort: 9001,
+		dataEndpointPort:       9002,
+	}, nil
 }
 
 func main() {
@@ -20,8 +22,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to read config: %v", err)
 	}
-	_ = config
 
-	gateway := newGateway()
+	gateway := newGateway(config)
 	gateway.start()
 }
