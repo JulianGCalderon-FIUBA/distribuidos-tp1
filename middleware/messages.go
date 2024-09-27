@@ -54,7 +54,8 @@ type Game struct {
 	// todo: add fields
 }
 type Review struct {
-	Id   int
-	Text string
-	// todo: add fields
+	AppID   int
+	AppName string
+	Text    string
+	Score   int
 }
