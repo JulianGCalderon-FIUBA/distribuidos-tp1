@@ -4,7 +4,7 @@ type MessageTag int
 
 const (
 	RequestHelloTag MessageTag = iota
-	RequestAcceptTag
+	AcceptRequestTag
 	DataHelloTag
 	DataAcceptTag
 	GameBatchTag
@@ -19,7 +19,7 @@ type RequestHello struct {
 }
 
 // Sent by the connection handler to accept a client's request
-type RequestAccept struct {
+type AcceptRequest struct {
 	ClientID int
 }
 
