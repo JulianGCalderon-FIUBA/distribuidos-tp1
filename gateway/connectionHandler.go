@@ -26,7 +26,7 @@ func (g *gateway) StartConnectionHandler() {
 		fmt.Println("Client connected: ", conn.RemoteAddr().String())
 
 		if err != nil {
-			log.Fatalf("Error:", err)
+			fmt.Println("Error:", err)
 			continue
 		}
 
