@@ -1,15 +1,28 @@
 package main
 
 import (
+	"distribuidos/tp1/middleware"
 	"fmt"
-	"log"
-	"os"
+	"net"
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		log.Fatalln("expected client number as first argument")
+	// cliente basico para testear, a refactorizar
+	conn, err := net.Dial("tcp", "localhost:9001")
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
 	}
-	n := os.Args[1]
-	fmt.Printf("Hello, client %v.\n", n)
+	defer conn.Close()
+
+	m := middleware.NewMessageHandler(conn)
+	m.SendMessage([]byte("Hello, world!"))
+
+	msg, err := m.ReceiveMessage()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	fmt.Println("Received:", msg)
 }
