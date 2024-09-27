@@ -49,9 +49,46 @@ type Finish struct{}
 // Generic Structures
 
 type Game struct {
-	Id   int
-	Name string
-	// todo: add fields
+	AppID                  int
+	Name                   string
+	ReleaseDate            string
+	Windows                bool
+	Mac                    bool
+	Linux                  bool
+	AveragePlaytimeForever int
+	Genres                 string
+	// EstimatedOwners         string
+	// PeakCCU                 int
+	// RequiredAge             int
+	// Price                   float64
+	// Unknown                 int
+	// DiscountDLCCount        int
+	// AboutTheGame            string
+	// SupportedLanguages      string
+	// FullAudioLanguages      string
+	// Reviews                 string
+	// HeaderImage             string
+	// Website                 string
+	// SupportUrl              string
+	// SupportEmail            string
+	// MetacriticScore         int
+	// MetacriticUrl           string
+	// UserScore               int
+	// Positive                int
+	// Negative                int
+	// ScoreRank               float64
+	// Achievements            int
+	// Recommendations         int
+	// Notes                   string
+	// AveragePlaytimeTwoWeeks int
+	// MedianPlaytimeForever   int
+	// MedianPlaytimeTwoWeeks  int
+	// Developers              string
+	// Publishers              string
+	// Categories              string
+	// Tags                    string
+	// Screenshots             string
+	// Movies                  string
 }
 type Review struct {
 	AppID   int
