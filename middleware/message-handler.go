@@ -1,8 +1,8 @@
 package middleware
 
 import (
-	"net"
 	"encoding/binary"
+	"net"
 )
 
 const PACKET_SIZE = 4
