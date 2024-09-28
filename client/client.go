@@ -2,7 +2,7 @@ package main
 
 import (
 	"bufio"
-	"distribuidos/tp1/middleware"
+	"distribuidos/tp1/protocol"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -58,7 +58,7 @@ func (c *client) sendRequestHello() {
 	buf = binary.LittleEndian.AppendUint32(buf, uint32(getFileSize(REVIEWS_PATH)))
 
 	size := int32(len(buf))
-	sendHeader(size, middleware.RequestHelloTag, &c.connWriter)
+	sendHeader(size, protocol.RequestHelloTag, &c.connWriter)
 	_, err := c.connWriter.Write(buf) // habria que handlear o asumimos que no hay short write?
 	if err != nil {
 		fmt.Printf("Could not write message: %v", err)
@@ -69,7 +69,7 @@ func (c *client) sendRequestHello() {
 func (c *client) receiveID() {
 
 	size, tag, err := readHeader(&c.connReader)
-	if err != nil || tag != middleware.AcceptRequestTag {
+	if err != nil || tag != protocol.AcceptRequestTag {
 		fmt.Printf("Did not receive expected message, don't have id")
 		c.close()
 		return
@@ -120,11 +120,11 @@ func sendFile(filePath string) {
 	}
 }
 
-func readHeader(reader io.Reader) (int32, middleware.MessageTag, error) {
+func readHeader(reader io.Reader) (int32, protocol.MessageTag, error) {
 
 	var header struct {
 		size int32
-		tag  middleware.MessageTag
+		tag  protocol.MessageTag
 	}
 	bytes := make([]byte, MSG_SIZE+TAG_SIZE)
 	_, err := io.ReadFull(reader, bytes)
@@ -137,7 +137,7 @@ func readHeader(reader io.Reader) (int32, middleware.MessageTag, error) {
 	return header.size, header.tag, nil
 }
 
-func sendHeader(size int32, tag middleware.MessageTag, writer io.Writer) {
+func sendHeader(size int32, tag protocol.MessageTag, writer io.Writer) {
 	err := binary.Write(writer, binary.LittleEndian, size)
 	if err != nil {
 		fmt.Printf("Failed to write size")

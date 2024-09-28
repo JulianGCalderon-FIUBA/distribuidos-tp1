@@ -2,7 +2,9 @@ package main
 
 import (
 	"distribuidos/tp1/protocol"
+	"fmt"
 	"log"
+	"net"
 )
 
 type config struct {
@@ -19,13 +21,12 @@ func getConfig() (config, error) {
 		buffSize:                  8096,
 	}, nil
 }
-	"net"
-)
 
 func main() {
 	config, err := getConfig()
 	if err != nil {
 		log.Fatalf("failed to read config: %v", err)
+	}
 	// cliente basico para testear, a refactorizar
 	conn, err := net.Dial("tcp", "localhost:9001")
 	if err != nil {
