@@ -1,5 +1,10 @@
 package main
 
+import (
+	"fmt"
+	"sync"
+)
+
 type gateway struct {
 	config config
 	// aca pueden ir los campos en comun
@@ -14,6 +19,12 @@ func newGateway(config config) *gateway {
 }
 
 func (g *gateway) start() {
+	var wg sync.WaitGroup
+
+	wg.Add(2)
 	go g.startConnectionHandler()
 	go g.startDataHandler()
+
+	wg.Wait()
+	fmt.Println("All goroutines have completed.")
 }
