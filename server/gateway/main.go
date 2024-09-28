@@ -7,6 +7,7 @@ import (
 type config struct {
 	connectionEndpointPort int
 	dataEndpointPort       int
+	rabbitIP               string
 }
 
 func getConfig() (config, error) {
@@ -14,6 +15,7 @@ func getConfig() (config, error) {
 	return config{
 		connectionEndpointPort: 9001,
 		dataEndpointPort:       9002,
+		rabbitIP:               "localhost",
 	}, nil
 }
 
