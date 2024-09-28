@@ -1,7 +1,7 @@
 package main
 
 import (
-	"distribuidos/tp1/middleware"
+	"distribuidos/tp1/protocol"
 	"fmt"
 	"log"
 	"net"
@@ -35,10 +35,11 @@ func (g *gateway) startConnectionHandler() {
 func (g *gateway) handleClient(conn net.Conn) {
 	defer conn.Close()
 
-	m := middleware.NewMessageHandler(conn)
+	m := protocol.NewMarshaller(conn)
+	unm := protocol.NewUnmarshaller(conn)
 
 	for {
-		msg, err := m.ReceiveMessage()
+		msg, err := unm.ReceiveMessage()
 		if err != nil {
 			if err.Error() == "EOF" {
 				fmt.Println("Client disconnected")
@@ -49,5 +50,12 @@ func (g *gateway) handleClient(conn net.Conn) {
 		}
 
 		fmt.Printf("Received: %s\n", msg)
+
+		err = m.SendMessage(&protocol.AcceptRequest{
+			ClientID: 1,
+		})
+		if err != nil {
+			log.Fatalf("Failed to send message: %v", err)
+		}
 	}
 }
