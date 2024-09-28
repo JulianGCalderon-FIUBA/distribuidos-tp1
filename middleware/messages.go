@@ -15,7 +15,8 @@ const (
 
 // Sent by the client to initiate a request
 type RequestHello struct {
-	// todo: data size
+	GameSize   int
+	ReviewSize int
 }
 
 // Sent by the connection handler to accept a client's request
@@ -35,26 +36,13 @@ type DataAccept struct{}
 
 // Sent by the client to the data handler
 type GameBatch struct {
-	Games []Game
+	Games [][]string
 }
 
 // Sent by the client to the data handler
 type ReviewBatch struct {
-	Reviews []Review
+	Reviews [][]string
 }
 
 // Sent by the client to indicate that it has finished sending data
 type Finish struct{}
-
-// Generic Structures
-
-type Game struct {
-	Id   int
-	Name string
-	// todo: add fields
-}
-type Review struct {
-	Id   int
-	Text string
-	// todo: add fields
-}
