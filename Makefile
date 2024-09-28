@@ -8,7 +8,7 @@ build-client:
 .PHONY: build-client
 
 build-gateway:
-	go build -o bin/gateway ./gateway
+	go build -o bin/gateway ./server/gateway
 .PHONY: build-gateway
 
 run-client: build-client
