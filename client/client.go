@@ -68,8 +68,8 @@ func (c *client) startConnection() {
 func (c *client) sendRequestHello() {
 	// está bien que sea el mismo buffer? desde el otro lado saben cuándo empieza un número y cuándo termina el otro? supongo que sí porque son uint32?
 	buf := make([]byte, MAX_PAYLOAD_SIZE)
-	binary.LittleEndian.AppendUint32(buf, uint32(c.gamesSize))
-	binary.LittleEndian.AppendUint32(buf, uint32(c.reviewsSize))
+	buf = binary.LittleEndian.AppendUint32(buf, uint32(c.gamesSize))
+	buf = binary.LittleEndian.AppendUint32(buf, uint32(c.reviewsSize))
 
 	size := int32(len(buf))
 	sendHeader(size, middleware.RequestHelloTag, &c.connWriter)
@@ -82,27 +82,28 @@ func (c *client) sendRequestHello() {
 
 func (c *client) receiveID() {
 
-	size, tag := readHeader(&c.connReader)
-	if tag != middleware.AcceptRequestTag {
+	size, tag, err := readHeader(&c.connReader)
+	if err != nil || tag != middleware.AcceptRequestTag {
 		fmt.Printf("Did not receive expected message, don't have id")
 		c.close()
 		return
 	}
-	msg, err := io.ReadAll(&c.connReader)
-	if err != nil || int32(len(msg)) != size {
+	buf := make([]byte, size)
+	_, err = io.ReadFull(&c.connReader, buf)
+	if err != nil {
 		fmt.Printf("Could not read valid id: %v", err)
 		c.close()
 		return
 	}
 
-	binary.Decode(msg, binary.LittleEndian, &c.id)
+	binary.Decode(buf, binary.LittleEndian, &c.id)
 }
 
 func (c *client) close() {
 	c.conn.Close()
 }
 
-func readHeader(reader io.Reader) (int32, middleware.MessageTag) {
+func readHeader(reader io.Reader) (int32, middleware.MessageTag, error) {
 
 	var header struct {
 		size int32
@@ -112,11 +113,11 @@ func readHeader(reader io.Reader) (int32, middleware.MessageTag) {
 	_, err := io.ReadFull(reader, bytes)
 	if err != nil {
 		fmt.Printf("Could not read header: %v", err)
-		// return 0, err
+		return 0, 0, err
 	}
 	binary.Decode(bytes, binary.LittleEndian, &header)
 
-	return header.size, header.tag
+	return header.size, header.tag, nil
 }
 
 func sendHeader(size int32, tag middleware.MessageTag, writer io.Writer) {
