@@ -85,7 +85,7 @@ func (c *client) startDataConnection() {
 
 	err = c.sendDataHello(dataMarshaller, dataUnmarshaller)
 	if err != nil {
-		fmt.Printf("Could not establish connection with data endpoint: %v", err)
+		fmt.Printf("Could not establish data hello exchange with data endpoint: %v", err)
 	}
 	sendFile(GAMES_PATH, dataMarshaller, dataUnmarshaller)
 	sendFile(REVIEWS_PATH, dataMarshaller, dataUnmarshaller)
