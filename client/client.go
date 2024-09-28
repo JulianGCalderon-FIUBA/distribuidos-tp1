@@ -9,12 +9,13 @@ import (
 	"log"
 	"net"
 	"os"
-	"strconv"
 )
 
 const GAMES_PATH = "./.data/games.csv"
 const REVIEWS_PATH = "./.data/reviews.csv"
 const MAX_PAYLOAD_SIZE = 8096
+const MSG_SIZE = 4
+const TAG_SIZE = 4
 
 type client struct {
 	config      config
@@ -62,7 +63,6 @@ func (c *client) startConnection() {
 
 	c.sendRequestHello()
 	c.receiveID()
-
 }
 
 func (c *client) sendRequestHello() {
@@ -81,15 +81,42 @@ func (c *client) sendRequestHello() {
 }
 
 func (c *client) receiveID() {
-	msg, err := c.connReader.ReadString('\n')
-	if err != nil {
-		// handle error
+
+	size, tag := readHeader(&c.connReader)
+	if tag != middleware.AcceptRequestTag {
+		fmt.Printf("Did not receive expected message, don't have id")
+		c.close()
+		return
 	}
-	id, err := strconv.Atoi(msg)
-	if err != nil {
-		fmt.Printf("Did not receive a valid id from endpoint")
+	msg, err := io.ReadAll(&c.connReader)
+	if err != nil || int32(len(msg)) != size {
+		fmt.Printf("Could not read valid id: %v", err)
+		c.close()
+		return
 	}
-	c.id = id
+
+	binary.Decode(msg, binary.LittleEndian, &c.id)
+}
+
+func (c *client) close() {
+	c.conn.Close()
+}
+
+func readHeader(reader io.Reader) (int32, middleware.MessageTag) {
+
+	var header struct {
+		size int32
+		tag  middleware.MessageTag
+	}
+	bytes := make([]byte, MSG_SIZE+TAG_SIZE)
+	_, err := io.ReadFull(reader, bytes)
+	if err != nil {
+		fmt.Printf("Could not read header: %v", err)
+		// return 0, err
+	}
+	binary.Decode(bytes, binary.LittleEndian, &header)
+
+	return header.size, header.tag
 }
 
 func sendHeader(size int32, tag middleware.MessageTag, writer io.Writer) {
