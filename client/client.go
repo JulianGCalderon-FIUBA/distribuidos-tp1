@@ -21,6 +21,8 @@ type client struct {
 	conn             net.Conn
 	connMarshaller   protocol.Marshaller
 	connUnmarshaller protocol.Unmarshaller
+	dataMarshaller   protocol.Marshaller
+	dataUnmarshaller protocol.Unmarshaller
 }
 
 func newClient(config config) *client {
@@ -80,26 +82,26 @@ func (c *client) startDataConnection() {
 		log.Fatalf("Could not connect to data endpoint: %v", err)
 	}
 
-	dataMarshaller := *protocol.NewMarshaller(dataConn)
-	dataUnmarshaller := *protocol.NewUnmarshaller(dataConn)
+	c.dataMarshaller = *protocol.NewMarshaller(dataConn)
+	c.dataUnmarshaller = *protocol.NewUnmarshaller(dataConn)
 
-	err = c.sendDataHello(dataMarshaller, dataUnmarshaller)
+	err = c.sendDataHello()
 	if err != nil {
 		fmt.Printf("Could not establish data hello exchange with data endpoint: %v", err)
 	}
-	sendFile(GAMES_PATH, dataMarshaller, dataUnmarshaller)
-	sendFile(REVIEWS_PATH, dataMarshaller, dataUnmarshaller)
+	c.sendFile(GAMES_PATH)
+	c.sendFile(REVIEWS_PATH)
 	dataConn.Close()
 }
 
-func (c *client) sendDataHello(marshaller protocol.Marshaller, unmarshaller protocol.Unmarshaller) error {
+func (c *client) sendDataHello() error {
 
 	msg := protocol.DataHello{
 		ClientID: c.id,
 	}
-	marshaller.SendMessage(&msg)
+	c.dataMarshaller.SendMessage(&msg)
 
-	responseAny, err := unmarshaller.ReceiveMessage()
+	responseAny, err := c.dataUnmarshaller.ReceiveMessage()
 	if err != nil {
 		return fmt.Errorf("could not receive message from connection: %v", err)
 	}
@@ -110,7 +112,7 @@ func (c *client) sendDataHello(marshaller protocol.Marshaller, unmarshaller prot
 	return nil
 }
 
-func sendFile(filePath string, marshaller protocol.Marshaller, unmarshaller protocol.Unmarshaller) {
+func (c *client) sendFile(filePath string) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		fmt.Printf("Could not open file %v: %v", filePath, err)
@@ -118,10 +120,22 @@ func sendFile(filePath string, marshaller protocol.Marshaller, unmarshaller prot
 	}
 	defer file.Close()
 
+	var pack [][]byte
+
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
+		if len(pack) == c.config.packageSize {
+			c.sendPackage(pack)
+			pack = [][]byte{}
+		}
 
+		line := scanner.Bytes()
+		pack = append(pack, line)
 	}
+}
+
+func (c *client) sendPackage(pack [][]byte) {
+
 }
 
 func getFileSize(filePath string) uint64 {
