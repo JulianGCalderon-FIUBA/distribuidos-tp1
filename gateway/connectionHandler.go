@@ -9,7 +9,7 @@ import (
 
 const PACKET_SIZE = 4
 
-func (g *gateway) StartConnectionHandler() {
+func (g *gateway) startConnectionHandler() {
 	address := fmt.Sprintf(":%d", g.config.connectionEndpointPort)
 	listener, err := net.Listen("tcp", address)
 

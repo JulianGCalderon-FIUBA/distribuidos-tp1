@@ -23,6 +23,6 @@ func main() {
 		log.Fatalf("failed to read config: %v", err)
 	}
 
-	gateway := NewGateway(cfg)
-	gateway.Start()
+	gateway := newGateway(cfg)
+	gateway.start()
 }

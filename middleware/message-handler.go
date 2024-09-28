@@ -2,10 +2,12 @@ package middleware
 
 import (
 	"encoding/binary"
+	"fmt"
+	"io"
 	"net"
 )
 
-const PACKET_SIZE = 4
+const PACKET_SIZE = 1
 
 type MessageHandler struct {
 	conn net.Conn
@@ -23,49 +25,37 @@ func (m *MessageHandler) ReceiveMessage() (string, error) {
 		return "", err
 	}
 
-	size := int32(binary.BigEndian.Uint32(size_bytes))
+	size := int8(size_bytes[0])
+
+	fmt.Printf("Received message of size %d\n", size)
 
 	msg, err := m.readMessage(size)
 	return string(msg), err
 }
 
 func (m *MessageHandler) SendMessage(msg []byte) error {
-	err := m.sendHeader(int32(len(msg)))
-
-	if err != nil {
+	if err := m.sendHeader(int8(len(msg))); err != nil {
 		return err
 	}
 
-	totalSent := 0
-
-	for totalSent < len(msg) {
-		n, err := m.conn.Write((msg[totalSent:]))
-		if err != nil {
-			return err
-		}
-		totalSent += n
+	if _, err := m.conn.Write(msg); err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func (m *MessageHandler) readMessage(size int32) ([]byte, error) {
+func (m *MessageHandler) readMessage(size int8) ([]byte, error) {
 	buf := make([]byte, size)
-	totalRead := 0
 
-	for int32(totalRead) < size {
-		n, err := m.conn.Read(buf[totalRead:])
-		if err != nil {
-			return nil, err
-		}
-		totalRead += n
+	if _, err := io.ReadFull(m.conn, buf); err != nil {
+		return nil, err
 	}
 	return buf, nil
 }
 
-func (m *MessageHandler) sendHeader(size int32) error {
-	err := binary.Write(m.conn, binary.BigEndian, int32(size))
-	if err != nil {
+func (m *MessageHandler) sendHeader(size int8) error {
+	if err := binary.Write(m.conn, binary.BigEndian, size); err != nil {
 		return err
 	}
 

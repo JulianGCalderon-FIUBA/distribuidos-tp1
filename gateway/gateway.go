@@ -7,13 +7,13 @@ type gateway struct {
 	// ej: clientes activos?
 }
 
-func NewGateway(config config) *gateway {
+func newGateway(config config) *gateway {
 	return &gateway{
 		config: config,
 	}
 }
 
-func (g *gateway) Start() {
-	go g.StartConnectionHandler()
+func (g *gateway) start() {
+	go g.startConnectionHandler()
 	go g.startDataHandler()
 }
