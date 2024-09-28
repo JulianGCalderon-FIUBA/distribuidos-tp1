@@ -1,6 +1,6 @@
-package middleware
+package protocol
 
-type MessageTag int
+type MessageTag uint8
 
 const (
 	RequestHelloTag MessageTag = iota
@@ -9,26 +9,27 @@ const (
 	DataAcceptTag
 	GameBatchTag
 	ReviewBatchTag
+	FinishTag
 )
 
 // Connection Handler Messages
 
 // Sent by the client to initiate a request
 type RequestHello struct {
-	GameSize   int
-	ReviewSize int
+	GameSize   uint64
+	ReviewSize uint64
 }
 
 // Sent by the connection handler to accept a client's request
 type AcceptRequest struct {
-	ClientID int
+	ClientID uint64
 }
 
 // Data Handler Messages
 
 // Sent by the client to present itself to the data handler
 type DataHello struct {
-	ClientID int
+	ClientID uint64
 }
 
 // Sent by the data handler to accept a client
