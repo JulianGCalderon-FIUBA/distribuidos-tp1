@@ -33,19 +33,9 @@ func newClient(config config) *client {
 }
 
 func (c *client) start() {
-	/*
-		1. conectarse al connection handler
-		2. recibir id
-		3. guardar id
-		4. conectarse al data handler
-		5. leer y enviar juegos
-		6. leer y enviar reviews
-		7. cerrar conexión con data handler
-		8. esperar en connection handler a la respuesta
-	*/
 
 	c.startConnection()
-	// to do c.startDataConnection()
+	c.startDataConnection()
 }
 
 func (c *client) startConnection() {
@@ -95,8 +85,39 @@ func (c *client) receiveID() {
 	binary.Decode(buf, binary.LittleEndian, &c.id)
 }
 
+func (c *client) startDataConnection() {
+	conn, err := net.Dial("tcp", c.config.dataEndpointAddress)
+	if err != nil {
+		log.Fatalf("Could not connect to data endpoint: %v", err)
+	}
+	// send data hello
+	// receive data accept
+	/*
+		1. enviar juegos
+		2. enviar reviews
+		3. cerrar conexión
+	*/
+	sendFile(GAMES_PATH)
+	sendFile(REVIEWS_PATH)
+	conn.Close()
+}
+
 func (c *client) close() {
 	c.conn.Close()
+}
+
+func sendFile(filePath string) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		fmt.Printf("Could not open file %v: %v", filePath, err)
+		return
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+
+	}
 }
 
 func readHeader(reader io.Reader) (int32, middleware.MessageTag, error) {
