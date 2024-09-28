@@ -22,7 +22,7 @@ type client struct {
 	conn        net.Conn
 	connReader  bufio.Reader
 	connWriter  bufio.Writer
-	gamesSize   int
+	gamesSize   int // no se si vale la pena dejar los tamaños aca, se podrian usar para ver si mando todo o dejamos que se encargue el server y que el cliente sea full dumb
 	reviewsSize int
 }
 
