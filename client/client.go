@@ -61,16 +61,8 @@ func (c *client) startConnection() {
 	c.connWriter = *bufio.NewWriterSize(c.conn, c.config.buffSize)
 
 	c.sendRequestHello()
+	c.receiveID()
 
-	msg, err := c.connReader.ReadString('\n')
-	if err != nil {
-		// handle error
-	}
-	id, err := strconv.Atoi(msg)
-	if err != nil {
-		fmt.Printf("Did not receive a valid id from endpoint")
-	}
-	c.id = id
 }
 
 func (c *client) sendRequestHello() {
@@ -88,12 +80,24 @@ func (c *client) sendRequestHello() {
 	c.connWriter.Flush()
 }
 
+func (c *client) receiveID() {
+	msg, err := c.connReader.ReadString('\n')
+	if err != nil {
+		// handle error
+	}
+	id, err := strconv.Atoi(msg)
+	if err != nil {
+		fmt.Printf("Did not receive a valid id from endpoint")
+	}
+	c.id = id
+}
+
 func sendHeader(size int32, tag middleware.MessageTag, writer io.Writer) {
 	err := binary.Write(writer, binary.LittleEndian, size)
 	if err != nil {
 		fmt.Printf("Failed to write size")
 	}
-	err = binary.Write(writer, binary.LittleEndian, tag)
+	err = binary.Write(writer, binary.LittleEndian, int32(tag))
 	if err != nil {
 		fmt.Printf("Failed to write tag")
 	}
