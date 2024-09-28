@@ -49,7 +49,6 @@ func TestMarshaller(t *testing.T) {
 
 		if !reflect.DeepEqual(message, received_message) {
 			t.Fatalf("expected %v, but received %v", message, received_message)
-
 		}
 	}
 }
