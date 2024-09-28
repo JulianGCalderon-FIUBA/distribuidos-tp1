@@ -3,9 +3,7 @@ package main
 import (
 	"bufio"
 	"distribuidos/tp1/protocol"
-	"encoding/binary"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"os"
@@ -18,11 +16,11 @@ const MSG_SIZE = 4
 const TAG_SIZE = 4
 
 type client struct {
-	config     config
-	id         int
-	conn       net.Conn
-	connReader bufio.Reader
-	connWriter bufio.Writer
+	config           config
+	id               uint64
+	conn             net.Conn
+	connMarshaller   protocol.Marshaller
+	connUnmarshaller protocol.Unmarshaller
 }
 
 func newClient(config config) *client {
@@ -44,45 +42,36 @@ func (c *client) startConnection() {
 		log.Fatalf("Could not connect to connection endpoint: %v", err)
 	}
 	c.conn = conn
-	c.connReader = *bufio.NewReader(c.conn)
-	c.connWriter = *bufio.NewWriterSize(c.conn, c.config.buffSize)
+	c.connMarshaller = *protocol.NewMarshaller(conn)
+	c.connUnmarshaller = *protocol.NewUnmarshaller(conn)
 
 	c.sendRequestHello()
 	c.receiveID()
 }
 
 func (c *client) sendRequestHello() {
-	// está bien que sea el mismo buffer? desde el otro lado saben cuándo empieza un número y cuándo termina el otro? supongo que sí porque son uint32?
-	buf := make([]byte, MAX_PAYLOAD_SIZE)
-	buf = binary.LittleEndian.AppendUint32(buf, uint32(getFileSize(GAMES_PATH)))
-	buf = binary.LittleEndian.AppendUint32(buf, uint32(getFileSize(REVIEWS_PATH)))
 
-	size := int32(len(buf))
-	sendHeader(size, protocol.RequestHelloTag, &c.connWriter)
-	_, err := c.connWriter.Write(buf) // habria que handlear o asumimos que no hay short write?
-	if err != nil {
-		fmt.Printf("Could not write message: %v", err)
+	request := protocol.RequestHello{
+		GameSize:   getFileSize(GAMES_PATH),
+		ReviewSize: getFileSize(REVIEWS_PATH),
 	}
-	c.connWriter.Flush()
+
+	c.connMarshaller.SendMessage(&request)
 }
 
 func (c *client) receiveID() {
 
-	size, tag, err := readHeader(&c.connReader)
-	if err != nil || tag != protocol.AcceptRequestTag {
-		fmt.Printf("Did not receive expected message, don't have id")
-		c.close()
-		return
-	}
-	buf := make([]byte, size)
-	_, err = io.ReadFull(&c.connReader, buf)
+	response, err := c.connUnmarshaller.ReceiveMessage()
 	if err != nil {
-		fmt.Printf("Could not read valid id: %v", err)
-		c.close()
-		return
+		fmt.Printf("Could not receive message from connection: %v", err)
 	}
 
-	binary.Decode(buf, binary.LittleEndian, &c.id)
+	msg, ok := response.(*protocol.AcceptRequest)
+	if !ok {
+		fmt.Printf("Expected AcceptRequest message, received: %T", response)
+	}
+
+	c.id = msg.ClientID
 }
 
 func (c *client) startDataConnection() {
@@ -117,34 +106,6 @@ func sendFile(filePath string) {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 
-	}
-}
-
-func readHeader(reader io.Reader) (int32, protocol.MessageTag, error) {
-
-	var header struct {
-		size int32
-		tag  protocol.MessageTag
-	}
-	bytes := make([]byte, MSG_SIZE+TAG_SIZE)
-	_, err := io.ReadFull(reader, bytes)
-	if err != nil {
-		fmt.Printf("Could not read header: %v", err)
-		return 0, 0, err
-	}
-	binary.Decode(bytes, binary.LittleEndian, &header)
-
-	return header.size, header.tag, nil
-}
-
-func sendHeader(size int32, tag protocol.MessageTag, writer io.Writer) {
-	err := binary.Write(writer, binary.LittleEndian, size)
-	if err != nil {
-		fmt.Printf("Failed to write size")
-	}
-	err = binary.Write(writer, binary.LittleEndian, int32(tag))
-	if err != nil {
-		fmt.Printf("Failed to write tag")
 	}
 }
 
