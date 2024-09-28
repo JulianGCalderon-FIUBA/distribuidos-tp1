@@ -3,6 +3,7 @@ package main
 import (
 	"distribuidos/tp1/middleware"
 	"fmt"
+	"log"
 	"net"
 )
 
@@ -15,22 +16,21 @@ func main() {
 	}
 	defer conn.Close()
 
-	m := middleware.NewMessageHandler(conn)
+	m := middleware.NewMarshaller(conn)
+	unm := middleware.NewUnmarshaller(conn)
 
-	message := "Hello, world!"
-	err = m.SendMessage([]byte(message))
+	err = m.SendMessage(&middleware.RequestHello{
+		GameSize:   1,
+		ReviewSize: 6,
+	})
 	if err != nil {
-		fmt.Println("Error sending message:", err)
-		return
+		log.Fatalf("failed to send message %v", err)
 	}
 
-	fmt.Println("Sent:", message)
-
-	msg, err := m.ReceiveMessage()
+	msg, err := unm.ReceiveMessage()
 	if err != nil {
-		fmt.Println("Error receiving message:", err)
-		return
+		log.Fatalf("failed to receive message %v", err)
 	}
 
-	fmt.Println("Received:", msg)
+	log.Printf("received %v", msg)
 }
