@@ -1,6 +1,7 @@
 package main
 
 import (
+	"distribuidos/tp1/protocol"
 	"fmt"
 	"log"
 	"net"
@@ -19,12 +20,43 @@ func (g *gateway) startDataHandler() {
 			continue
 		}
 
-		go func(conn net.Conn) {
-			// read ID
-			// send OK if valid
-			// send ERR if invalid
-			// read DATA (Game/Review)
-			// send to Rabbit
-		}(conn)
+		go g.handleClientData(conn)
+	}
+}
+
+func (g *gateway) handleClientData(conn net.Conn) error {
+	m := protocol.NewMarshaller(conn)
+	unm := protocol.NewUnmarshaller(conn)
+
+	anyMsg, err := unm.ReceiveMessage()
+	if err != nil {
+		return err
+	}
+	msg, ok := anyMsg.(*protocol.DataHello)
+	if !ok {
+		return fmt.Errorf("expected DataHello message, received %T", anyMsg)
+	}
+
+	// todo: validate client id
+	_ = msg
+
+	err = m.SendMessage(&protocol.DataAccept{})
+	if err != nil {
+		return err
+	}
+
+	for {
+		msg, err := unm.ReceiveMessage()
+		if err != nil {
+			return err
+		}
+
+		switch msg.(type) {
+		case *protocol.GameBatch:
+		case *protocol.ReviewBatch:
+		default:
+			return fmt.Errorf("expected Batch message, received %T", msg)
+		}
+
 	}
 }
