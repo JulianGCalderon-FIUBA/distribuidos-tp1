@@ -20,7 +20,13 @@ func (g *gateway) startDataHandler() {
 			continue
 		}
 
-		go g.handleClientData(conn)
+		go func(conn net.Conn) {
+			defer conn.Close()
+			err := g.handleClientData(conn)
+			if err != nil {
+				log.Printf("error while handling client: %v", err)
+			}
+		}(conn)
 	}
 }
 
