@@ -18,20 +18,16 @@ const MSG_SIZE = 4
 const TAG_SIZE = 4
 
 type client struct {
-	config      config
-	id          int
-	conn        net.Conn
-	connReader  bufio.Reader
-	connWriter  bufio.Writer
-	gamesSize   int // no se si vale la pena dejar los tamaños aca, se podrian usar para ver si mando todo o dejamos que se encargue el server y que el cliente sea full dumb
-	reviewsSize int
+	config     config
+	id         int
+	conn       net.Conn
+	connReader bufio.Reader
+	connWriter bufio.Writer
 }
 
 func newClient(config config) *client {
 	client := &client{
-		config:      config,
-		gamesSize:   getFileSize(GAMES_PATH),
-		reviewsSize: getFileSize(REVIEWS_PATH),
+		config: config,
 	}
 	return client
 }
@@ -68,8 +64,8 @@ func (c *client) startConnection() {
 func (c *client) sendRequestHello() {
 	// está bien que sea el mismo buffer? desde el otro lado saben cuándo empieza un número y cuándo termina el otro? supongo que sí porque son uint32?
 	buf := make([]byte, MAX_PAYLOAD_SIZE)
-	buf = binary.LittleEndian.AppendUint32(buf, uint32(c.gamesSize))
-	buf = binary.LittleEndian.AppendUint32(buf, uint32(c.reviewsSize))
+	buf = binary.LittleEndian.AppendUint32(buf, uint32(getFileSize(GAMES_PATH)))
+	buf = binary.LittleEndian.AppendUint32(buf, uint32(getFileSize(REVIEWS_PATH)))
 
 	size := int32(len(buf))
 	sendHeader(size, middleware.RequestHelloTag, &c.connWriter)
@@ -131,10 +127,10 @@ func sendHeader(size int32, tag middleware.MessageTag, writer io.Writer) {
 	}
 }
 
-func getFileSize(filePath string) int {
+func getFileSize(filePath string) uint64 {
 	file, err := os.Stat(filePath)
 	if err != nil {
 		fmt.Printf("Could not get file info: %v", err)
 	}
-	return int(file.Size())
+	return uint64(file.Size())
 }
