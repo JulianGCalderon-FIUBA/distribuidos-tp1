@@ -75,23 +75,42 @@ func (c *client) receiveID() {
 }
 
 func (c *client) startDataConnection() {
-	conn, err := net.Dial("tcp", c.config.dataEndpointAddress)
+	dataConn, err := net.Dial("tcp", c.config.dataEndpointAddress)
 	if err != nil {
 		log.Fatalf("Could not connect to data endpoint: %v", err)
 	}
-	// send data hello
-	// receive data accept
-	/*
-		1. enviar juegos
-		2. enviar reviews
-		3. cerrar conexión
-	*/
-	sendFile(GAMES_PATH)
-	sendFile(REVIEWS_PATH)
-	conn.Close()
+
+	dataMarshaller := *protocol.NewMarshaller(dataConn)
+	dataUnmarshaller := *protocol.NewUnmarshaller(dataConn)
+
+	err = c.sendDataHello(dataMarshaller, dataUnmarshaller)
+	if err != nil {
+		fmt.Printf("Could not establish connection with data endpoint: %v", err)
+	}
+	sendFile(GAMES_PATH, dataMarshaller, dataUnmarshaller)
+	sendFile(REVIEWS_PATH, dataMarshaller, dataUnmarshaller)
+	dataConn.Close()
 }
 
-func sendFile(filePath string) {
+func (c *client) sendDataHello(marshaller protocol.Marshaller, unmarshaller protocol.Unmarshaller) error {
+
+	msg := protocol.DataHello{
+		ClientID: c.id,
+	}
+	marshaller.SendMessage(&msg)
+
+	responseAny, err := unmarshaller.ReceiveMessage()
+	if err != nil {
+		return fmt.Errorf("could not receive message from connection: %v", err)
+	}
+	_, ok := responseAny.(*protocol.DataAccept)
+	if !ok {
+		return fmt.Errorf("expected DataAccept message, received: %T", responseAny)
+	}
+	return nil
+}
+
+func sendFile(filePath string, marshaller protocol.Marshaller, unmarshaller protocol.Unmarshaller) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		fmt.Printf("Could not open file %v: %v", filePath, err)
