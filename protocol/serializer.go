@@ -1,4 +1,4 @@
-package middleware
+package protocol
 
 import (
 	"encoding/binary"

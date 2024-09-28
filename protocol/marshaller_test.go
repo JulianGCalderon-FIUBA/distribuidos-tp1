@@ -1,40 +1,40 @@
-package middleware_test
+package protocol_test
 
 import (
 	"bytes"
-	"distribuidos/tp1/middleware"
+	"distribuidos/tp1/protocol"
 	"reflect"
 	"testing"
 )
 
 func TestMarshaller(t *testing.T) {
-	messages := []middleware.Message{
-		&middleware.RequestHello{
+	messages := []protocol.Message{
+		&protocol.RequestHello{
 			GameSize:   1,
 			ReviewSize: 2,
 		},
-		&middleware.RequestHello{
+		&protocol.RequestHello{
 			GameSize:   3,
 			ReviewSize: 4,
 		},
-		&middleware.AcceptRequest{
+		&protocol.AcceptRequest{
 			ClientID: 5,
 		},
-		&middleware.AcceptRequest{
+		&protocol.AcceptRequest{
 			ClientID: 6,
 		},
-		&middleware.DataHello{
+		&protocol.DataHello{
 			ClientID: 7,
 		},
-		&middleware.DataAccept{},
-		// &middleware.GameBatch{},
-		// &middleware.ReviewBatch{},
-		&middleware.Finish{},
+		&protocol.DataAccept{},
+		// &protocol.GameBatch{},
+		// &protocol.ReviewBatch{},
+		&protocol.Finish{},
 	}
 
 	var b bytes.Buffer
-	marshaller := middleware.NewMarshaller(&b)
-	unmarshaller := middleware.NewUnmarshaller(&b)
+	marshaller := protocol.NewMarshaller(&b)
+	unmarshaller := protocol.NewUnmarshaller(&b)
 
 	for _, message := range messages {
 		err := marshaller.SendMessage(message)

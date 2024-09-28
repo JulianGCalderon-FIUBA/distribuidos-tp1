@@ -1,7 +1,7 @@
 package main
 
 import (
-	"distribuidos/tp1/middleware"
+	"distribuidos/tp1/protocol"
 	"fmt"
 	"log"
 	"net"
@@ -35,8 +35,8 @@ func (g *gateway) startConnectionHandler() {
 func (g *gateway) handleClient(conn net.Conn) {
 	defer conn.Close()
 
-	m := middleware.NewMarshaller(conn)
-	unm := middleware.NewUnmarshaller(conn)
+	m := protocol.NewMarshaller(conn)
+	unm := protocol.NewUnmarshaller(conn)
 
 	for {
 		msg, err := unm.ReceiveMessage()
@@ -51,7 +51,7 @@ func (g *gateway) handleClient(conn net.Conn) {
 
 		fmt.Printf("Received: %s\n", msg)
 
-		err = m.SendMessage(&middleware.AcceptRequest{
+		err = m.SendMessage(&protocol.AcceptRequest{
 			ClientID: 1,
 		})
 		if err != nil {

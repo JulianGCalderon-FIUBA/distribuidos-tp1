@@ -1,7 +1,7 @@
 package main
 
 import (
-	"distribuidos/tp1/middleware"
+	"distribuidos/tp1/protocol"
 	"fmt"
 	"log"
 	"net"
@@ -16,10 +16,10 @@ func main() {
 	}
 	defer conn.Close()
 
-	m := middleware.NewMarshaller(conn)
-	unm := middleware.NewUnmarshaller(conn)
+	m := protocol.NewMarshaller(conn)
+	unm := protocol.NewUnmarshaller(conn)
 
-	err = m.SendMessage(&middleware.RequestHello{
+	err = m.SendMessage(&protocol.RequestHello{
 		GameSize:   1,
 		ReviewSize: 6,
 	})

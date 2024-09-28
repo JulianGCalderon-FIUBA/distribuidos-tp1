@@ -1,4 +1,4 @@
-package middleware
+package protocol
 
 type MessageTag uint8
 
