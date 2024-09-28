@@ -91,10 +91,6 @@ func (c *client) startDataConnection() {
 	conn.Close()
 }
 
-func (c *client) close() {
-	c.conn.Close()
-}
-
 func sendFile(filePath string) {
 	file, err := os.Open(filePath)
 	if err != nil {
