@@ -42,6 +42,10 @@ func (g *gateway) handleClient(conn net.Conn) {
 	for {
 		msg, err := m.ReceiveMessage()
 		if err != nil {
+			if err.Error() == "EOF" {
+				fmt.Println("Client disconnected")
+				return
+			}
 			log.Fatalf("Failed to read message: %v", err)
 			return
 		}
