@@ -17,11 +17,14 @@ func main() {
 
 	m := middleware.NewMessageHandler(conn)
 
-	err = m.SendMessage([]byte("Hello, world!"))
+	message := "Hello, world!"
+	err = m.SendMessage([]byte(message))
 	if err != nil {
 		fmt.Println("Error sending message:", err)
 		return
 	}
+
+	fmt.Println("Sent:", message)
 
 	msg, err := m.ReceiveMessage()
 	if err != nil {

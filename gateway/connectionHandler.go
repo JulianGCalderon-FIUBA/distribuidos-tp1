@@ -7,8 +7,6 @@ import (
 	"net"
 )
 
-const PACKET_SIZE = 4
-
 func (g *gateway) startConnectionHandler() {
 	address := fmt.Sprintf(":%d", g.config.connectionEndpointPort)
 	listener, err := net.Listen("tcp", address)
@@ -23,12 +21,12 @@ func (g *gateway) startConnectionHandler() {
 	for {
 		conn, err := listener.Accept()
 
-		fmt.Println("Client connected: ", conn.RemoteAddr().String())
-
 		if err != nil {
 			fmt.Println("Error:", err)
 			continue
 		}
+
+		fmt.Println("Client connected: ", conn.RemoteAddr().String())
 
 		go g.handleClient(conn)
 	}
