@@ -1,15 +1,29 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"os"
 )
 
+type config struct {
+	connectionEndpointAddress string
+	dataEndpointAddress       string
+	buffSize                  int
+}
+
+func getConfig() (config, error) {
+	// todo: read from file
+	return config{
+		connectionEndpointAddress: "127.0.0.1:9001",
+		dataEndpointAddress:       "127.0.0.1:9002",
+		buffSize:                  8096,
+	}, nil
+}
+
 func main() {
-	if len(os.Args) < 2 {
-		log.Fatalln("expected client number as first argument")
+	config, err := getConfig()
+	if err != nil {
+		log.Fatalf("failed to read config: %v", err)
 	}
-	n := os.Args[1]
-	fmt.Printf("Hello, client %v.\n", n)
+	client := newClient(config)
+	client.start()
 }
