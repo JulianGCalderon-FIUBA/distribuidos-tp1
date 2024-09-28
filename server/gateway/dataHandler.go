@@ -7,12 +7,17 @@ import (
 	"net"
 )
 
+const ReviewExchange string = "reviews"
+const GamesExchange string = "games"
+
 func (g *gateway) startDataHandler() {
 	address := fmt.Sprintf(":%v", g.config.dataEndpointPort)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		log.Fatalf("failed to bind socket: %v", err)
 	}
+
+	g.initRabbit()
 
 	for {
 		conn, err := listener.Accept()
@@ -27,6 +32,38 @@ func (g *gateway) startDataHandler() {
 				log.Printf("error while handling client: %v", err)
 			}
 		}(conn)
+	}
+}
+
+func (g *gateway) initRabbit() {
+	rabbitChan, err := g.rabbitConn.Channel()
+	if err != nil {
+		log.Fatalf("failed to bind rabbit connection: %v", err)
+	}
+
+	err = rabbitChan.ExchangeDeclare(
+		ReviewExchange,
+		"fanout",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		log.Fatalf("failed to declare reviews exchange: %v", err)
+	}
+	err = rabbitChan.ExchangeDeclare(
+		GamesExchange,
+		"fanout",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		log.Fatalf("failed to bind games exchange: %v", err)
 	}
 }
 
