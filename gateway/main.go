@@ -18,11 +18,11 @@ func getConfig() (config, error) {
 }
 
 func main() {
-	config, err := getConfig()
+	cfg, err := getConfig()
 	if err != nil {
 		log.Fatalf("failed to read config: %v", err)
 	}
 
-	gateway := newGateway(config)
+	gateway := newGateway(cfg)
 	gateway.start()
 }
