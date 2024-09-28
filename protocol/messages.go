@@ -37,12 +37,12 @@ type DataAccept struct{}
 
 // Sent by the client to the data handler
 type GameBatch struct {
-	Games [][]string
+	Games [][]byte
 }
 
 // Sent by the client to the data handler
 type ReviewBatch struct {
-	Reviews [][]string
+	Reviews [][]byte
 }
 
 // Sent by the client to indicate that it has finished sending data
