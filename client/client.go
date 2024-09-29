@@ -117,18 +117,9 @@ func (c *client) startDataConnection() error {
 		return err
 	}
 
-	err = c.dataMarshaller.SendMessage(&protocol.PrepareGames{})
-	if err != nil {
-		return err
-	}
 	err = c.sendFile(GAMES_PATH)
 	if err != nil {
 		return fmt.Errorf("Error sending games file: %w", err)
-	}
-
-	err = c.dataMarshaller.SendMessage(&protocol.PrepareReviews{})
-	if err != nil {
-		return err
 	}
 	err = c.sendFile(REVIEWS_PATH)
 	if err != nil {
@@ -166,6 +157,11 @@ func (c *client) sendFile(filePath string) error {
 		return fmt.Errorf("Could not open file %v: %w", filePath, err)
 	}
 	defer file.Close()
+
+	err = c.dataMarshaller.SendMessage(&protocol.Prepare{})
+	if err != nil {
+		return err
+	}
 
 	var batch [][]byte
 

@@ -62,28 +62,15 @@ func (m *DataAccept) Deserialize(buf []byte) error {
 	return err
 }
 
-func (m *PrepareGames) Tag() MessageTag {
-	return PrepareGamesTag
+func (m *Prepare) Tag() MessageTag {
+	return PrepareTag
 }
 
-func (m *PrepareGames) Serialize() ([]byte, error) {
+func (m *Prepare) Serialize() ([]byte, error) {
 	return binary.Append(nil, binary.LittleEndian, m)
 }
 
-func (m *PrepareGames) Deserialize(buf []byte) error {
-	_, err := binary.Decode(buf, binary.LittleEndian, m)
-	return err
-}
-
-func (m *PrepareReviews) Tag() MessageTag {
-	return PrepareReviewsTag
-}
-
-func (m *PrepareReviews) Serialize() ([]byte, error) {
-	return binary.Append(nil, binary.LittleEndian, m)
-}
-
-func (m *PrepareReviews) Deserialize(buf []byte) error {
+func (m *Prepare) Deserialize(buf []byte) error {
 	_, err := binary.Decode(buf, binary.LittleEndian, m)
 	return err
 }
