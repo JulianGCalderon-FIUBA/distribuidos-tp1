@@ -12,6 +12,13 @@ import (
 const GAMES_PATH = "./client/.data/games.csv"
 const REVIEWS_PATH = "./client/.data/reviews.csv"
 
+type FileType int
+
+const (
+	GamesFile FileType = iota
+	ReviewsFile
+)
+
 type client struct {
 	config           config
 	id               uint64
@@ -55,7 +62,10 @@ func (c *client) sendRequestHello() {
 		ReviewSize: getFileSize(REVIEWS_PATH),
 	}
 
-	c.connMarshaller.SendMessage(&request)
+	err := c.connMarshaller.SendMessage(&request)
+	if err != nil {
+		fmt.Printf("Could not send message: %v", err)
+	}
 }
 
 func (c *client) receiveID() {
@@ -86,8 +96,8 @@ func (c *client) startDataConnection() {
 	if err != nil {
 		fmt.Printf("Could not establish data hello exchange with data endpoint: %v", err)
 	}
-	c.sendFile(GAMES_PATH)
-	c.sendFile(REVIEWS_PATH)
+	c.sendFile(GAMES_PATH, GamesFile)
+	c.sendFile(REVIEWS_PATH, ReviewsFile)
 	dataConn.Close()
 }
 
@@ -96,7 +106,10 @@ func (c *client) sendDataHello() error {
 	msg := protocol.DataHello{
 		ClientID: c.id,
 	}
-	c.dataMarshaller.SendMessage(&msg)
+	err := c.dataMarshaller.SendMessage(&msg)
+	if err != nil {
+		return fmt.Errorf("could not send message: %v", err)
+	}
 
 	responseAny, err := c.dataUnmarshaller.ReceiveMessage()
 	if err != nil {
@@ -109,7 +122,7 @@ func (c *client) sendDataHello() error {
 	return nil
 }
 
-func (c *client) sendFile(filePath string) {
+func (c *client) sendFile(filePath string, fileType FileType) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		fmt.Printf("Could not open file %v: %v", filePath, err)
@@ -122,7 +135,11 @@ func (c *client) sendFile(filePath string) {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		if len(batch) == c.config.packageSize {
-			c.sendPackage(batch)
+			if fileType == GamesFile {
+				c.sendGames(batch)
+			} else if fileType == ReviewsFile {
+				c.sendReviews(batch)
+			}
 			batch = [][]byte{}
 		}
 		line := scanner.Bytes()
@@ -130,7 +147,20 @@ func (c *client) sendFile(filePath string) {
 	}
 }
 
-func (c *client) sendPackage(pack [][]byte) {
+func (c *client) sendGames(batch [][]byte) {
+	games := protocol.GameBatch{Games: batch}
+	err := c.dataMarshaller.SendMessage(&games)
+	if err != nil {
+		fmt.Printf("Could not send message: %v", err)
+	}
+}
+
+func (c *client) sendReviews(batch [][]byte) {
+	reviews := protocol.ReviewBatch{Reviews: batch}
+	err := c.dataMarshaller.SendMessage(&reviews)
+	if err != nil {
+		fmt.Printf("Could not send message: %v", err)
+	}
 }
 
 func getFileSize(filePath string) uint64 {
