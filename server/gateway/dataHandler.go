@@ -1,17 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"distribuidos/tp1/protocol"
-	"encoding/csv"
+	"distribuidos/tp1/server/middleware"
 	"fmt"
 	"log"
 	"net"
-	"strconv"
 )
-
-const ReviewExchange string = "reviews"
-const GamesExchange string = "games"
 
 func (g *gateway) startDataHandler() {
 	address := fmt.Sprintf(":%v", g.config.dataEndpointPort)
@@ -45,7 +40,7 @@ func (g *gateway) initRabbit() {
 	}
 
 	err = rabbitChan.ExchangeDeclare(
-		ReviewExchange,
+		middleware.ReviewExchange,
 		"fanout",
 		true,
 		false,
@@ -57,7 +52,7 @@ func (g *gateway) initRabbit() {
 		log.Fatalf("failed to declare reviews exchange: %v", err)
 	}
 	err = rabbitChan.ExchangeDeclare(
-		GamesExchange,
+		middleware.GamesExchange,
 		"fanout",
 		true,
 		false,
@@ -100,134 +95,7 @@ func (g *gateway) handleClientData(conn net.Conn) error {
 		return fmt.Errorf("expected Prepare message, received %T", anyMsg)
 	}
 
-gameLoop:
-	for {
-
-		msg, err := unm.ReceiveMessage()
-		if err != nil {
-			return err
-		}
-
-		switch msg := msg.(type) {
-		case *protocol.Batch:
-		case *protocol.Finish:
-			break gameLoop
-		default:
-			return fmt.Errorf("expected Batch or Finish message, received %T", msg)
-		}
-	}
-
-	anyMsg, err = unm.ReceiveMessage()
-	if err != nil {
-		return err
-	}
-	_, ok = anyMsg.(*protocol.Prepare)
-	if !ok {
-		return fmt.Errorf("expected Prepare message, received %T", anyMsg)
-	}
-
-reviewLoop:
-	for {
-		msg, err := unm.ReceiveMessage()
-		if err != nil {
-			return err
-		}
-
-		switch msg := msg.(type) {
-		case *protocol.Batch:
-		case *protocol.Finish:
-			break reviewLoop
-		default:
-			return fmt.Errorf("expected Batch or Finish message, received %T", msg)
-		}
-	}
+	// todo: receive data
 
 	return nil
-}
-
-type Game struct {
-	AppID                  int
-	Name                   string
-	ReleaseDate            string
-	Windows                bool
-	Mac                    bool
-	Linux                  bool
-	AveragePlaytimeForever int
-	Genres                 string
-}
-
-type Review struct {
-	AppID   int
-	AppName string
-	Text    string
-	Score   int
-}
-
-func parseGame(line []byte) (Game, error) {
-	game := Game{}
-
-	buf := bytes.NewReader(line)
-	csv := csv.NewReader(buf)
-	record, err := csv.Read()
-	if err != nil {
-		return game, err
-	}
-
-	if len(record) < 37 {
-		return game, fmt.Errorf("expected record of length 4, but got %v", len(record))
-	}
-
-	appId, err := strconv.Atoi(record[0])
-	if err != nil {
-		return game, err
-	}
-	game.AppID = appId
-
-	game.Name = record[1]
-	game.ReleaseDate = record[2]
-	game.Windows = record[17] == "true"
-	game.Mac = record[18] == "true"
-	game.Linux = record[19] == "true"
-
-	averagePlaytimeForever, err := strconv.Atoi(record[29])
-	if err != nil {
-		return game, err
-	}
-	game.AveragePlaytimeForever = averagePlaytimeForever
-
-	game.Genres = record[36]
-
-	return game, nil
-}
-
-func parseReview(line []byte) (Review, error) {
-	review := Review{}
-
-	buf := bytes.NewReader(line)
-	csv := csv.NewReader(buf)
-	record, err := csv.Read()
-	if err != nil {
-		return review, err
-	}
-
-	if len(record) < 4 {
-		return review, fmt.Errorf("expected record of length 4, but got %v", len(record))
-	}
-
-	appId, err := strconv.Atoi(record[0])
-	if err != nil {
-		return review, err
-	}
-	review.AppID = appId
-
-	review.AppName = record[1]
-	review.Text = record[2]
-
-	score, err := strconv.Atoi(record[3])
-	if err != nil {
-		return review, err
-	}
-	review.Score = score
-
-	return review, nil
 }
