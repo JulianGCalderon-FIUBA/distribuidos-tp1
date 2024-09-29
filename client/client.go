@@ -12,13 +12,6 @@ import (
 const GAMES_PATH = "./client/.data/games.csv"
 const REVIEWS_PATH = "./client/.data/reviews.csv"
 
-type FileType int
-
-const (
-	GamesFile FileType = iota
-	ReviewsFile
-)
-
 type client struct {
 	config           config
 	id               uint64
