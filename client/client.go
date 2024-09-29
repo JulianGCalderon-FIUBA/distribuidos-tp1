@@ -117,16 +117,16 @@ func (c *client) sendFile(filePath string) {
 	}
 	defer file.Close()
 
-	var pack [][]byte
+	var batch [][]byte
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		if len(pack) == c.config.packageSize {
-			c.sendPackage(pack)
-			pack = [][]byte{}
+		if len(batch) == c.config.packageSize {
+			c.sendPackage(batch)
+			batch = [][]byte{}
 		}
 		line := scanner.Bytes()
-		pack = append(pack, line)
+		batch = append(batch, line)
 	}
 }
 
