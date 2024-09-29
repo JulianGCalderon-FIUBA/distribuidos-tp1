@@ -38,11 +38,17 @@ func newClient(config config) *client {
 
 func (c *client) start() {
 
-	c.startConnection()
-	c.startDataConnection()
+	err := c.startConnection()
+	if err != nil {
+		log.Fatalf("Error connecting to connection endpoint: %v", err)
+	}
+	err = c.startDataConnection()
+	if err != nil {
+		log.Fatalf("Error connecting to data endpoint: %v", err)
+	}
 }
 
-func (c *client) startConnection() {
+func (c *client) startConnection() error {
 	conn, err := net.Dial("tcp", c.config.connectionEndpointAddress)
 	if err != nil {
 		log.Fatalf("Could not connect to connection endpoint: %v", err)
@@ -51,42 +57,53 @@ func (c *client) startConnection() {
 	c.connMarshaller = *protocol.NewMarshaller(conn)
 	c.connUnmarshaller = *protocol.NewUnmarshaller(conn)
 
-	c.sendRequestHello()
-	c.receiveID()
+	err = c.sendRequestHello()
+	if err != nil {
+		return err
+	}
+	return c.receiveID()
 }
 
-func (c *client) sendRequestHello() {
+func (c *client) sendRequestHello() error {
+
+	gameSize, err := getFileSize(GAMES_PATH)
+	if err != nil {
+		return err
+	}
+	reviewsSize, err := getFileSize(REVIEWS_PATH)
+	if err != nil {
+		return err
+	}
 
 	request := protocol.RequestHello{
-		GameSize:   getFileSize(GAMES_PATH),
-		ReviewSize: getFileSize(REVIEWS_PATH),
+		GameSize:   gameSize,
+		ReviewSize: reviewsSize,
 	}
 
-	err := c.connMarshaller.SendMessage(&request)
-	if err != nil {
-		fmt.Printf("Could not send message: %v", err)
-	}
+	return c.connMarshaller.SendMessage(&request)
+
 }
 
-func (c *client) receiveID() {
+func (c *client) receiveID() error {
 
 	response, err := c.connUnmarshaller.ReceiveMessage()
 	if err != nil {
-		fmt.Printf("Could not receive message from connection: %v", err)
+		return fmt.Errorf("Could not receive message from connection: %w", err)
 	}
 
 	msg, ok := response.(*protocol.AcceptRequest)
 	if !ok {
-		fmt.Printf("Expected AcceptRequest message, received: %T", response)
+		return fmt.Errorf("Expected AcceptRequest message, received: %T", response)
 	}
 
 	c.id = msg.ClientID
+	return nil
 }
 
-func (c *client) startDataConnection() {
+func (c *client) startDataConnection() error {
 	dataConn, err := net.Dial("tcp", c.config.dataEndpointAddress)
 	if err != nil {
-		log.Fatalf("Could not connect to data endpoint: %v", err)
+		return fmt.Errorf("Could not connect to data endpoint: %w", err)
 	}
 
 	c.dataMarshaller = *protocol.NewMarshaller(dataConn)
@@ -94,11 +111,18 @@ func (c *client) startDataConnection() {
 
 	err = c.sendDataHello()
 	if err != nil {
-		fmt.Printf("Could not establish data hello exchange with data endpoint: %v", err)
+		return err
 	}
-	c.sendFile(GAMES_PATH, GamesFile)
-	c.sendFile(REVIEWS_PATH, ReviewsFile)
+	err = c.sendFile(GAMES_PATH, GamesFile)
+	if err != nil {
+		return fmt.Errorf("Error sending games file: %w", err)
+	}
+	err = c.sendFile(REVIEWS_PATH, ReviewsFile)
+	if err != nil {
+		return fmt.Errorf("Error sending reviews file: %w", err)
+	}
 	dataConn.Close()
+	return nil
 }
 
 func (c *client) sendDataHello() error {
@@ -108,12 +132,12 @@ func (c *client) sendDataHello() error {
 	}
 	err := c.dataMarshaller.SendMessage(&msg)
 	if err != nil {
-		return fmt.Errorf("could not send message: %v", err)
+		return fmt.Errorf("could not send message: %w", err)
 	}
 
 	responseAny, err := c.dataUnmarshaller.ReceiveMessage()
 	if err != nil {
-		return fmt.Errorf("could not receive message from connection: %v", err)
+		return fmt.Errorf("could not receive message from connection: %w", err)
 	}
 	_, ok := responseAny.(*protocol.DataAccept)
 	if !ok {
@@ -122,11 +146,10 @@ func (c *client) sendDataHello() error {
 	return nil
 }
 
-func (c *client) sendFile(filePath string, fileType FileType) {
+func (c *client) sendFile(filePath string, fileType FileType) error {
 	file, err := os.Open(filePath)
 	if err != nil {
-		fmt.Printf("Could not open file %v: %v", filePath, err)
-		return
+		return fmt.Errorf("Could not open file %v: %w", filePath, err)
 	}
 	defer file.Close()
 
@@ -136,9 +159,15 @@ func (c *client) sendFile(filePath string, fileType FileType) {
 	for scanner.Scan() {
 		if len(batch) == c.config.packageSize {
 			if fileType == GamesFile {
-				c.sendGames(batch)
+				err = c.sendGames(batch)
+				if err != nil {
+					fmt.Printf("Could not send batch: %v", err)
+				}
 			} else if fileType == ReviewsFile {
-				c.sendReviews(batch)
+				err = c.sendReviews(batch)
+				if err != nil {
+					fmt.Printf("Could not send batch: %v", err)
+				}
 			}
 			batch = [][]byte{}
 		}
@@ -148,39 +177,35 @@ func (c *client) sendFile(filePath string, fileType FileType) {
 
 	if len(batch) != 0 {
 		if fileType == GamesFile {
-			c.sendGames(batch)
+			err = c.sendGames(batch)
+			if err != nil {
+				fmt.Printf("Could not send batch: %v", err)
+			}
 		} else if fileType == ReviewsFile {
-			c.sendReviews(batch)
+			err = c.sendReviews(batch)
+			if err != nil {
+				fmt.Printf("Could not send batch: %v", err)
+			}
 		}
 	}
 
-	err = c.dataMarshaller.SendMessage(&protocol.Finish{})
-	if err != nil {
-		fmt.Printf("Could not send finish message: %v", err)
-	}
-
+	return c.dataMarshaller.SendMessage(&protocol.Finish{})
 }
 
-func (c *client) sendGames(batch [][]byte) {
+func (c *client) sendGames(batch [][]byte) error {
 	games := protocol.GameBatch{Games: batch}
-	err := c.dataMarshaller.SendMessage(&games)
-	if err != nil {
-		fmt.Printf("Could not send message: %v", err)
-	}
+	return c.dataMarshaller.SendMessage(&games)
 }
 
-func (c *client) sendReviews(batch [][]byte) {
+func (c *client) sendReviews(batch [][]byte) error {
 	reviews := protocol.ReviewBatch{Reviews: batch}
-	err := c.dataMarshaller.SendMessage(&reviews)
-	if err != nil {
-		fmt.Printf("Could not send message: %v", err)
-	}
+	return c.dataMarshaller.SendMessage(&reviews)
 }
 
-func getFileSize(filePath string) uint64 {
+func getFileSize(filePath string) (uint64, error) {
 	file, err := os.Stat(filePath)
 	if err != nil {
-		fmt.Printf("Could not get file info: %v", err)
+		return 0, fmt.Errorf("Could not get file info: %w", err)
 	}
-	return uint64(file.Size())
+	return uint64(file.Size()), nil
 }
