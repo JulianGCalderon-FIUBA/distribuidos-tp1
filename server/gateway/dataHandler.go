@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"distribuidos/tp1/protocol"
+	"encoding/csv"
 	"fmt"
 	"log"
 	"net"
+	"strconv"
 )
 
 const ReviewExchange string = "reviews"
@@ -104,8 +107,21 @@ gameLoop:
 			return err
 		}
 
-		switch msg.(type) {
+		switch msg := msg.(type) {
 		case *protocol.Batch:
+			games := make([]Game, 0, len(msg.Lines))
+
+			for _, line := range msg.Lines {
+				game, err := parseGame(line)
+				if err != nil {
+					continue
+				}
+
+				fmt.Printf("%+v\n", game)
+				games = append(games, game)
+			}
+
+			fmt.Printf("%+v\n", games)
 		case *protocol.Finish:
 			break gameLoop
 		default:
@@ -129,8 +145,20 @@ reviewLoop:
 			return err
 		}
 
-		switch msg.(type) {
+		switch msg := msg.(type) {
 		case *protocol.Batch:
+			reviews := make([]Review, 0, len(msg.Lines))
+
+			for _, line := range msg.Lines {
+				review, err := parseReview(line)
+				if err != nil {
+					continue
+				}
+
+				fmt.Printf("%+v\n", review)
+				reviews = append(reviews, review)
+			}
+
 		case *protocol.Finish:
 			break reviewLoop
 		default:
@@ -139,4 +167,91 @@ reviewLoop:
 	}
 
 	return nil
+}
+
+func parseGame(line []byte) (Game, error) {
+	game := Game{}
+
+	buf := bytes.NewReader(line)
+	csv := csv.NewReader(buf)
+	record, err := csv.Read()
+	if err != nil {
+		return game, err
+	}
+
+	if len(record) < 37 {
+		return game, fmt.Errorf("expected record of length 4, but got %v", len(record))
+	}
+
+	appId, err := strconv.Atoi(record[0])
+	if err != nil {
+		return game, err
+	}
+	game.AppID = appId
+
+	game.Name = record[1]
+	game.ReleaseDate = record[2]
+	game.Windows = record[17] == "true"
+	game.Mac = record[18] == "true"
+	game.Linux = record[19] == "true"
+
+	averagePlaytimeForever, err := strconv.Atoi(record[29])
+	if err != nil {
+		return game, err
+	}
+	game.AveragePlaytimeForever = averagePlaytimeForever
+
+	game.Genres = record[36]
+
+	return game, nil
+}
+
+type Game struct {
+	AppID                  int
+	Name                   string
+	ReleaseDate            string
+	Windows                bool
+	Mac                    bool
+	Linux                  bool
+	AveragePlaytimeForever int
+	Genres                 string
+}
+
+type Review struct {
+	AppID   int
+	AppName string
+	Text    string
+	Score   int
+}
+
+func parseReview(line []byte) (Review, error) {
+	review := Review{}
+
+	buf := bytes.NewReader(line)
+	csv := csv.NewReader(buf)
+	record, err := csv.Read()
+	if err != nil {
+		return review, err
+	}
+
+	if len(record) < 4 {
+		return review, fmt.Errorf("expected record of length 4, but got %v", len(record))
+	}
+
+	appId, err := strconv.Atoi(record[0])
+	if err != nil {
+		return review, err
+	}
+	review.AppID = appId
+
+	review.AppName = record[1]
+	review.Text = record[2]
+
+	score, err := strconv.Atoi(record[3])
+	if err != nil {
+		return review, err
+	}
+	review.Score = score
+
+	return review, nil
 }
