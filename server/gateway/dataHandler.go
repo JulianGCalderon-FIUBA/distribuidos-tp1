@@ -75,19 +75,29 @@ func (g *gateway) handleClientData(conn net.Conn) error {
 	if err != nil {
 		return err
 	}
-	msg, ok := anyMsg.(*protocol.DataHello)
+	helloMsg, ok := anyMsg.(*protocol.DataHello)
 	if !ok {
 		return fmt.Errorf("expected DataHello message, received %T", anyMsg)
 	}
 
 	// todo: validate client id
-	_ = msg
+	_ = helloMsg
 
 	err = m.SendMessage(&protocol.DataAccept{})
 	if err != nil {
 		return err
 	}
 
+	anyMsg, err = unm.ReceiveMessage()
+	if err != nil {
+		return err
+	}
+	_, ok = anyMsg.(*protocol.Prepare)
+	if !ok {
+		return fmt.Errorf("expected Prepare message, received %T", anyMsg)
+	}
+
+gameLoop:
 	for {
 		msg, err := unm.ReceiveMessage()
 		if err != nil {
@@ -95,11 +105,38 @@ func (g *gateway) handleClientData(conn net.Conn) error {
 		}
 
 		switch msg.(type) {
-		case *protocol.GameBatch:
-		case *protocol.ReviewBatch:
+		case *protocol.Batch:
 		case *protocol.Finish:
+			break gameLoop
 		default:
-			return fmt.Errorf("expected Batch message, received %T", msg)
+			return fmt.Errorf("expected Batch or Finish message, received %T", msg)
 		}
 	}
+
+	anyMsg, err = unm.ReceiveMessage()
+	if err != nil {
+		return err
+	}
+	_, ok = anyMsg.(*protocol.Prepare)
+	if !ok {
+		return fmt.Errorf("expected Prepare message, received %T", anyMsg)
+	}
+
+reviewLoop:
+	for {
+		msg, err := unm.ReceiveMessage()
+		if err != nil {
+			return err
+		}
+
+		switch msg.(type) {
+		case *protocol.Batch:
+		case *protocol.Finish:
+			break reviewLoop
+		default:
+			return fmt.Errorf("expected Batch or Finish message, received %T", msg)
+		}
+	}
+
+	return nil
 }
