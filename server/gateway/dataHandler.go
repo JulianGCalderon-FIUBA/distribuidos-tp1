@@ -97,9 +97,9 @@ func (g *gateway) handleClientData(conn net.Conn) error {
 		switch msg.(type) {
 		case *protocol.GameBatch:
 		case *protocol.ReviewBatch:
+		case *protocol.Finish:
 		default:
 			return fmt.Errorf("expected Batch message, received %T", msg)
 		}
-
 	}
 }
