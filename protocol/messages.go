@@ -37,13 +37,62 @@ type DataAccept struct{}
 
 // Sent by the client to the data handler
 type GameBatch struct {
-	Games [][]string
+	Games [][]byte
 }
 
 // Sent by the client to the data handler
 type ReviewBatch struct {
-	Reviews [][]string
+	Reviews [][]byte
 }
 
 // Sent by the client to indicate that it has finished sending data
 type Finish struct{}
+
+type Game struct {
+	AppID                  int
+	Name                   string
+	ReleaseDate            string
+	Windows                bool
+	Mac                    bool
+	Linux                  bool
+	AveragePlaytimeForever int
+	Genres                 string
+	// EstimatedOwners         string
+	// PeakCCU                 int
+	// RequiredAge             int
+	// Price                   float64
+	// Unknown                 int
+	// DiscountDLCCount        int
+	// AboutTheGame            string
+	// SupportedLanguages      string
+	// FullAudioLanguages      string
+	// Reviews                 string
+	// HeaderImage             string
+	// Website                 string
+	// SupportUrl              string
+	// SupportEmail            string
+	// MetacriticScore         int
+	// MetacriticUrl           string
+	// UserScore               int
+	// Positive                int
+	// Negative                int
+	// ScoreRank               float64
+	// Achievements            int
+	// Recommendations         int
+	// Notes                   string
+	// AveragePlaytimeTwoWeeks int
+	// MedianPlaytimeForever   int
+	// MedianPlaytimeTwoWeeks  int
+	// Developers              string
+	// Publishers              string
+	// Categories              string
+	// Tags                    string
+	// Screenshots             string
+	// Movies                  string
+}
+type Review struct {
+	AppID   int
+	AppName string
+	Text    string
+	Score   int
+}
