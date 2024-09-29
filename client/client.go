@@ -11,9 +11,6 @@ import (
 
 const GAMES_PATH = "./.data/games.csv"
 const REVIEWS_PATH = "./.data/reviews.csv"
-const MAX_PAYLOAD_SIZE = 8096
-const MSG_SIZE = 4
-const TAG_SIZE = 4
 
 type client struct {
 	config           config
@@ -128,14 +125,12 @@ func (c *client) sendFile(filePath string) {
 			c.sendPackage(pack)
 			pack = [][]byte{}
 		}
-
 		line := scanner.Bytes()
 		pack = append(pack, line)
 	}
 }
 
 func (c *client) sendPackage(pack [][]byte) {
-
 }
 
 func getFileSize(filePath string) uint64 {
