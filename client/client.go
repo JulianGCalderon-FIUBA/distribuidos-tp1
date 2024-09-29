@@ -55,6 +55,8 @@ func (c *client) startConnection() error {
 	if err != nil {
 		log.Fatalf("Could not connect to connection endpoint: %v", err)
 	}
+	defer conn.Close()
+
 	c.conn = conn
 	c.connMarshaller = *protocol.NewMarshaller(conn)
 	c.connUnmarshaller = *protocol.NewUnmarshaller(conn)
@@ -109,6 +111,8 @@ func (c *client) startDataConnection() error {
 		return fmt.Errorf("Could not connect to data endpoint: %w", err)
 	}
 
+	defer dataConn.Close()
+
 	c.dataMarshaller = *protocol.NewMarshaller(dataConn)
 	c.dataUnmarshaller = *protocol.NewUnmarshaller(dataConn)
 
@@ -124,7 +128,7 @@ func (c *client) startDataConnection() error {
 	if err != nil {
 		return fmt.Errorf("Error sending reviews file: %w", err)
 	}
-	dataConn.Close()
+
 	return nil
 }
 
