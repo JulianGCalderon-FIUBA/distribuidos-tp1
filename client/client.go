@@ -170,6 +170,7 @@ func (c *client) sendFile(filePath string) error {
 			if err != nil {
 				return err
 			}
+			batch = batch[:0]
 		}
 		line := scanner.Bytes()
 		batch = append(batch, line)
