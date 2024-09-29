@@ -36,6 +36,7 @@ func newClient(config config) *client {
 	return client
 }
 
+// Connects client to connection endpoint and data endpoint
 func (c *client) start() {
 
 	err := c.startConnection()
@@ -48,6 +49,7 @@ func (c *client) start() {
 	}
 }
 
+// Starts connection with connection endpoint, sending request hello and waiting for id
 func (c *client) startConnection() error {
 	conn, err := net.Dial("tcp", c.config.connectionEndpointAddress)
 	if err != nil {
@@ -100,6 +102,7 @@ func (c *client) receiveID() error {
 	return nil
 }
 
+// Starts connection with data endpoint and sends games and reviews files. When done closes connection
 func (c *client) startDataConnection() error {
 	dataConn, err := net.Dial("tcp", c.config.dataEndpointAddress)
 	if err != nil {
@@ -146,6 +149,7 @@ func (c *client) sendDataHello() error {
 	return nil
 }
 
+// Sends specified file in different batches of size obtained from config
 func (c *client) sendFile(filePath string, fileType FileType) error {
 	file, err := os.Open(filePath)
 	if err != nil {
