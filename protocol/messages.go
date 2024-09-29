@@ -7,8 +7,9 @@ const (
 	AcceptRequestTag
 	DataHelloTag
 	DataAcceptTag
-	GameBatchTag
-	ReviewBatchTag
+	PrepareGamesTag
+	PrepareReviewsTag
+	BatchTag
 	FinishTag
 )
 
@@ -35,14 +36,13 @@ type DataHello struct {
 // Sent by the data handler to accept a client
 type DataAccept struct{}
 
-// Sent by the client to the data handler
-type GameBatch struct {
-	Games [][]byte
-}
+// Sent by the client to indicate the type of file it will send
+type PrepareGames struct{}
+type PrepareReviews struct{}
 
 // Sent by the client to the data handler
-type ReviewBatch struct {
-	Reviews [][]byte
+type Batch struct {
+	Lines [][]byte
 }
 
 // Sent by the client to indicate that it has finished sending data

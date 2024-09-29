@@ -62,19 +62,45 @@ func (m *DataAccept) Deserialize(buf []byte) error {
 	return err
 }
 
-func (m *GameBatch) Tag() MessageTag {
-	return GameBatchTag
+func (m *PrepareGames) Tag() MessageTag {
+	return PrepareGamesTag
 }
 
-func (m *GameBatch) Serialize() ([]byte, error) {
+func (m *PrepareGames) Serialize() ([]byte, error) {
+	return binary.Append(nil, binary.LittleEndian, m)
+}
+
+func (m *PrepareGames) Deserialize(buf []byte) error {
+	_, err := binary.Decode(buf, binary.LittleEndian, m)
+	return err
+}
+
+func (m *PrepareReviews) Tag() MessageTag {
+	return PrepareReviewsTag
+}
+
+func (m *PrepareReviews) Serialize() ([]byte, error) {
+	return binary.Append(nil, binary.LittleEndian, m)
+}
+
+func (m *PrepareReviews) Deserialize(buf []byte) error {
+	_, err := binary.Decode(buf, binary.LittleEndian, m)
+	return err
+}
+
+func (m *Batch) Tag() MessageTag {
+	return BatchTag
+}
+
+func (m *Batch) Serialize() ([]byte, error) {
 	var msg []byte
 	var err error
-	msg, err = binary.Append(msg, binary.LittleEndian, uint32(len(m.Games)))
+	msg, err = binary.Append(msg, binary.LittleEndian, uint32(len(m.Lines)))
 	if err != nil {
 		return nil, err
 	}
 
-	for _, array := range m.Games {
+	for _, array := range m.Lines {
 		msg, err = binary.Append(msg, binary.LittleEndian, uint32(len(array)))
 		if err != nil {
 			return nil, err
@@ -84,7 +110,7 @@ func (m *GameBatch) Serialize() ([]byte, error) {
 	return msg, err
 }
 
-func (m *GameBatch) Deserialize(buf []byte) error {
+func (m *Batch) Deserialize(buf []byte) error {
 	var amountArrays uint32
 	read, err := binary.Decode(buf, binary.LittleEndian, &amountArrays)
 	if err != nil {
@@ -100,52 +126,7 @@ func (m *GameBatch) Deserialize(buf []byte) error {
 		}
 		buf = buf[read:]
 		array := buf[:size]
-		m.Games = append(m.Games, array)
-		buf = buf[size:]
-	}
-
-	return nil
-}
-
-func (m *ReviewBatch) Tag() MessageTag {
-	return ReviewBatchTag
-}
-
-func (m *ReviewBatch) Serialize() ([]byte, error) {
-	var msg []byte
-	var err error
-	msg, err = binary.Append(msg, binary.LittleEndian, uint32(len(m.Reviews)))
-	if err != nil {
-		return nil, err
-	}
-
-	for _, array := range m.Reviews {
-		msg, err = binary.Append(msg, binary.LittleEndian, uint32(len(array)))
-		if err != nil {
-			return nil, err
-		}
-		msg = append(msg, array...)
-	}
-	return msg, err
-}
-
-func (m *ReviewBatch) Deserialize(buf []byte) error {
-	var amountArrays uint32
-	read, err := binary.Decode(buf, binary.LittleEndian, &amountArrays)
-	if err != nil {
-		return err
-	}
-	buf = buf[read:]
-
-	for i := 0; i < int(amountArrays); i++ {
-		var size uint32
-		read, err := binary.Decode(buf, binary.LittleEndian, &size)
-		if err != nil {
-			return err
-		}
-		buf = buf[read:]
-		array := buf[:size]
-		m.Reviews = append(m.Reviews, array)
+		m.Lines = append(m.Lines, array)
 		buf = buf[size:]
 	}
 
