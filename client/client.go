@@ -158,14 +158,19 @@ func (c *client) sendFile(filePath string) error {
 	}
 	defer file.Close()
 
-	err = c.dataMarshaller.SendMessage(&protocol.Prepare{})
+	scanner := bufio.NewScanner(file)
+
+	if !scanner.Scan() {
+		return fmt.Errorf("Failed to read file: %w", scanner.Err())
+	}
+	err = c.dataMarshaller.SendMessage(&protocol.Prepare{
+		Header: scanner.Bytes(),
+	})
 	if err != nil {
 		return err
 	}
 
 	var batch [][]byte
-
-	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		if len(batch) == c.config.packageSize {
 			err = c.sendBatch(batch)
