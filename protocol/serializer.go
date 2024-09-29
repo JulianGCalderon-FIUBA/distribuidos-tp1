@@ -68,23 +68,12 @@ func (m *Prepare) Tag() MessageTag {
 }
 
 func (m *Prepare) Serialize() ([]byte, error) {
-	msg, err := binary.Append(nil, binary.LittleEndian, uint32(len(m.Header)))
-	if err != nil {
-		return nil, err
-	}
-	msg = append(msg, m.Header...)
-	return msg, nil
+	return binary.Append(nil, binary.LittleEndian, m)
 }
 
 func (m *Prepare) Deserialize(buf []byte) error {
-	var headerLength uint32
-	read, err := binary.Decode(buf, binary.LittleEndian, &headerLength)
-	if err != nil {
-		return err
-	}
-	buf = buf[read:]
-	m.Header = slices.Clone(buf[:headerLength])
-	return nil
+	_, err := binary.Decode(buf, binary.LittleEndian, m)
+	return err
 }
 
 func (m *Batch) Tag() MessageTag {
@@ -92,43 +81,11 @@ func (m *Batch) Tag() MessageTag {
 }
 
 func (m *Batch) Serialize() ([]byte, error) {
-	var msg []byte
-	var err error
-	msg, err = binary.Append(msg, binary.LittleEndian, uint32(len(m.Lines)))
-	if err != nil {
-		return nil, err
-	}
-
-	for _, array := range m.Lines {
-		msg, err = binary.Append(msg, binary.LittleEndian, uint32(len(array)))
-		if err != nil {
-			return nil, err
-		}
-		msg = append(msg, array...)
-	}
-	return msg, err
+	return slices.Clone(m.Data), nil
 }
 
 func (m *Batch) Deserialize(buf []byte) error {
-	var amountArrays uint32
-	read, err := binary.Decode(buf, binary.LittleEndian, &amountArrays)
-	if err != nil {
-		return err
-	}
-	buf = buf[read:]
-
-	for i := 0; i < int(amountArrays); i++ {
-		var size uint32
-		read, err := binary.Decode(buf, binary.LittleEndian, &size)
-		if err != nil {
-			return err
-		}
-		buf = buf[read:]
-		array := buf[:size]
-		m.Lines = append(m.Lines, array)
-		buf = buf[size:]
-	}
-
+	m.Data = slices.Clone(buf)
 	return nil
 }
 

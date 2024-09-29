@@ -1,9 +1,9 @@
 package main
 
 import (
-	"bufio"
 	"distribuidos/tp1/protocol"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -151,48 +151,29 @@ func (c *client) sendFile(filePath string) error {
 	}
 	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-
-	if !scanner.Scan() {
-		return fmt.Errorf("Failed to read file: %w", scanner.Err())
-	}
-	err = c.dataMarshaller.SendMessage(&protocol.Prepare{
-		Header: scanner.Bytes(),
-	})
+	err = c.dataMarshaller.SendMessage(&protocol.Prepare{})
 	if err != nil {
 		return err
 	}
 
-	var batch [][]byte
-	for scanner.Scan() {
-		if len(batch) == c.config.packageSize {
-			err = c.sendBatch(batch)
-			if err != nil {
-				return err
+	buf := make([]byte, c.config.packageSize)
+	for {
+		n, err := file.Read(buf)
+		if n > 0 {
+			sendErr := c.dataMarshaller.SendMessage(&protocol.Batch{Data: buf[:n]})
+			if sendErr != nil {
+				return sendErr
 			}
-			batch = batch[:0]
 		}
-		line := scanner.Bytes()
-		batch = append(batch, line)
-	}
-
-	if len(batch) != 0 {
-		err = c.sendBatch(batch)
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return err
 		}
 	}
 
 	return c.dataMarshaller.SendMessage(&protocol.Finish{})
-}
-
-func (c *client) sendBatch(lines [][]byte) error {
-	batchMsg := protocol.Batch{Lines: lines}
-	err := c.dataMarshaller.SendMessage(&batchMsg)
-	if err != nil {
-		return fmt.Errorf("Could not send batch: %w", err)
-	}
-	return nil
 }
 
 func getFileSize(filePath string) (uint64, error) {

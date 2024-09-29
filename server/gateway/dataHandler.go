@@ -102,6 +102,7 @@ func (g *gateway) handleClientData(conn net.Conn) error {
 
 gameLoop:
 	for {
+
 		msg, err := unm.ReceiveMessage()
 		if err != nil {
 			return err
@@ -109,19 +110,6 @@ gameLoop:
 
 		switch msg := msg.(type) {
 		case *protocol.Batch:
-			games := make([]Game, 0, len(msg.Lines))
-
-			for _, line := range msg.Lines {
-				game, err := parseGame(line)
-				if err != nil {
-					continue
-				}
-
-				fmt.Printf("%+v\n", game)
-				games = append(games, game)
-			}
-
-			fmt.Printf("%+v\n", games)
 		case *protocol.Finish:
 			break gameLoop
 		default:
@@ -147,18 +135,6 @@ reviewLoop:
 
 		switch msg := msg.(type) {
 		case *protocol.Batch:
-			reviews := make([]Review, 0, len(msg.Lines))
-
-			for _, line := range msg.Lines {
-				review, err := parseReview(line)
-				if err != nil {
-					continue
-				}
-
-				fmt.Printf("%+v\n", review)
-				reviews = append(reviews, review)
-			}
-
 		case *protocol.Finish:
 			break reviewLoop
 		default:
@@ -167,6 +143,24 @@ reviewLoop:
 	}
 
 	return nil
+}
+
+type Game struct {
+	AppID                  int
+	Name                   string
+	ReleaseDate            string
+	Windows                bool
+	Mac                    bool
+	Linux                  bool
+	AveragePlaytimeForever int
+	Genres                 string
+}
+
+type Review struct {
+	AppID   int
+	AppName string
+	Text    string
+	Score   int
 }
 
 func parseGame(line []byte) (Game, error) {
@@ -204,24 +198,6 @@ func parseGame(line []byte) (Game, error) {
 	game.Genres = record[36]
 
 	return game, nil
-}
-
-type Game struct {
-	AppID                  int
-	Name                   string
-	ReleaseDate            string
-	Windows                bool
-	Mac                    bool
-	Linux                  bool
-	AveragePlaytimeForever int
-	Genres                 string
-}
-
-type Review struct {
-	AppID   int
-	AppName string
-	Text    string
-	Score   int
 }
 
 func parseReview(line []byte) (Review, error) {
