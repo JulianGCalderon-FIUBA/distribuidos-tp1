@@ -145,6 +145,20 @@ func (c *client) sendFile(filePath string, fileType FileType) {
 		line := scanner.Bytes()
 		batch = append(batch, line)
 	}
+
+	if len(batch) != 0 {
+		if fileType == GamesFile {
+			c.sendGames(batch)
+		} else if fileType == ReviewsFile {
+			c.sendReviews(batch)
+		}
+	}
+
+	err = c.dataMarshaller.SendMessage(&protocol.Finish{})
+	if err != nil {
+		fmt.Printf("Could not send finish message: %v", err)
+	}
+
 }
 
 func (c *client) sendGames(batch [][]byte) {
