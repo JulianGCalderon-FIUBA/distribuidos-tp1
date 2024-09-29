@@ -9,8 +9,8 @@ import (
 	"os"
 )
 
-const GAMES_PATH = "./.data/games.csv"
-const REVIEWS_PATH = "./.data/reviews.csv"
+const GAMES_PATH = "./client/.data/games.csv"
+const REVIEWS_PATH = "./client/.data/reviews.csv"
 
 type client struct {
 	config           config
