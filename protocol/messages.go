@@ -36,7 +36,9 @@ type DataHello struct {
 type DataAccept struct{}
 
 // Sent by the client to indicate that it will send a file
-type Prepare struct{}
+type Prepare struct {
+	Header []byte
+}
 
 // Sent by the client to the data handler
 type Batch struct {

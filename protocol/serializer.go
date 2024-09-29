@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"encoding/binary"
+	"slices"
 )
 
 type Message interface {
@@ -67,12 +68,23 @@ func (m *Prepare) Tag() MessageTag {
 }
 
 func (m *Prepare) Serialize() ([]byte, error) {
-	return binary.Append(nil, binary.LittleEndian, m)
+	msg, err := binary.Append(nil, binary.LittleEndian, uint32(len(m.Header)))
+	if err != nil {
+		return nil, err
+	}
+	msg = append(msg, m.Header...)
+	return msg, nil
 }
 
 func (m *Prepare) Deserialize(buf []byte) error {
-	_, err := binary.Decode(buf, binary.LittleEndian, m)
-	return err
+	var headerLength uint32
+	read, err := binary.Decode(buf, binary.LittleEndian, &headerLength)
+	if err != nil {
+		return err
+	}
+	buf = buf[read:]
+	m.Header = slices.Clone(buf[:headerLength])
+	return nil
 }
 
 func (m *Batch) Tag() MessageTag {
