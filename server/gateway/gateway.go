@@ -7,14 +7,13 @@ import (
 
 type gateway struct {
 	config config
-	// aca pueden ir los campos en comun
-	// entre data handler y connection handler
-	// ej: clientes activos?
+	activeClients int
 }
 
 func newGateway(config config) *gateway {
 	return &gateway{
 		config: config,
+		activeClients: 0,
 	}
 }
 

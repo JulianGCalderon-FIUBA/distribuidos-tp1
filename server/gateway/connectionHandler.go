@@ -32,8 +32,9 @@ func (g *gateway) startConnectionHandler() {
 	}
 }
 
-func (g *gateway) handleClient(conn net.Conn) {
+func (g *gateway) handleClient(conn net.Conn) error {
 	defer conn.Close()
+	g.activeClients++
 
 	m := protocol.NewMarshaller(conn)
 	unm := protocol.NewUnmarshaller(conn)
@@ -42,20 +43,26 @@ func (g *gateway) handleClient(conn net.Conn) {
 		msg, err := unm.ReceiveMessage()
 		if err != nil {
 			if err.Error() == "EOF" {
-				fmt.Println("Client disconnected")
-				return
+				log.Printf("Client disconnected")
+				return nil
+
 			}
-			log.Fatalf("Failed to read message: %v", err)
-			return
+			return fmt.Errorf("failed to read message: %v", err)
 		}
 
-		fmt.Printf("Received: %s\n", msg)
+		request, ok := msg.(*protocol.RequestHello)
+		if !ok {
+			return fmt.Errorf("expected RequestHello message, received: %T", msg)
+		}
+
+		log.Printf("Game size: %d\n", request.GameSize)
+		log.Printf("Review size: %d\n", request.ReviewSize)
 
 		err = m.SendMessage(&protocol.AcceptRequest{
-			ClientID: 1,
+			ClientID: uint64(g.activeClients),
 		})
 		if err != nil {
-			log.Fatalf("Failed to send message: %v", err)
+			return fmt.Errorf("failed to send message: %v", err)
 		}
 	}
 }
