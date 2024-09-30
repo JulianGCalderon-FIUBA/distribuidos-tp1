@@ -1,0 +1,25 @@
+name: tp1
+services:
+  gateway:
+    container_name: gateway
+    image: gateway:latest
+    entrypoint: /gateway
+    networks:
+      - tp1_net
+
+  client:
+    container_name: client
+    image: client:latest
+    entrypoint: /client
+    environment:
+      - GATEWAY_CONN_ADDR=gateway:9001
+      - GATEWAY_DATA_ADDR=gateway:9002
+    volumes:
+      - ./client/.data:/.data
+    networks:
+      - tp1_net
+    depends_on:
+      - gateway
+
+networks:
+  tp1_net:
