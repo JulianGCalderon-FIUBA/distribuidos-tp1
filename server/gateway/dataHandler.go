@@ -2,8 +2,12 @@ package main
 
 import (
 	"distribuidos/tp1/protocol"
+	"distribuidos/tp1/server"
 	"distribuidos/tp1/server/middleware"
+	"encoding/csv"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 )
@@ -86,16 +90,105 @@ func (g *gateway) handleClientData(conn net.Conn) error {
 		return err
 	}
 
-	anyMsg, err = unm.ReceiveMessage()
+	gamesRecv, gamesSend := net.Pipe()
+	go func() {
+		err := g.queueGames(gamesRecv)
+		if err != nil {
+			fmt.Printf("error while queuing games: %v", err)
+		}
+	}()
+	err = g.receiveData(unm, gamesSend)
 	if err != nil {
 		return err
 	}
-	_, ok = anyMsg.(*protocol.Prepare)
+
+	reviewsRecv, reviewsSend := net.Pipe()
+	go func() {
+		err := g.queueReviews(reviewsRecv)
+		if err != nil {
+			fmt.Printf("error while queuing games: %v", err)
+		}
+	}()
+	err = g.receiveData(unm, reviewsSend)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (g *gateway) receiveData(unm *protocol.Unmarshaller, w io.Writer) error {
+	anyMsg, err := unm.ReceiveMessage()
+	if err != nil {
+		return err
+	}
+	_, ok := anyMsg.(*protocol.Prepare)
 	if !ok {
 		return fmt.Errorf("expected Prepare message, received %T", anyMsg)
 	}
 
-	// todo: receive data
+	for {
+		anyMsg, err := unm.ReceiveMessage()
+		if err != nil {
+			return err
+		}
 
-	return nil
+		switch msg := anyMsg.(type) {
+		case *protocol.Batch:
+			_, err := w.Write(msg.Data)
+			if err != nil {
+				return err
+			}
+		case *protocol.Finish:
+			return nil
+		}
+	}
+}
+
+func (g *gateway) queueGames(r io.Reader) error {
+	csvReader := csv.NewReader(r)
+
+	for {
+		record, err := csvReader.Read()
+		if errors.Is(err, &csv.ParseError{}) {
+			continue
+		}
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		game, err := server.GameFromFullRecord(record)
+		if err != nil {
+			continue
+		}
+
+		fmt.Printf("Game: %#+v\n", game)
+	}
+}
+
+func (g *gateway) queueReviews(r io.Reader) error {
+	csvReader := csv.NewReader(r)
+
+	for {
+		record, err := csvReader.Read()
+		if errors.Is(err, &csv.ParseError{}) {
+			continue
+		}
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		review, err := server.ReviewFromFullRecord(record)
+		if err != nil {
+			continue
+		}
+
+		fmt.Printf("review: %#+v\n", review)
+	}
 }
