@@ -8,7 +8,7 @@ import (
 )
 
 func (g *gateway) startConnectionHandler() {
-	address := fmt.Sprintf(":%d", g.config.connectionEndpointPort)
+	address := fmt.Sprintf(":%d", g.config.ConnectionEndpointPort)
 	listener, err := net.Listen("tcp", address)
 
 	if err != nil {
@@ -16,7 +16,7 @@ func (g *gateway) startConnectionHandler() {
 	}
 	defer listener.Close()
 
-	fmt.Println("Gateway is listening on port ", g.config.connectionEndpointPort)
+	fmt.Println("Gateway is listening on port ", g.config.ConnectionEndpointPort)
 
 	for {
 		conn, err := listener.Accept()

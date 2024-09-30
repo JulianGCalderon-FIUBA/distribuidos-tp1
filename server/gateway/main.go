@@ -2,19 +2,27 @@ package main
 
 import (
 	"log"
+
+	"github.com/spf13/viper"
 )
 
 type config struct {
-	connectionEndpointPort int
-	dataEndpointPort       int
+	ConnectionEndpointPort int
+	DataEndpointPort       int
 }
 
 func getConfig() (config, error) {
-	// todo: read from file
-	return config{
-		connectionEndpointPort: 9001,
-		dataEndpointPort:       9002,
-	}, nil
+	v := viper.New()
+
+	v.SetDefault("ConnectionEndpointPort", "9001")
+	v.SetDefault("DataEndpointPort", "9002")
+
+	_ = v.BindEnv("ConnectionEndpointPort", "CONN_PORT")
+	_ = v.BindEnv("DataEndpointPort", "DATA_PORT")
+
+	var c config
+	err := v.Unmarshal(&c)
+	return c, err
 }
 
 func main() {
@@ -22,6 +30,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to read config: %v", err)
 	}
+	_ = cfg.DataEndpointPort
 
 	gateway := newGateway(cfg)
 	gateway.start()
