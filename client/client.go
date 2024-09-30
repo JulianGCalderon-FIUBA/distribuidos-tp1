@@ -122,7 +122,6 @@ func (c *client) startDataConnection() error {
 	if err != nil {
 		return fmt.Errorf("Error sending reviews file: %w", err)
 	}
-	dataConn.Close()
 	return nil
 }
 
