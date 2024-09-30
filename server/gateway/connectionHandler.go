@@ -3,6 +3,7 @@ package main
 import (
 	"distribuidos/tp1/protocol"
 	"fmt"
+	"io"
 	"log"
 	"net"
 )
@@ -20,6 +21,7 @@ func (g *gateway) startConnectionHandler() {
 
 	for {
 		conn, err := listener.Accept()
+		g.activeClients++
 
 		if err != nil {
 			fmt.Println("Error:", err)
@@ -29,8 +31,7 @@ func (g *gateway) startConnectionHandler() {
 		fmt.Println("Client connected: ", conn.RemoteAddr().String())
 
 		go func() {
-			err := g.handleClient(conn)
-			if err != nil {
+			if err := g.handleClient(conn); err != nil {
 				log.Printf("Error handling client: %v", err)
 			}
 		}()
@@ -39,7 +40,6 @@ func (g *gateway) startConnectionHandler() {
 
 func (g *gateway) handleClient(conn net.Conn) error {
 	defer conn.Close()
-	g.activeClients++
 
 	m := protocol.NewMarshaller(conn)
 	unm := protocol.NewUnmarshaller(conn)
@@ -47,12 +47,12 @@ func (g *gateway) handleClient(conn net.Conn) error {
 	for {
 		msg, err := unm.ReceiveMessage()
 		if err != nil {
-			if err.Error() == "EOF" {
+			if err == io.EOF {
 				log.Printf("Client disconnected")
 				return nil
 
 			}
-			return fmt.Errorf("failed to read message: %v", err)
+			return fmt.Errorf("failed to read message: %w", err)
 		}
 
 		request, ok := msg.(*protocol.RequestHello)
