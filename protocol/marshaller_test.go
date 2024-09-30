@@ -27,7 +27,6 @@ func TestMarshaller(t *testing.T) {
 			ClientID: 7,
 		},
 		&protocol.DataAccept{},
-		&protocol.Prepare{},
 		&protocol.Batch{Data: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}},
 		&protocol.Finish{},
 	}

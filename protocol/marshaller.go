@@ -39,8 +39,6 @@ func (m *Unmarshaller) ReceiveMessage() (Message, error) {
 		msg = &DataHello{}
 	case DataAcceptTag:
 		msg = &DataAccept{}
-	case PrepareTag:
-		msg = &Prepare{}
 	case BatchTag:
 		msg = &Batch{}
 	case FinishTag:

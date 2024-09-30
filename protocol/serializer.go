@@ -63,19 +63,6 @@ func (m *DataAccept) Deserialize(buf []byte) error {
 	return err
 }
 
-func (m *Prepare) Tag() MessageTag {
-	return PrepareTag
-}
-
-func (m *Prepare) Serialize() ([]byte, error) {
-	return binary.Append(nil, binary.LittleEndian, m)
-}
-
-func (m *Prepare) Deserialize(buf []byte) error {
-	_, err := binary.Decode(buf, binary.LittleEndian, m)
-	return err
-}
-
 func (m *Batch) Tag() MessageTag {
 	return BatchTag
 }

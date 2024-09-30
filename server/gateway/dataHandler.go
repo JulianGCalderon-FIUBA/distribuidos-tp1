@@ -86,15 +86,6 @@ func (g *gateway) handleClientData(conn net.Conn) error {
 }
 
 func (g *gateway) receiveData(unm *protocol.Unmarshaller, w io.Writer) error {
-	anyMsg, err := unm.ReceiveMessage()
-	if err != nil {
-		return err
-	}
-	_, ok := anyMsg.(*protocol.Prepare)
-	if !ok {
-		return fmt.Errorf("expected Prepare message, received %T", anyMsg)
-	}
-
 	for {
 		anyMsg, err := unm.ReceiveMessage()
 		if err != nil {

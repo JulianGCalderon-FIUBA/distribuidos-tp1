@@ -154,11 +154,6 @@ func (c *client) sendFile(filePath string) error {
 	}
 	defer file.Close()
 
-	err = c.dataMarshaller.SendMessage(&protocol.Prepare{})
-	if err != nil {
-		return err
-	}
-
 	buf := make([]byte, c.config.BatchSize)
 	for {
 		n, err := file.Read(buf)
