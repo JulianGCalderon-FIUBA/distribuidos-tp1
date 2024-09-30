@@ -28,7 +28,12 @@ func (g *gateway) startConnectionHandler() {
 
 		fmt.Println("Client connected: ", conn.RemoteAddr().String())
 
-		go g.handleClient(conn)
+		go func() {
+			err := g.handleClient(conn)
+			if err != nil {
+				log.Printf("Error handling client: %v", err)
+			}
+		}()
 	}
 }
 

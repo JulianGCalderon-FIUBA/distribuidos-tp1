@@ -6,13 +6,13 @@ import (
 )
 
 type gateway struct {
-	config config
+	config        config
 	activeClients int
 }
 
 func newGateway(config config) *gateway {
 	return &gateway{
-		config: config,
+		config:        config,
 		activeClients: 0,
 	}
 }
