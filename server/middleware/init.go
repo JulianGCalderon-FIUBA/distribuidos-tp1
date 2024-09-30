@@ -14,7 +14,7 @@ func Init(conn *amqp.Connection) {
 
 	err = ch.ExchangeDeclare(
 		ReviewExchange,
-		"fanout",
+		amqp.ExchangeFanout,
 		true,
 		false,
 		false,
@@ -26,7 +26,7 @@ func Init(conn *amqp.Connection) {
 	}
 	err = ch.ExchangeDeclare(
 		GamesExchange,
-		"fanout",
+		amqp.ExchangeFanout,
 		true,
 		false,
 		false,
