@@ -19,7 +19,7 @@ func (g *gateway) startDataHandler() {
 		log.Fatalf("failed to bind socket: %v", err)
 	}
 
-	g.initRabbit()
+	middleware.Init(g.rabbitConn)
 
 	for {
 		conn, err := listener.Accept()
@@ -34,38 +34,6 @@ func (g *gateway) startDataHandler() {
 				log.Printf("error while handling client: %v", err)
 			}
 		}(conn)
-	}
-}
-
-func (g *gateway) initRabbit() {
-	rabbitChan, err := g.rabbitConn.Channel()
-	if err != nil {
-		log.Fatalf("failed to bind rabbit connection: %v", err)
-	}
-
-	err = rabbitChan.ExchangeDeclare(
-		middleware.ReviewExchange,
-		"fanout",
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		log.Fatalf("failed to declare reviews exchange: %v", err)
-	}
-	err = rabbitChan.ExchangeDeclare(
-		middleware.GamesExchange,
-		"fanout",
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		log.Fatalf("failed to bind games exchange: %v", err)
 	}
 }
 
