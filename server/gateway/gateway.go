@@ -23,7 +23,7 @@ func newGateway(config config) *gateway {
 }
 
 func (g *gateway) start() {
-	rabbitAddress := fmt.Sprintf("amqp://guest:guest@%v:5672/", g.config.rabbitIP)
+	rabbitAddress := fmt.Sprintf("amqp://guest:guest@%v:5672/", g.config.RabbitIP)
 	rabbitConn, err := amqp.Dial(rabbitAddress)
 	if err != nil {
 		log.Fatalf("failed to connect to rabbit: %v", err)

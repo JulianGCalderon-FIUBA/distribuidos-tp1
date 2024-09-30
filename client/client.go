@@ -9,8 +9,8 @@ import (
 	"os"
 )
 
-const GAMES_PATH = "./client/.data/games.csv"
-const REVIEWS_PATH = "./client/.data/reviews.csv"
+const GAMES_PATH = "./.data/games.csv"
+const REVIEWS_PATH = "./.data/reviews.csv"
 
 type client struct {
 	config           config
@@ -44,7 +44,7 @@ func (c *client) start() {
 
 // Starts connection with connection endpoint, sending request hello and waiting for id
 func (c *client) startConnection() error {
-	conn, err := net.Dial("tcp", c.config.connectionEndpointAddress)
+	conn, err := net.Dial("tcp", c.config.ConnectionEndpointAddress)
 	if err != nil {
 		log.Fatalf("Could not connect to connection endpoint: %v", err)
 	}
@@ -100,7 +100,7 @@ func (c *client) receiveID() error {
 
 // Starts connection with data endpoint and sends games and reviews files. When done closes connection
 func (c *client) startDataConnection() error {
-	dataConn, err := net.Dial("tcp", c.config.dataEndpointAddress)
+	dataConn, err := net.Dial("tcp", c.config.DataEndpointAddress)
 	if err != nil {
 		return fmt.Errorf("Could not connect to data endpoint: %w", err)
 	}
@@ -160,7 +160,7 @@ func (c *client) sendFile(filePath string) error {
 		return err
 	}
 
-	buf := make([]byte, c.config.packageSize)
+	buf := make([]byte, c.config.BatchSize)
 	for {
 		n, err := file.Read(buf)
 		if n > 0 {

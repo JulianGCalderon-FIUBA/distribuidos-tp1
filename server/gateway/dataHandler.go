@@ -13,7 +13,7 @@ import (
 )
 
 func (g *gateway) startDataHandler() {
-	address := fmt.Sprintf(":%v", g.config.dataEndpointPort)
+	address := fmt.Sprintf(":%v", g.config.DataEndpointPort)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		log.Fatalf("failed to bind socket: %v", err)
