@@ -8,6 +8,18 @@ import (
 	"net"
 )
 
+func (g *gateway) getActiveClients() int {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.activeClients
+}
+
+func (g *gateway) incrementActiveClients() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.activeClients++
+}
+
 func (g *gateway) startConnectionHandler() {
 	address := fmt.Sprintf(":%d", g.config.connectionEndpointPort)
 	listener, err := net.Listen("tcp", address)
@@ -21,7 +33,7 @@ func (g *gateway) startConnectionHandler() {
 
 	for {
 		conn, err := listener.Accept()
-		g.activeClients++
+		g.incrementActiveClients()
 
 		if err != nil {
 			fmt.Println("Error:", err)
@@ -63,8 +75,10 @@ func (g *gateway) handleClient(conn net.Conn) error {
 		log.Printf("Game size: %d\n", request.GameSize)
 		log.Printf("Review size: %d\n", request.ReviewSize)
 
+		clientId := g.getActiveClients()
+
 		err = m.SendMessage(&protocol.AcceptRequest{
-			ClientID: uint64(g.activeClients),
+			ClientID: uint64(clientId),
 		})
 		if err != nil {
 			return fmt.Errorf("failed to send message: %v", err)

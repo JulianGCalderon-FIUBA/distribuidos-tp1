@@ -8,6 +8,7 @@ import (
 type gateway struct {
 	config        config
 	activeClients int
+	mu sync.Mutex
 }
 
 func newGateway(config config) *gateway {
