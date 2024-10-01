@@ -40,7 +40,7 @@ type Message interface {
 	Deserialize([]byte) error
 }
 
-func (b *Game) Serialize() (buf []byte, err error) {
+func (g *Game) Serialize() (buf []byte, err error) {
 	inner := struct {
 		AppID                  uint64
 		AveragePlaytimeForever uint64
@@ -49,28 +49,28 @@ func (b *Game) Serialize() (buf []byte, err error) {
 		Linux                  bool
 		ReleaseDate            Date
 	}{
-		AppID:                  b.AppID,
-		AveragePlaytimeForever: b.AveragePlaytimeForever,
-		Windows:                b.Windows,
-		Mac:                    b.Mac,
-		Linux:                  b.Linux,
-		ReleaseDate:            b.ReleaseDate,
+		AppID:                  g.AppID,
+		AveragePlaytimeForever: g.AveragePlaytimeForever,
+		Windows:                g.Windows,
+		Mac:                    g.Mac,
+		Linux:                  g.Linux,
+		ReleaseDate:            g.ReleaseDate,
 	}
 	buf, err = binary.Append(nil, binary.LittleEndian, &inner)
 	if err != nil {
 		return
 	}
 
-	buf, err = serializeString(buf, b.Name)
+	buf, err = serializeString(buf, g.Name)
 	if err != nil {
 		return
 	}
 
-	buf, err = binary.Append(buf, binary.LittleEndian, uint32(len(b.Genres)))
+	buf, err = binary.Append(buf, binary.LittleEndian, uint32(len(g.Genres)))
 	if err != nil {
 		return
 	}
-	for _, s := range b.Genres {
+	for _, s := range g.Genres {
 		buf, err = serializeString(buf, s)
 		if err != nil {
 			return
