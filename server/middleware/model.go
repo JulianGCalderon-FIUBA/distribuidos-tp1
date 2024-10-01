@@ -31,8 +31,8 @@ type Game struct {
 
 type Review struct {
 	AppID uint64
-	Text  string
 	Score Score
+	Text  string
 }
 
 func (b *Game) Serialize() (buf []byte, err error) {
@@ -120,6 +120,40 @@ func (g *Game) Deserialize(buf []byte) error {
 	}
 
 	return nil
+}
+
+func (r *Review) Serialize() (buf []byte, err error) {
+	inner := struct {
+		AppID uint64
+		Score Score
+	}{
+		AppID: r.AppID,
+		Score: r.Score,
+	}
+	buf, err = binary.Append(nil, binary.LittleEndian, &inner)
+	if err != nil {
+		return
+	}
+	buf, err = serializeString(buf, r.Text)
+	return
+}
+
+func (r *Review) Deserialize(buf []byte) error {
+	inner := struct {
+		AppID uint64
+		Score Score
+	}{}
+	n, err := binary.Decode(buf, binary.LittleEndian, &inner)
+	if err != nil {
+		return err
+	}
+	buf = buf[n:]
+
+	r.AppID = inner.AppID
+	r.Score = inner.Score
+
+	_, err = deserializeString(buf, &r.Text)
+	return err
 }
 
 func serializeString(buf []byte, s string) ([]byte, error) {

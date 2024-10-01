@@ -6,9 +6,14 @@ import (
 	"testing"
 )
 
+type Entity interface {
+	Serialize() ([]byte, error)
+	Deserialize([]byte) error
+}
+
 func TestSerialization(t *testing.T) {
-	messages := []middleware.Game{
-		{
+	messages := []Entity{
+		&middleware.Game{
 			AppID:                  5,
 			AveragePlaytimeForever: 3,
 			Windows:                true,
@@ -25,22 +30,34 @@ func TestSerialization(t *testing.T) {
 				"roca",
 			},
 		},
+		&middleware.Review{
+			AppID: 5,
+			Score: 7,
+			Text:  "muy bueno!!",
+		},
 	}
 
-	for _, game := range messages {
-		buf, err := game.Serialize()
+	for _, entity := range messages {
+		buf, err := entity.Serialize()
 		if err != nil {
 			t.Fatalf("failed to serialize: %v", err)
 		}
 
-		deserialized_game := middleware.Game{}
-		err = deserialized_game.Deserialize(buf)
+		var deserialized Entity
+		switch entity.(type) {
+		case *middleware.Game:
+			deserialized = &middleware.Game{}
+		case *middleware.Review:
+			deserialized = &middleware.Review{}
+		}
+
+		err = deserialized.Deserialize(buf)
 		if err != nil {
 			t.Fatalf("failed to deserialize %v", err)
 		}
 
-		if !reflect.DeepEqual(game, deserialized_game) {
-			t.Fatalf("expected %#+v, but received %#+v", game, deserialized_game)
+		if !reflect.DeepEqual(entity, deserialized) {
+			t.Fatalf("expected %#+v, but received %#+v", entity, deserialized)
 		}
 	}
 }
