@@ -7,8 +7,7 @@ const (
 	AcceptRequestTag
 	DataHelloTag
 	DataAcceptTag
-	GameBatchTag
-	ReviewBatchTag
+	BatchTag
 	FinishTag
 )
 
@@ -36,13 +35,8 @@ type DataHello struct {
 type DataAccept struct{}
 
 // Sent by the client to the data handler
-type GameBatch struct {
-	Games [][]byte
-}
-
-// Sent by the client to the data handler
-type ReviewBatch struct {
-	Reviews [][]byte
+type Batch struct {
+	Data []byte
 }
 
 // Sent by the client to indicate that it has finished sending data

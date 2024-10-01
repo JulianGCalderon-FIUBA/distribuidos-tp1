@@ -9,7 +9,7 @@ import (
 type config struct {
 	ConnectionEndpointAddress string
 	DataEndpointAddress       string
-	PackageSize               int
+	BatchSize                 int
 }
 
 const KB int = 1 << 10

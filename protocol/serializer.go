@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"encoding/binary"
+	"slices"
 )
 
 type Message interface {
@@ -62,93 +63,16 @@ func (m *DataAccept) Deserialize(buf []byte) error {
 	return err
 }
 
-func (m *GameBatch) Tag() MessageTag {
-	return GameBatchTag
+func (m *Batch) Tag() MessageTag {
+	return BatchTag
 }
 
-func (m *GameBatch) Serialize() ([]byte, error) {
-	var msg []byte
-	var err error
-	msg, err = binary.Append(msg, binary.LittleEndian, uint32(len(m.Games)))
-	if err != nil {
-		return nil, err
-	}
-
-	for _, array := range m.Games {
-		msg, err = binary.Append(msg, binary.LittleEndian, uint32(len(array)))
-		if err != nil {
-			return nil, err
-		}
-		msg = append(msg, array...)
-	}
-	return msg, err
+func (m *Batch) Serialize() ([]byte, error) {
+	return slices.Clone(m.Data), nil
 }
 
-func (m *GameBatch) Deserialize(buf []byte) error {
-	var amountArrays uint32
-	read, err := binary.Decode(buf, binary.LittleEndian, &amountArrays)
-	if err != nil {
-		return err
-	}
-	buf = buf[read:]
-
-	for i := 0; i < int(amountArrays); i++ {
-		var size uint32
-		read, err := binary.Decode(buf, binary.LittleEndian, &size)
-		if err != nil {
-			return err
-		}
-		buf = buf[read:]
-		array := buf[:size]
-		m.Games = append(m.Games, array)
-		buf = buf[size:]
-	}
-
-	return nil
-}
-
-func (m *ReviewBatch) Tag() MessageTag {
-	return ReviewBatchTag
-}
-
-func (m *ReviewBatch) Serialize() ([]byte, error) {
-	var msg []byte
-	var err error
-	msg, err = binary.Append(msg, binary.LittleEndian, uint32(len(m.Reviews)))
-	if err != nil {
-		return nil, err
-	}
-
-	for _, array := range m.Reviews {
-		msg, err = binary.Append(msg, binary.LittleEndian, uint32(len(array)))
-		if err != nil {
-			return nil, err
-		}
-		msg = append(msg, array...)
-	}
-	return msg, err
-}
-
-func (m *ReviewBatch) Deserialize(buf []byte) error {
-	var amountArrays uint32
-	read, err := binary.Decode(buf, binary.LittleEndian, &amountArrays)
-	if err != nil {
-		return err
-	}
-	buf = buf[read:]
-
-	for i := 0; i < int(amountArrays); i++ {
-		var size uint32
-		read, err := binary.Decode(buf, binary.LittleEndian, &size)
-		if err != nil {
-			return err
-		}
-		buf = buf[read:]
-		array := buf[:size]
-		m.Reviews = append(m.Reviews, array)
-		buf = buf[size:]
-	}
-
+func (m *Batch) Deserialize(buf []byte) error {
+	m.Data = slices.Clone(buf)
 	return nil
 }
 

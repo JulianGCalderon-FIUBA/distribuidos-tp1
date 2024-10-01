@@ -1,11 +1,30 @@
 name: tp1
 services:
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:4-management
+    ports:
+      - 5672:5672
+      - 15672:15672
+    networks:
+      - net
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
   gateway:
     container_name: gateway
     image: gateway:latest
     entrypoint: /gateway
+    environment:
+      - RABBIT_IP=rabbitmq
     networks:
-      - tp1_net
+      - net
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
 
   client:
     container_name: client
@@ -15,11 +34,11 @@ services:
       - GATEWAY_CONN_ADDR=gateway:9001
       - GATEWAY_DATA_ADDR=gateway:9002
     volumes:
-      - ./client/.data:/.data
+      - ./.data:/.data
     networks:
-      - tp1_net
+      - net
     depends_on:
       - gateway
 
 networks:
-  tp1_net:
+  net:
