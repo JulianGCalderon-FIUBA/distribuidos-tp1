@@ -30,6 +30,29 @@ func TestSerialization(t *testing.T) {
 			Score: 7,
 			Text:  "muy bueno!!",
 		},
+		&middleware.BatchGame{[]middleware.Game{{
+			AppID:                  5,
+			AveragePlaytimeForever: 3,
+			Windows:                true,
+			Mac:                    false,
+			Linux:                  false,
+			ReleaseDate: middleware.Date{
+				Day:   3,
+				Month: 1,
+				Year:  2009,
+			},
+			Name: "la saturacion del pipeline",
+			Genres: []string{
+				"distribuidos",
+				"roca",
+			}},
+		},
+		},
+		&middleware.BatchReview{[]middleware.Review{
+			{AppID: 5,
+				Score: 7,
+				Text:  "muy bueno!!"},
+		}},
 	}
 
 	for _, entity := range messages {
@@ -44,9 +67,13 @@ func TestSerialization(t *testing.T) {
 			deserialized = &middleware.Game{}
 		case *middleware.Review:
 			deserialized = &middleware.Review{}
+		case *middleware.BatchGame:
+			deserialized = &middleware.BatchGame{}
+		case *middleware.BatchReview:
+			deserialized = &middleware.BatchReview{}
 		}
 
-		err = deserialized.Deserialize(buf)
+		_, err = deserialized.Deserialize(buf)
 		if err != nil {
 			t.Fatalf("failed to deserialize %v", err)
 		}
