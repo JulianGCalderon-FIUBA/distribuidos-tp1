@@ -34,7 +34,7 @@ services:
       - GATEWAY_CONN_ADDR=gateway:9001
       - GATEWAY_DATA_ADDR=gateway:9002
     volumes:
-      - ./client/.data:/.data
+      - ./.data:/.data
     networks:
       - net
     depends_on:
