@@ -7,24 +7,33 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func Init(conn *amqp.Connection) {
+type Middleware struct {
+	ch *amqp.Channel
+}
+
+func NewMiddleware(conn *amqp.Connection) *Middleware {
 	ch, err := conn.Channel()
 	if err != nil {
 		log.Fatalf("failed to bind rabbit connection: %v", err)
 	}
-	err = initExchange(ch)
+	return &Middleware{
+		ch: ch,
+	}
+}
+
+func (m *Middleware) Init() {
+	err := m.initExchange()
 	if err != nil {
 		log.Fatalf("failed to initialize exchanges %v", err)
 	}
-	err = initQueue(ch)
+	err = m.initQueue()
 	if err != nil {
 		log.Fatalf("failed to initialize queues %v", err)
 	}
 }
 
-func initExchange(ch *amqp.Channel) error {
-
-	err := ch.ExchangeDeclare(
+func (m *Middleware) initExchange() error {
+	err := m.ch.ExchangeDeclare(
 		ReviewExchange,
 		amqp.ExchangeFanout,
 		true,
@@ -36,7 +45,7 @@ func initExchange(ch *amqp.Channel) error {
 	if err != nil {
 		return fmt.Errorf("failed to declare reviews exchange: %w", err)
 	}
-	err = ch.ExchangeDeclare(
+	err = m.ch.ExchangeDeclare(
 		GamesExchange,
 		amqp.ExchangeFanout,
 		true,
@@ -51,8 +60,8 @@ func initExchange(ch *amqp.Channel) error {
 	return nil
 }
 
-func initQueue(ch *amqp.Channel) error {
-	q, err := ch.QueueDeclare(GamesPartitionerQueue,
+func (m *Middleware) initQueue() error {
+	q, err := m.ch.QueueDeclare(GamesPartitionerQueue,
 		false,
 		false,
 		false,
@@ -63,7 +72,7 @@ func initQueue(ch *amqp.Channel) error {
 		return fmt.Errorf("could not declare games-partitioner queue: %w", err)
 	}
 
-	err = ch.QueueBind(
+	err = m.ch.QueueBind(
 		q.Name,
 		"",
 		GamesExchange,
@@ -74,7 +83,7 @@ func initQueue(ch *amqp.Channel) error {
 		return fmt.Errorf("could not bind to games-partitioner queue: %w", err)
 	}
 
-	q, err = ch.QueueDeclare(GamesFilterQueue,
+	q, err = m.ch.QueueDeclare(GamesFilterQueue,
 		false,
 		false,
 		false,
@@ -85,7 +94,7 @@ func initQueue(ch *amqp.Channel) error {
 		return fmt.Errorf("could not declare games-partitioner queue: %w", err)
 	}
 
-	err = ch.QueueBind(
+	err = m.ch.QueueBind(
 		q.Name,
 		"",
 		GamesExchange,
@@ -96,7 +105,7 @@ func initQueue(ch *amqp.Channel) error {
 		return fmt.Errorf("could not bind to games-partitioner queue: %w", err)
 	}
 
-	q, err = ch.QueueDeclare(ReviewsFilterQueue,
+	q, err = m.ch.QueueDeclare(ReviewsFilterQueue,
 		false,
 		false,
 		false,
@@ -107,7 +116,7 @@ func initQueue(ch *amqp.Channel) error {
 		return fmt.Errorf("could not declare games-partitioner queue: %w", err)
 	}
 
-	err = ch.QueueBind(
+	err = m.ch.QueueBind(
 		q.Name,
 		"",
 		ReviewExchange,

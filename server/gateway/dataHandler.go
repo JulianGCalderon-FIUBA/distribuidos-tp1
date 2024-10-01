@@ -21,7 +21,7 @@ func (g *gateway) startDataHandler() {
 		log.Fatalf("failed to bind socket: %v", err)
 	}
 
-	middleware.Init(g.rabbitConn)
+	g.m.Init()
 
 	for {
 		conn, err := listener.Accept()
@@ -108,14 +108,16 @@ func (g *gateway) receiveData(unm *protocol.Unmarshaller, w io.Writer) error {
 
 func (g *gateway) queueGames(r io.Reader) error {
 	csvReader := csv.NewReader(r)
+	batch := middleware.BatchGame{}
 
 	for {
 		record, err := csvReader.Read()
 		if errors.Is(err, &csv.ParseError{}) {
+			fmt.Println("Parse error")
 			continue
 		}
 		if errors.Is(err, io.EOF) {
-			return nil
+			break
 		}
 		if err != nil {
 			return err
@@ -126,12 +128,30 @@ func (g *gateway) queueGames(r io.Reader) error {
 			continue
 		}
 
-		fmt.Printf("Game: %#+v\n", game)
+		batch.Data = append(batch.Data, game)
+		if len(batch.Data) == g.config.BatchSize {
+			err = g.m.SendBatchGame(batch)
+			if err != nil {
+				fmt.Println("Could not send batch")
+			}
+			batch = middleware.BatchGame{}
+		}
+		// fmt.Printf("Game: %#+v\n", game)
 	}
+
+	if len(batch.Data) != 0 {
+		err := g.m.SendBatchGame(batch)
+		if err != nil {
+			fmt.Println("Could not send batch")
+		}
+	}
+
+	return nil
 }
 
 func (g *gateway) queueReviews(r io.Reader) error {
 	csvReader := csv.NewReader(r)
+	batch := middleware.BatchReview{}
 
 	for {
 		record, err := csvReader.Read()
@@ -139,7 +159,7 @@ func (g *gateway) queueReviews(r io.Reader) error {
 			continue
 		}
 		if errors.Is(err, io.EOF) {
-			return nil
+			break
 		}
 		if err != nil {
 			return err
@@ -150,8 +170,25 @@ func (g *gateway) queueReviews(r io.Reader) error {
 			continue
 		}
 
-		fmt.Printf("review: %#+v\n", review)
+		// fmt.Printf("review: %#+v\n", review)
+
+		batch.Data = append(batch.Data, review)
+		if len(batch.Data) == g.config.BatchSize {
+			err = g.m.SendBatchReview(batch)
+			if err != nil {
+				fmt.Println("Could not send batch")
+			}
+			batch = middleware.BatchReview{}
+		}
 	}
+
+	if len(batch.Data) != 0 {
+		err := g.m.SendBatchReview(batch)
+		if err != nil {
+			fmt.Println("Could not send batch")
+		}
+	}
+	return nil
 }
 
 func gameFromFullRecord(record []string) (game middleware.Game, err error) {
