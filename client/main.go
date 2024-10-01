@@ -23,7 +23,7 @@ func getConfig() (config, error) {
 
 	_ = v.BindEnv("ConnectionEndpointAddress", "GATEWAY_CONN_ADDR")
 	_ = v.BindEnv("DataEndpointAddress", "GATEWAY_DATA_ADDR")
-	_ = v.BindEnv("BatchSize", "CLI_BATCH_SIZE")
+	_ = v.BindEnv("BatchSize", "BATCH_SIZE")
 
 	var c config
 	err := v.Unmarshal(&c)
