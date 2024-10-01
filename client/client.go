@@ -38,13 +38,11 @@ func newClient(config config) *client {
 
 // Connects client to connection endpoint and data endpoint
 func (c *client) start() {
-
-	err := c.startConnection()
-	if err != nil {
+	if err := c.startConnection(); err != nil {
 		log.Fatalf("Error connecting to connection endpoint: %v", err)
 	}
-	err = c.startDataConnection()
-	if err != nil {
+
+	if err := c.startDataConnection(); err != nil {
 		log.Fatalf("Error connecting to data endpoint: %v", err)
 	}
 }
@@ -92,15 +90,16 @@ func (c *client) receiveID() error {
 
 	response, err := c.connUnmarshaller.ReceiveMessage()
 	if err != nil {
-		return fmt.Errorf("Could not receive message from connection: %w", err)
+		return fmt.Errorf("could not receive message from connection: %w", err)
 	}
 
 	msg, ok := response.(*protocol.AcceptRequest)
 	if !ok {
-		return fmt.Errorf("Expected AcceptRequest message, received: %T", response)
+		return fmt.Errorf("expected AcceptRequest message, received: %T", response)
 	}
 
 	c.id = msg.ClientID
+	fmt.Printf("Received ID: %v\n", c.id)
 	return nil
 }
 
@@ -108,7 +107,7 @@ func (c *client) receiveID() error {
 func (c *client) startDataConnection() error {
 	dataConn, err := net.Dial("tcp", c.config.DataEndpointAddress)
 	if err != nil {
-		return fmt.Errorf("Could not connect to data endpoint: %w", err)
+		return fmt.Errorf("could not connect to data endpoint: %w", err)
 	}
 
 	defer dataConn.Close()
@@ -122,11 +121,11 @@ func (c *client) startDataConnection() error {
 	}
 	err = c.sendFile(GAMES_PATH, GamesFile)
 	if err != nil {
-		return fmt.Errorf("Error sending games file: %w", err)
+		return fmt.Errorf("error sending games file: %w", err)
 	}
 	err = c.sendFile(REVIEWS_PATH, ReviewsFile)
 	if err != nil {
-		return fmt.Errorf("Error sending reviews file: %w", err)
+		return fmt.Errorf("error sending reviews file: %w", err)
 	}
 
 	return nil
@@ -157,7 +156,7 @@ func (c *client) sendDataHello() error {
 func (c *client) sendFile(filePath string, fileType FileType) error {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return fmt.Errorf("Could not open file %v: %w", filePath, err)
+		return fmt.Errorf("could not open file %v: %w", filePath, err)
 	}
 	defer file.Close()
 
@@ -213,7 +212,7 @@ func (c *client) sendReviews(batch [][]byte) error {
 func getFileSize(filePath string) (uint64, error) {
 	file, err := os.Stat(filePath)
 	if err != nil {
-		return 0, fmt.Errorf("Could not get file info: %w", err)
+		return 0, fmt.Errorf("could not get file info: %w", err)
 	}
 	return uint64(file.Size()), nil
 }
