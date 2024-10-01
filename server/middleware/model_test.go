@@ -6,13 +6,8 @@ import (
 	"testing"
 )
 
-type Entity interface {
-	Serialize() ([]byte, error)
-	Deserialize([]byte) error
-}
-
 func TestSerialization(t *testing.T) {
-	messages := []Entity{
+	messages := []middleware.Message{
 		&middleware.Game{
 			AppID:                  5,
 			AveragePlaytimeForever: 3,
@@ -43,7 +38,7 @@ func TestSerialization(t *testing.T) {
 			t.Fatalf("failed to serialize: %v", err)
 		}
 
-		var deserialized Entity
+		var deserialized middleware.Message
 		switch entity.(type) {
 		case *middleware.Game:
 			deserialized = &middleware.Game{}

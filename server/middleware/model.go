@@ -35,6 +35,11 @@ type Review struct {
 	Text  string
 }
 
+type Message interface {
+	Serialize() ([]byte, error)
+	Deserialize([]byte) error
+}
+
 func (b *Game) Serialize() (buf []byte, err error) {
 	inner := struct {
 		AppID                  uint64
