@@ -1,6 +1,7 @@
 package main
 
 import (
+	"distribuidos/tp1/server/middleware"
 	"fmt"
 	"log"
 	"sync"
@@ -10,7 +11,7 @@ import (
 
 type gateway struct {
 	config     config
-	rabbitConn *amqp.Connection
+	m 		*middleware.Middleware
 	// aca pueden ir los campos en comun
 	// entre data handler y connection handler
 	// ej: clientes activos?
@@ -28,7 +29,9 @@ func (g *gateway) start() {
 	if err != nil {
 		log.Fatalf("failed to connect to rabbit: %v", err)
 	}
-	g.rabbitConn = rabbitConn
+
+	m := middleware.NewMiddleware(rabbitConn)
+	g.m = m
 
 	var wg sync.WaitGroup
 

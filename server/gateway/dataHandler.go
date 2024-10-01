@@ -21,7 +21,7 @@ func (g *gateway) startDataHandler() {
 		log.Fatalf("failed to bind socket: %v", err)
 	}
 
-	middleware.Init(g.rabbitConn)
+	g.m.Init()
 
 	for {
 		conn, err := listener.Accept()
@@ -108,14 +108,16 @@ func (g *gateway) receiveData(unm *protocol.Unmarshaller, w io.Writer) error {
 
 func (g *gateway) queueGames(r io.Reader) error {
 	csvReader := csv.NewReader(r)
+	batch := middleware.BatchGame{}
 
 	for {
 		record, err := csvReader.Read()
 		if errors.Is(err, &csv.ParseError{}) {
+			fmt.Println("Parse error")
 			continue
 		}
 		if errors.Is(err, io.EOF) {
-			return nil
+			break
 		}
 		if err != nil {
 			return err
@@ -126,12 +128,16 @@ func (g *gateway) queueGames(r io.Reader) error {
 			continue
 		}
 
-		fmt.Printf("Game: %#+v\n", game)
+		batch.Data = append(batch.Data, game)
+		// fmt.Printf("Game: %#+v\n", game)
 	}
+
+	return g.m.SendBatchGame(batch)
 }
 
 func (g *gateway) queueReviews(r io.Reader) error {
 	csvReader := csv.NewReader(r)
+	batch := middleware.BatchReview{}
 
 	for {
 		record, err := csvReader.Read()
@@ -151,6 +157,9 @@ func (g *gateway) queueReviews(r io.Reader) error {
 		}
 
 		fmt.Printf("review: %#+v\n", review)
+
+		batch.Data = append(batch.Data, review)
+		return g.m.SendBatchReview(batch);
 	}
 }
 
