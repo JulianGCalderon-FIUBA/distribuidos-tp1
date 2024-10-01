@@ -129,10 +129,24 @@ func (g *gateway) queueGames(r io.Reader) error {
 		}
 
 		batch.Data = append(batch.Data, game)
+		if len(batch.Data) == g.config.BatchSize {
+			err = g.m.SendBatchGame(batch)
+			if err != nil {
+				fmt.Println("Could not send batch")
+			}
+			batch = middleware.BatchGame{}
+		}
 		// fmt.Printf("Game: %#+v\n", game)
 	}
 
-	return g.m.SendBatchGame(batch)
+	if len(batch.Data) != 0 {
+		err := g.m.SendBatchGame(batch)
+		if err != nil {
+			fmt.Println("Could not send batch")
+		}
+	}
+
+	return nil
 }
 
 func (g *gateway) queueReviews(r io.Reader) error {
@@ -145,7 +159,7 @@ func (g *gateway) queueReviews(r io.Reader) error {
 			continue
 		}
 		if errors.Is(err, io.EOF) {
-			return nil
+			break
 		}
 		if err != nil {
 			return err
@@ -156,11 +170,25 @@ func (g *gateway) queueReviews(r io.Reader) error {
 			continue
 		}
 
-		fmt.Printf("review: %#+v\n", review)
+		// fmt.Printf("review: %#+v\n", review)
 
 		batch.Data = append(batch.Data, review)
-		return g.m.SendBatchReview(batch)
+		if len(batch.Data) == g.config.BatchSize {
+			err = g.m.SendBatchReview(batch)
+			if err != nil {
+				fmt.Println("Could not send batch")
+			}
+			batch = middleware.BatchReview{}
+		}
 	}
+
+	if len(batch.Data) != 0 {
+		err := g.m.SendBatchReview(batch)
+		if err != nil {
+			fmt.Println("Could not send batch")
+		}
+	}
+	return nil
 }
 
 func gameFromFullRecord(record []string) (game middleware.Game, err error) {
