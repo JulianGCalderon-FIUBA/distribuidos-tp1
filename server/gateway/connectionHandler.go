@@ -3,9 +3,22 @@ package main
 import (
 	"distribuidos/tp1/protocol"
 	"fmt"
+	"io"
 	"log"
 	"net"
 )
+
+func (g *gateway) getActiveClients() int {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.activeClients
+}
+
+func (g *gateway) incrementActiveClients() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.activeClients++
+}
 
 func (g *gateway) startConnectionHandler() {
 	address := fmt.Sprintf(":%d", g.config.ConnectionEndpointPort)
@@ -20,6 +33,7 @@ func (g *gateway) startConnectionHandler() {
 
 	for {
 		conn, err := listener.Accept()
+		g.incrementActiveClients()
 
 		if err != nil {
 			fmt.Println("Error:", err)
@@ -28,11 +42,15 @@ func (g *gateway) startConnectionHandler() {
 
 		fmt.Println("Client connected: ", conn.RemoteAddr().String())
 
-		go g.handleClient(conn)
+		go func() {
+			if err := g.handleClient(conn); err != nil {
+				log.Printf("Error handling client: %v", err)
+			}
+		}()
 	}
 }
 
-func (g *gateway) handleClient(conn net.Conn) {
+func (g *gateway) handleClient(conn net.Conn) error {
 	defer conn.Close()
 
 	m := protocol.NewMarshaller(conn)
@@ -41,21 +59,29 @@ func (g *gateway) handleClient(conn net.Conn) {
 	for {
 		msg, err := unm.ReceiveMessage()
 		if err != nil {
-			if err.Error() == "EOF" {
-				fmt.Println("Client disconnected")
-				return
+			if err == io.EOF {
+				log.Printf("Client disconnected")
+				return nil
+
 			}
-			log.Fatalf("Failed to read message: %v", err)
-			return
+			return fmt.Errorf("failed to read message: %w", err)
 		}
 
-		fmt.Printf("Received: %s\n", msg)
+		request, ok := msg.(*protocol.RequestHello)
+		if !ok {
+			return fmt.Errorf("expected RequestHello message, received: %T", msg)
+		}
+
+		log.Printf("Game size: %d\n", request.GameSize)
+		log.Printf("Review size: %d\n", request.ReviewSize)
+
+		clientId := g.getActiveClients()
 
 		err = m.SendMessage(&protocol.AcceptRequest{
-			ClientID: 1,
+			ClientID: uint64(clientId),
 		})
 		if err != nil {
-			log.Fatalf("Failed to send message: %v", err)
+			return fmt.Errorf("failed to send message: %v", err)
 		}
 	}
 }
