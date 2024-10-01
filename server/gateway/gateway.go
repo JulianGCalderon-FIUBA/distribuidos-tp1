@@ -10,8 +10,8 @@ import (
 )
 
 type gateway struct {
-	config     config
-	m 		*middleware.Middleware
+	config config
+	m      *middleware.Middleware
 	// aca pueden ir los campos en comun
 	// entre data handler y connection handler
 	// ej: clientes activos?

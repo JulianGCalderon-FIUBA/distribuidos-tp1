@@ -159,7 +159,7 @@ func (g *gateway) queueReviews(r io.Reader) error {
 		fmt.Printf("review: %#+v\n", review)
 
 		batch.Data = append(batch.Data, review)
-		return g.m.SendBatchReview(batch);
+		return g.m.SendBatchReview(batch)
 	}
 }
 
