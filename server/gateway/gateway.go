@@ -9,16 +9,16 @@ import (
 )
 
 type gateway struct {
-	config     config
-	rabbitConn *amqp.Connection
-	// aca pueden ir los campos en comun
-	// entre data handler y connection handler
-	// ej: clientes activos?
+	config        config
+	rabbitConn    *amqp.Connection
+	activeClients int
+	mu            sync.Mutex
 }
 
 func newGateway(config config) *gateway {
 	return &gateway{
-		config: config,
+		config:        config,
+		activeClients: 0,
 	}
 }
 
