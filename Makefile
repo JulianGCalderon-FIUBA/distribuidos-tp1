@@ -25,7 +25,7 @@ docker-image:
 .PHONY: docker-image
 
 compose-up: docker-image
-	docker compose -f compose.yaml up
+	docker compose -f compose.yaml up -d
 .PHONY: docker-compose-up
 
 compose-down:
