@@ -172,13 +172,17 @@ func gameFromFullRecord(record []string) (game middleware.Game, err error) {
 		return
 	}
 
-	game.AppID = appId
+	game.AppID = uint64(appId)
 	game.Name = record[1]
-	game.ReleaseDate = releaseDate
+	game.ReleaseDate = middleware.Date{
+		Day:   uint8(releaseDate.Day()),
+		Month: uint8(releaseDate.Month()),
+		Year:  uint16(releaseDate.Year()),
+	}
 	game.Windows = record[17] == "true"
 	game.Mac = record[18] == "true"
 	game.Linux = record[19] == "true"
-	game.AveragePlaytimeForever = averagePlaytimeForever
+	game.AveragePlaytimeForever = uint64(averagePlaytimeForever)
 	game.Genres = strings.Split(record[36], ",")
 
 	return
@@ -198,9 +202,9 @@ func reviewFromFullRecord(record []string) (review middleware.Review, err error)
 		return
 	}
 
-	review.AppID = appId
+	review.AppID = uint64(appId)
 	review.Text = record[2]
-	review.Score = score
+	review.Score = middleware.Score(score)
 
 	return
 }

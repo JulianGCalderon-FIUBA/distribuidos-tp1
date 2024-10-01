@@ -1,20 +1,31 @@
 package middleware
 
-import "time"
+type Score int8
+
+const (
+	PositiveScore Score = 1
+	NegativeScore Score = -1
+)
+
+type Date struct {
+	Day   uint8
+	Month uint8
+	Year  uint16
+}
 
 type Game struct {
-	AppID                  int
+	AppID                  uint64
 	Name                   string
-	ReleaseDate            time.Time
+	ReleaseDate            Date
 	Windows                bool
 	Mac                    bool
 	Linux                  bool
-	AveragePlaytimeForever int
+	AveragePlaytimeForever uint64
 	Genres                 []string
 }
 
 type Review struct {
-	AppID int
+	AppID uint64
 	Text  string
-	Score int
+	Score Score
 }
