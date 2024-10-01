@@ -2,7 +2,6 @@ package main
 
 import (
 	"distribuidos/tp1/protocol"
-	"distribuidos/tp1/server"
 	"distribuidos/tp1/server/middleware"
 	"encoding/csv"
 	"errors"
@@ -10,6 +9,9 @@ import (
 	"io"
 	"log"
 	"net"
+	"strconv"
+	"strings"
+	"time"
 )
 
 func (g *gateway) startDataHandler() {
@@ -119,7 +121,7 @@ func (g *gateway) queueGames(r io.Reader) error {
 			return err
 		}
 
-		game, err := server.GameFromFullRecord(record)
+		game, err := gameFromFullRecord(record)
 		if err != nil {
 			continue
 		}
@@ -143,11 +145,62 @@ func (g *gateway) queueReviews(r io.Reader) error {
 			return err
 		}
 
-		review, err := server.ReviewFromFullRecord(record)
+		review, err := reviewFromFullRecord(record)
 		if err != nil {
 			continue
 		}
 
 		fmt.Printf("review: %#+v\n", review)
 	}
+}
+
+func gameFromFullRecord(record []string) (game middleware.Game, err error) {
+	if len(record) < 37 {
+		err = fmt.Errorf("expected 37 fields, got %v", len(record))
+		return
+	}
+	appId, err := strconv.Atoi(record[0])
+	if err != nil {
+		return
+	}
+	releaseDate, err := time.Parse("Jan 2, 2006", record[2])
+	if err != nil {
+		return
+	}
+	averagePlaytimeForever, err := strconv.Atoi(record[29])
+	if err != nil {
+		return
+	}
+
+	game.AppID = appId
+	game.Name = record[1]
+	game.ReleaseDate = releaseDate
+	game.Windows = record[17] == "true"
+	game.Mac = record[18] == "true"
+	game.Linux = record[19] == "true"
+	game.AveragePlaytimeForever = averagePlaytimeForever
+	game.Genres = strings.Split(record[36], ",")
+
+	return
+}
+
+func reviewFromFullRecord(record []string) (review middleware.Review, err error) {
+	if len(record) < 4 {
+		err = fmt.Errorf("expected 4 fields, got %v", len(record))
+		return
+	}
+	appId, err := strconv.Atoi(record[0])
+	if err != nil {
+		return
+	}
+	score, err := strconv.Atoi(record[3])
+	if err != nil {
+		return
+	}
+
+	review.AppID = appId
+	review.Text = record[2]
+	review.Score = score
+
+	return
 }
