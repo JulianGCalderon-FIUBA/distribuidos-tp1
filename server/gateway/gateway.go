@@ -1,6 +1,7 @@
 package main
 
 import (
+	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/server/middleware"
 	"fmt"
 	"log"
@@ -17,6 +18,7 @@ type gateway struct {
 }
 
 func newGateway(config config) *gateway {
+	protocol.Register()
 	return &gateway{
 		config:        config,
 		activeClients: 0,

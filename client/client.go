@@ -13,20 +13,17 @@ const GAMES_PATH = "./.data/games.csv"
 const REVIEWS_PATH = "./.data/reviews.csv"
 
 type client struct {
-	config           config
-	id               uint64
-	conn             net.Conn
-	connMarshaller   protocol.Marshaller
-	connUnmarshaller protocol.Unmarshaller
-	dataMarshaller   protocol.Marshaller
-	dataUnmarshaller protocol.Unmarshaller
+	config   config
+	id       uint64
+	reqConn  *protocol.Conn
+	dataConn *protocol.Conn
 }
 
 func newClient(config config) *client {
-	client := &client{
+	protocol.Register()
+	return &client{
 		config: config,
 	}
-	return client
 }
 
 // Connects client to connection endpoint and data endpoint
@@ -46,12 +43,7 @@ func (c *client) startConnection() error {
 	if err != nil {
 		log.Fatalf("Could not connect to connection endpoint: %v", err)
 	}
-	// todo: remove when receiving results
-	defer conn.Close()
-
-	c.conn = conn
-	c.connMarshaller = *protocol.NewMarshaller(conn)
-	c.connUnmarshaller = *protocol.NewUnmarshaller(conn)
+	c.reqConn = protocol.NewConn(conn)
 
 	err = c.sendRequestHello()
 	if err != nil {
@@ -76,20 +68,14 @@ func (c *client) sendRequestHello() error {
 		ReviewSize: reviewsSize,
 	}
 
-	return c.connMarshaller.SendMessage(&request)
-
+	return c.reqConn.Send(&request)
 }
 
 func (c *client) receiveID() error {
-
-	response, err := c.connUnmarshaller.ReceiveMessage()
+	var msg protocol.AcceptRequest
+	err := c.reqConn.Recv(&msg)
 	if err != nil {
 		return fmt.Errorf("could not receive message from connection: %w", err)
-	}
-
-	msg, ok := response.(*protocol.AcceptRequest)
-	if !ok {
-		return fmt.Errorf("expected AcceptRequest message, received: %T", response)
 	}
 
 	c.id = msg.ClientID
@@ -103,10 +89,9 @@ func (c *client) startDataConnection() error {
 	if err != nil {
 		return fmt.Errorf("could not connect to data endpoint: %w", err)
 	}
-	defer dataConn.Close()
 
-	c.dataMarshaller = *protocol.NewMarshaller(dataConn)
-	c.dataUnmarshaller = *protocol.NewUnmarshaller(dataConn)
+	c.dataConn = protocol.NewConn(dataConn)
+	defer c.dataConn.Close()
 
 	err = c.sendDataHello()
 	if err != nil {
@@ -126,21 +111,18 @@ func (c *client) startDataConnection() error {
 
 func (c *client) sendDataHello() error {
 
-	msg := protocol.DataHello{
+	hello := protocol.DataHello{
 		ClientID: c.id,
 	}
-	err := c.dataMarshaller.SendMessage(&msg)
+	err := c.dataConn.Send(&hello)
 	if err != nil {
 		return fmt.Errorf("could not send message: %w", err)
 	}
 
-	responseAny, err := c.dataUnmarshaller.ReceiveMessage()
+	var accept protocol.DataAccept
+	err = c.dataConn.Recv(&accept)
 	if err != nil {
 		return fmt.Errorf("could not receive message from connection: %w", err)
-	}
-	_, ok := responseAny.(*protocol.DataAccept)
-	if !ok {
-		return fmt.Errorf("expected DataAccept message, received: %T", responseAny)
 	}
 	return nil
 }
@@ -157,7 +139,7 @@ func (c *client) sendFile(filePath string) error {
 	for {
 		n, err := file.Read(buf)
 		if n > 0 {
-			sendErr := c.dataMarshaller.SendMessage(&protocol.Batch{Data: buf[:n]})
+			sendErr := c.dataConn.SendAny(&protocol.Batch{Data: buf[:n]})
 			if sendErr != nil {
 				return sendErr
 			}
@@ -170,7 +152,7 @@ func (c *client) sendFile(filePath string) error {
 		}
 	}
 
-	return c.dataMarshaller.SendMessage(&protocol.Finish{})
+	return c.dataConn.SendAny(&protocol.Finish{})
 }
 
 func getFileSize(filePath string) (uint64, error) {

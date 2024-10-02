@@ -39,23 +39,19 @@ func (g *gateway) startDataHandler() {
 	}
 }
 
-func (g *gateway) handleClientData(conn net.Conn) error {
-	m := protocol.NewMarshaller(conn)
-	unm := protocol.NewUnmarshaller(conn)
+func (g *gateway) handleClientData(netConn net.Conn) error {
+	conn := protocol.NewConn(netConn)
 
-	anyMsg, err := unm.ReceiveMessage()
+	var hello protocol.DataHello
+	err := conn.Recv(&hello)
 	if err != nil {
 		return err
 	}
-	helloMsg, ok := anyMsg.(*protocol.DataHello)
-	if !ok {
-		return fmt.Errorf("expected DataHello message, received %T", anyMsg)
-	}
 
 	// todo: validate client id
-	_ = helloMsg
+	_ = hello
 
-	err = m.SendMessage(&protocol.DataAccept{})
+	err = conn.Send(&protocol.DataAccept{})
 	if err != nil {
 		return err
 	}
@@ -67,7 +63,7 @@ func (g *gateway) handleClientData(conn net.Conn) error {
 			fmt.Printf("error while queuing games: %v", err)
 		}
 	}()
-	err = g.receiveData(unm, gamesSend)
+	err = g.receiveData(conn, gamesSend)
 	if err != nil {
 		return err
 	}
@@ -79,7 +75,7 @@ func (g *gateway) handleClientData(conn net.Conn) error {
 			fmt.Printf("error while queuing games: %v", err)
 		}
 	}()
-	err = g.receiveData(unm, reviewsSend)
+	err = g.receiveData(conn, reviewsSend)
 	if err != nil {
 		return err
 	}
@@ -87,20 +83,21 @@ func (g *gateway) handleClientData(conn net.Conn) error {
 	return nil
 }
 
-func (g *gateway) receiveData(unm *protocol.Unmarshaller, w io.Writer) error {
+func (g *gateway) receiveData(unm *protocol.Conn, w io.Writer) error {
 	for {
-		anyMsg, err := unm.ReceiveMessage()
+		var anyMsg any
+		err := unm.Recv(&anyMsg)
 		if err != nil {
 			return err
 		}
 
 		switch msg := anyMsg.(type) {
-		case *protocol.Batch:
+		case protocol.Batch:
 			_, err := w.Write(msg.Data)
 			if err != nil {
 				return err
 			}
-		case *protocol.Finish:
+		case protocol.Finish:
 			return nil
 		}
 	}
