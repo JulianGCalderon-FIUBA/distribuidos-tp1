@@ -1,10 +1,11 @@
 package main
 
 import (
-	"log"
-
+	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
+
+var log = logging.MustGetLogger("log")
 
 type config struct {
 	ConnectionEndpointPort int
@@ -34,7 +35,7 @@ func getConfig() (config, error) {
 func main() {
 	cfg, err := getConfig()
 	if err != nil {
-		log.Fatalf("failed to read config: %v", err)
+		log.Fatalf("Failed to read config: %v", err)
 	}
 	_ = cfg.DataEndpointPort
 

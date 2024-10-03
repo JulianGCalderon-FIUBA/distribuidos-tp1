@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"strconv"
 	"strings"
@@ -18,14 +17,18 @@ func (g *gateway) startDataHandler() {
 	address := fmt.Sprintf(":%v", g.config.DataEndpointPort)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
-		log.Fatalf("failed to bind socket: %v", err)
+		log.Fatalf("Failed to bind socket: %v", err)
 	}
 
-	g.m.Init()
+	err = g.m.Init()
+	if err != nil {
+		log.Fatalf("Failed to initialize middleware")
+	}
 
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
+			log.Errorf("Failed to accept connection: %v", err)
 			continue
 		}
 
@@ -33,29 +36,25 @@ func (g *gateway) startDataHandler() {
 			defer conn.Close()
 			err := g.handleClientData(conn)
 			if err != nil {
-				log.Printf("error while handling client: %v", err)
+				log.Errorf("Error while handling client: %v", err)
 			}
 		}(conn)
 	}
 }
 
-func (g *gateway) handleClientData(conn net.Conn) error {
-	m := protocol.NewMarshaller(conn)
-	unm := protocol.NewUnmarshaller(conn)
+func (g *gateway) handleClientData(netConn net.Conn) error {
+	conn := protocol.NewConn(netConn)
 
-	anyMsg, err := unm.ReceiveMessage()
+	var hello protocol.DataHello
+	err := conn.Recv(&hello)
 	if err != nil {
 		return err
 	}
-	helloMsg, ok := anyMsg.(*protocol.DataHello)
-	if !ok {
-		return fmt.Errorf("expected DataHello message, received %T", anyMsg)
-	}
 
 	// todo: validate client id
-	_ = helloMsg
+	log.Infof("Client data hello with id: %v", hello.ClientID)
 
-	err = m.SendMessage(&protocol.DataAccept{})
+	err = conn.Send(&protocol.DataAccept{})
 	if err != nil {
 		return err
 	}
@@ -64,44 +63,46 @@ func (g *gateway) handleClientData(conn net.Conn) error {
 	go func() {
 		err := g.queueGames(gamesRecv)
 		if err != nil {
-			fmt.Printf("error while queuing games: %v", err)
+			log.Errorf("Error while queuing games: %v", err)
 		}
 	}()
-	err = g.receiveData(unm, gamesSend)
+	err = g.receiveData(conn, gamesSend)
 	if err != nil {
 		return err
 	}
+	gamesSend.Close()
 
 	reviewsRecv, reviewsSend := net.Pipe()
 	go func() {
 		err := g.queueReviews(reviewsRecv)
 		if err != nil {
-			fmt.Printf("error while queuing games: %v", err)
+			log.Errorf("Error while queuing reviews: %v", err)
 		}
 	}()
-	err = g.receiveData(unm, reviewsSend)
+	err = g.receiveData(conn, reviewsSend)
 	if err != nil {
 		return err
 	}
+	reviewsSend.Close()
 
 	return nil
 }
 
-func (g *gateway) receiveData(unm *protocol.Unmarshaller, w io.Writer) error {
+func (g *gateway) receiveData(unm *protocol.Conn, w io.Writer) error {
 	for {
-		anyMsg, err := unm.ReceiveMessage()
+		var anyMsg any
+		err := unm.Recv(&anyMsg)
 		if err != nil {
 			return err
 		}
 
 		switch msg := anyMsg.(type) {
-		case *protocol.Batch:
+		case protocol.Batch:
 			_, err := w.Write(msg.Data)
 			if err != nil {
 				return err
 			}
-		case *protocol.Finish:
-			fmt.Println("Finished receiving data")
+		case protocol.Finish:
 			return nil
 		}
 	}
@@ -109,12 +110,16 @@ func (g *gateway) receiveData(unm *protocol.Unmarshaller, w io.Writer) error {
 
 func (g *gateway) queueGames(r io.Reader) error {
 	csvReader := csv.NewReader(r)
-	batch := middleware.BatchGame{}
+	var batch middleware.Batch[middleware.Game]
+
+	var sentGames int
+
+	_, _ = csvReader.Read()
 
 	for {
 		record, err := csvReader.Read()
 		if errors.Is(err, &csv.ParseError{}) {
-			fmt.Println("Parse error")
+			log.Errorf("Failed to parse row: %v", err)
 			continue
 		}
 		if errors.Is(err, io.EOF) {
@@ -126,36 +131,46 @@ func (g *gateway) queueGames(r io.Reader) error {
 
 		game, err := gameFromFullRecord(record)
 		if err != nil {
+			log.Errorf("Failed to parse game: %v", err)
 			continue
 		}
 
-		batch.Data = append(batch.Data, game)
-		if len(batch.Data) == g.config.BatchSize {
-			err = g.m.SendBatchGame(batch, "")
+		batch = append(batch, game)
+		sentGames += 1
+
+		if len(batch) == g.config.BatchSize {
+			err = g.m.SendToExchange(batch, middleware.GamesExchange, "")
 			if err != nil {
-				fmt.Println("Could not send batch")
+				log.Errorf("Failed to send games batch: %v", err)
 			}
-			batch = middleware.BatchGame{}
+			batch = batch[:0]
 		}
 	}
 
-	if len(batch.Data) != 0 {
-		err := g.m.SendBatchGame(batch, "")
+	if len(batch) != 0 {
+		err := g.m.SendToExchange(batch, middleware.GamesExchange, "")
 		if err != nil {
-			fmt.Println("Could not send batch")
+			log.Errorf("Failed to send games batch: %v", err)
 		}
 	}
+
+	log.Infof("Finished sending %v games", sentGames)
 
 	return nil
 }
 
 func (g *gateway) queueReviews(r io.Reader) error {
 	csvReader := csv.NewReader(r)
-	batch := middleware.BatchReview{}
+	var batch middleware.Batch[middleware.Review]
+
+	var sentReviews int
+
+	_, _ = csvReader.Read()
 
 	for {
 		record, err := csvReader.Read()
 		if errors.Is(err, &csv.ParseError{}) {
+			log.Errorf("Failed to parse row: %v", err)
 			continue
 		}
 		if errors.Is(err, io.EOF) {
@@ -167,27 +182,31 @@ func (g *gateway) queueReviews(r io.Reader) error {
 
 		review, err := reviewFromFullRecord(record)
 		if err != nil {
+			log.Errorf("Failed to parse review: %v", err)
 			continue
 		}
 
-		// fmt.Printf("review: %#+v\n", review)
+		batch = append(batch, review)
+		sentReviews += 1
 
-		batch.Data = append(batch.Data, review)
-		if len(batch.Data) == g.config.BatchSize {
-			err = g.m.SendBatchReview(batch)
+		if len(batch) == g.config.BatchSize {
+			err = g.m.SendToExchange(batch, middleware.ReviewExchange, "")
 			if err != nil {
-				fmt.Println("Could not send batch")
+				log.Errorf("Failed to send reviews batch: %v", err)
 			}
-			batch = middleware.BatchReview{}
+			batch = batch[:0]
 		}
 	}
 
-	if len(batch.Data) != 0 {
-		err := g.m.SendBatchReview(batch)
+	if len(batch) != 0 {
+		err := g.m.SendToExchange(batch, middleware.ReviewExchange, "")
 		if err != nil {
-			fmt.Println("Could not send batch")
+			log.Errorf("Failed to send reviews batch: %v", err)
 		}
 	}
+
+	log.Infof("Finished sending %v reviews", sentReviews)
+
 	return nil
 }
 
@@ -211,11 +230,7 @@ func gameFromFullRecord(record []string) (game middleware.Game, err error) {
 
 	game.AppID = uint64(appId)
 	game.Name = record[1]
-	game.ReleaseDate = middleware.Date{
-		Day:   uint8(releaseDate.Day()),
-		Month: uint8(releaseDate.Month()),
-		Year:  uint16(releaseDate.Year()),
-	}
+	game.ReleaseYear = uint16(releaseDate.Year())
 	game.Windows = record[17] == "true"
 	game.Mac = record[18] == "true"
 	game.Linux = record[19] == "true"
