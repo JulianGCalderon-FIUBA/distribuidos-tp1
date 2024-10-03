@@ -20,7 +20,7 @@ func (g *gateway) startDataHandler() {
 		log.Fatalf("Failed to bind socket: %v", err)
 	}
 
-	err = g.m.Init()
+	err = g.m.Init(middleware.DataHandlerexchanges, middleware.DataHandlerQueues)
 	if err != nil {
 		log.Fatalf("Failed to initialize middleware")
 	}
@@ -110,6 +110,7 @@ func (g *gateway) receiveData(unm *protocol.Conn, w io.Writer) error {
 
 func (g *gateway) queueGames(r io.Reader) error {
 	csvReader := csv.NewReader(r)
+	csvReader.FieldsPerRecord = -1
 	var batch middleware.Batch[middleware.Game]
 
 	var sentGames int

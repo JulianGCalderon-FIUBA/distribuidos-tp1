@@ -57,6 +57,7 @@ func filterGames(m *middleware.Middleware, config config) error {
 	}
 }
 
+// con esta solucion nunca se envia el ultimo batch de juegos si queda incompleto. Pero lo deje asi porque en el futuro los batches van a tener id, y vamos a tener una logica para que se envie toda la data de ese cliente
 func sendFilteredGames(m *middleware.Middleware, batch middleware.Batch[middleware.Game], batchSize int, genre string) ([]middleware.Game, error) {
 	if len(batch) >= batchSize {
 		batchToSend := batch[0:batchSize]

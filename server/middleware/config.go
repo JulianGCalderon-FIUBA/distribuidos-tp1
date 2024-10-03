@@ -15,16 +15,22 @@ const ReviewsQueue string = "reviews"
 const GenresQueue string = "genres"
 
 // this map has the exchange name as key and the exchange type as value
-var exchanges = map[string]string{
+var DataHandlerexchanges = map[string]string{
 	ReviewExchange: amqp.ExchangeFanout,
 	GamesExchange:  amqp.ExchangeFanout,
-	GenresExchange: amqp.ExchangeDirect,
-	// DecadeExchange: amqp.ExchangeDirect,
 }
 
 // this map has the queue name as key and the exchange name as value
-var queues = map[string]string{
+var DataHandlerQueues = map[string]string{
 	GamesPartitionerQueue: GamesExchange,
-	GamesQueue:   GamesExchange,
-	ReviewsQueue: ReviewExchange,
+	GamesQueue:            GamesExchange,
+	ReviewsQueue:          ReviewExchange,
+}
+
+var GenreFilterExchanges = map[string]string{
+	GenresExchange: amqp.ExchangeDirect,
+}
+
+var GenreFilterQueues = map[string]string{
+	GenresQueue: GenresExchange,
 }

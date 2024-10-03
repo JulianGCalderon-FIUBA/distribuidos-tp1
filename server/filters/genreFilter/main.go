@@ -38,8 +38,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create middleware: %v", err)
 	}
-	err = m.Init()
-	if err != nil {
+	if err = m.Init(middleware.GenreFilterExchanges, middleware.GenreFilterQueues); err != nil {
 		log.Fatalf("failed to initialize middleware: %v", err)
 	}
 
