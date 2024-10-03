@@ -17,6 +17,15 @@ func (m *Middleware) SendBatchGame(batchGame BatchGame, routingKey string) error
 	return m.sendBatch(serialized, GamesExchange, routingKey)
 }
 
+func (m *Middleware) SendFilteredGames(batchGame BatchGame, routingKey string) error {
+	serialized, err := batchGame.Serialize()
+	if err != nil {
+		return fmt.Errorf("could not serialize batch game: %w", err)
+	}
+
+	return m.sendBatch(serialized, GenresExchange, routingKey)
+}
+
 func (m *Middleware) SendBatchReview(batchReview BatchReview) error {
 	serialized, err := batchReview.Serialize()
 	if err != nil {

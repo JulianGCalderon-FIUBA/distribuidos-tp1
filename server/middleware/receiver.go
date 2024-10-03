@@ -23,7 +23,6 @@ func (m *Middleware) ReceiveBatch(queueName string) ([]byte, error) {
 
 	go func() {
 		for d := range msgs {
-			// log.Printf("Received a message: %s", d.Body)
 			batch = append(batch, d.Body...)
 
 			forever <- true
