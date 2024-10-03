@@ -187,6 +187,8 @@ func (g *gateway) queueReviews(r io.Reader) error {
 		}
 
 		batch = append(batch, review)
+		sentReviews += 1
+
 		if len(batch) == g.config.BatchSize {
 			err = g.m.SendToExchange(batch, middleware.ReviewExchange)
 			if err != nil {
