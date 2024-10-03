@@ -2,34 +2,43 @@ package middleware
 
 import (
 	"fmt"
-	"log"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type Middleware struct {
-	ch *amqp.Channel
+	conn *amqp.Connection
+	ch   *amqp.Channel
 }
 
-func NewMiddleware(conn *amqp.Connection) *Middleware {
+func NewMiddleware(ip string) (*Middleware, error) {
+	addr := fmt.Sprintf("amqp://guest:guest@%v:5672/", ip)
+	conn, err := amqp.Dial(addr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to rabbit: %w", err)
+	}
+
 	ch, err := conn.Channel()
 	if err != nil {
-		log.Fatalf("failed to bind rabbit connection: %v", err)
+		return nil, fmt.Errorf("failed to bind rabbit connection: %w", err)
 	}
 	return &Middleware{
-		ch: ch,
-	}
+		conn: conn,
+		ch:   ch,
+	}, nil
 }
 
-func (m *Middleware) Init() {
+func (m *Middleware) Init() error {
 	err := m.initExchange()
 	if err != nil {
-		log.Fatalf("failed to initialize exchanges %v", err)
+		return fmt.Errorf("failed to initialize exchanges %w", err)
 	}
 	err = m.initQueue()
 	if err != nil {
-		log.Fatalf("failed to initialize queues %v", err)
+		return fmt.Errorf("failed to initialize queues %w", err)
 	}
+
+	return nil
 }
 
 func (m *Middleware) initExchange() error {
@@ -43,7 +52,7 @@ func (m *Middleware) initExchange() error {
 		nil,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to declare reviews exchange: %w", err)
+		return err
 	}
 	err = m.ch.ExchangeDeclare(
 		GamesExchange,
@@ -55,7 +64,7 @@ func (m *Middleware) initExchange() error {
 		nil,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to bind games exchange: %w", err)
+		return err
 	}
 	return nil
 }
@@ -69,7 +78,7 @@ func (m *Middleware) initQueue() error {
 		nil,
 	)
 	if err != nil {
-		return fmt.Errorf("could not declare games-partitioner queue: %w", err)
+		return err
 	}
 
 	err = m.ch.QueueBind(
@@ -80,7 +89,7 @@ func (m *Middleware) initQueue() error {
 		nil,
 	)
 	if err != nil {
-		return fmt.Errorf("could not bind to games-partitioner queue: %w", err)
+		return err
 	}
 
 	q, err = m.ch.QueueDeclare(GamesFilterQueue,
@@ -91,7 +100,7 @@ func (m *Middleware) initQueue() error {
 		nil,
 	)
 	if err != nil {
-		return fmt.Errorf("could not declare games-partitioner queue: %w", err)
+		return err
 	}
 
 	err = m.ch.QueueBind(
@@ -102,7 +111,7 @@ func (m *Middleware) initQueue() error {
 		nil,
 	)
 	if err != nil {
-		return fmt.Errorf("could not bind to games-partitioner queue: %w", err)
+		return err
 	}
 
 	q, err = m.ch.QueueDeclare(ReviewsFilterQueue,
@@ -113,7 +122,7 @@ func (m *Middleware) initQueue() error {
 		nil,
 	)
 	if err != nil {
-		return fmt.Errorf("could not declare games-partitioner queue: %w", err)
+		return err
 	}
 
 	err = m.ch.QueueBind(
@@ -124,7 +133,7 @@ func (m *Middleware) initQueue() error {
 		nil,
 	)
 	if err != nil {
-		return fmt.Errorf("could not bind to games-partitioner queue: %w", err)
+		return err
 	}
 
 	return nil

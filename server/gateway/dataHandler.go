@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"strconv"
 	"strings"
@@ -18,7 +17,7 @@ func (g *gateway) startDataHandler() {
 	address := fmt.Sprintf(":%v", g.config.DataEndpointPort)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
-		log.Fatalf("failed to bind socket: %v", err)
+		log.Fatalf("Failed to bind socket: %v", err)
 	}
 
 	g.m.Init()
@@ -26,6 +25,7 @@ func (g *gateway) startDataHandler() {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
+			log.Errorf("Failed to accept connection: %v", err)
 			continue
 		}
 
@@ -33,7 +33,7 @@ func (g *gateway) startDataHandler() {
 			defer conn.Close()
 			err := g.handleClientData(conn)
 			if err != nil {
-				log.Printf("error while handling client: %v", err)
+				log.Errorf("Error while handling client: %v", err)
 			}
 		}(conn)
 	}
@@ -49,7 +49,7 @@ func (g *gateway) handleClientData(netConn net.Conn) error {
 	}
 
 	// todo: validate client id
-	_ = hello
+	log.Infof("Client data hello with id: %v", hello.ClientID)
 
 	err = conn.Send(&protocol.DataAccept{})
 	if err != nil {
@@ -60,7 +60,7 @@ func (g *gateway) handleClientData(netConn net.Conn) error {
 	go func() {
 		err := g.queueGames(gamesRecv)
 		if err != nil {
-			fmt.Printf("error while queuing games: %v", err)
+			log.Errorf("Error while queuing games: %v", err)
 		}
 	}()
 	err = g.receiveData(conn, gamesSend)
@@ -72,7 +72,7 @@ func (g *gateway) handleClientData(netConn net.Conn) error {
 	go func() {
 		err := g.queueReviews(reviewsRecv)
 		if err != nil {
-			fmt.Printf("error while queuing games: %v", err)
+			log.Errorf("Error while queuing reviews: %v", err)
 		}
 	}()
 	err = g.receiveData(conn, reviewsSend)
@@ -107,10 +107,12 @@ func (g *gateway) queueGames(r io.Reader) error {
 	csvReader := csv.NewReader(r)
 	var batch middleware.Batch[middleware.Game]
 
+	var sentGames int
+
 	for {
 		record, err := csvReader.Read()
 		if errors.Is(err, &csv.ParseError{}) {
-			fmt.Println("Parse error")
+			log.Errorf("Failed to parse row: %v", err)
 			continue
 		}
 		if errors.Is(err, io.EOF) {
@@ -122,14 +124,17 @@ func (g *gateway) queueGames(r io.Reader) error {
 
 		game, err := gameFromFullRecord(record)
 		if err != nil {
+			log.Errorf("Failed to parse game: %v", err)
 			continue
 		}
 
 		batch = append(batch, game)
+		sentGames += 1
+
 		if len(batch) == g.config.BatchSize {
 			err = g.m.SendToExchange(batch, middleware.GamesExchange)
 			if err != nil {
-				fmt.Println("Could not send batch")
+				log.Errorf("Failed to send games batch: %v", err)
 			}
 			batch = batch[:0]
 		}
@@ -138,9 +143,11 @@ func (g *gateway) queueGames(r io.Reader) error {
 	if len(batch) != 0 {
 		err := g.m.SendToExchange(batch, middleware.GamesExchange)
 		if err != nil {
-			fmt.Println("Could not send batch")
+			log.Errorf("Failed to send games batch: %v", err)
 		}
 	}
+
+	log.Infof("Finished sending %v games", sentGames)
 
 	return nil
 }
@@ -149,9 +156,12 @@ func (g *gateway) queueReviews(r io.Reader) error {
 	csvReader := csv.NewReader(r)
 	var batch middleware.Batch[middleware.Review]
 
+	var sentReviews int
+
 	for {
 		record, err := csvReader.Read()
 		if errors.Is(err, &csv.ParseError{}) {
+			log.Errorf("Failed to parse row: %v", err)
 			continue
 		}
 		if errors.Is(err, io.EOF) {
@@ -163,6 +173,7 @@ func (g *gateway) queueReviews(r io.Reader) error {
 
 		review, err := reviewFromFullRecord(record)
 		if err != nil {
+			log.Errorf("Failed to parse review: %v", err)
 			continue
 		}
 
@@ -170,7 +181,7 @@ func (g *gateway) queueReviews(r io.Reader) error {
 		if len(batch) == g.config.BatchSize {
 			err = g.m.SendToExchange(batch, middleware.ReviewExchange)
 			if err != nil {
-				fmt.Println("Could not send batch")
+				log.Errorf("Failed to send reviews batch: %v", err)
 			}
 			batch = batch[:0]
 		}
@@ -179,9 +190,11 @@ func (g *gateway) queueReviews(r io.Reader) error {
 	if len(batch) != 0 {
 		err := g.m.SendToExchange(batch, middleware.ReviewExchange)
 		if err != nil {
-			fmt.Println("Could not send batch")
+			log.Errorf("Failed to send reviews batch: %v", err)
 		}
 	}
+
+	log.Infof("Finished sending %v reviews", sentReviews)
 
 	return nil
 }
