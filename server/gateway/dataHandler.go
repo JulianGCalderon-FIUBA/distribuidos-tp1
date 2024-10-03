@@ -20,7 +20,10 @@ func (g *gateway) startDataHandler() {
 		log.Fatalf("Failed to bind socket: %v", err)
 	}
 
-	g.m.Init()
+	err = g.m.Init()
+	if err != nil {
+		log.Fatalf("Failed to initialize middleware")
+	}
 
 	for {
 		conn, err := listener.Accept()
