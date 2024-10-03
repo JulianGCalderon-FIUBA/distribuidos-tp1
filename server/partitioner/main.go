@@ -86,5 +86,7 @@ func main() {
 		for partitionId, partition := range partitions {
 			m.SendToPartition(partition, cfg.OutputExchange, partitionId)
 		}
+
+		d.Ack(false)
 	}
 }
