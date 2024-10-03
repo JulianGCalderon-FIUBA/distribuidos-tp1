@@ -2,10 +2,8 @@ package main
 
 import (
 	"distribuidos/tp1/server/middleware"
-	"fmt"
 	"log"
 	"github.com/spf13/viper"
-	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type config struct {
@@ -33,14 +31,13 @@ func main() {
 		log.Fatalf("failed to read config: %v", err)
 	}
 
-	rabbitAddress := fmt.Sprintf("amqp://guest:guest@%v:5672/", cfg.RabbitIP)
-	rabbitConn, err := amqp.Dial(rabbitAddress)
+	m, err := middleware.NewMiddleware(cfg.RabbitIP)
 	if err != nil {
-		log.Fatalf("failed to connect to rabbit: %v", err)
+		log.Fatalf("failed to create middleware: %v", err)
 	}
-
-	m := middleware.NewMiddleware(rabbitConn)
-	m.Init()
+	err = m.Init(); if err != nil {
+		log.Fatalf("failed to initialize middleware: %v", err)
+	}
 
 	err = filterGames(m, cfg); if err != nil {
 		log.Fatalf("failed to filter games: %v", err)

@@ -11,10 +11,10 @@ const (
 	IndieGenre  = "Indie"
 )
 
-func filterByGenre(gameBatch *middleware.BatchGame, genre string) []middleware.Game {
+func filterByGenre(gameBatch *middleware.Batch[middleware.Game], genre string) []middleware.Game {
 	var filteredGames []middleware.Game
 
-	for _, game := range gameBatch.Data {
+	for _, game := range *gameBatch {
 		if slices.Contains(game.Genres, genre) {
 			filteredGames = append(filteredGames, game)
 		}
@@ -26,49 +26,48 @@ func filterByGenre(gameBatch *middleware.BatchGame, genre string) []middleware.G
 func filterGames(m *middleware.Middleware, config config) error {
 	fmt.Println("Genre filter started")
 
-	actionGames := middleware.BatchGame{}
-	indieGames := middleware.BatchGame{}
+	actionGames := middleware.Batch[middleware.Game]{}
+	indieGames := middleware.Batch[middleware.Game]{}
 
 	for {
-		batch, err := m.ReceiveBatch("games")
+		batch, err := m.ReceiveBatch(middleware.GamesQueue)
 		if err != nil {
 			return err
 		}
 
-		batchGame := &middleware.BatchGame{}
-		_, err = batchGame.Deserialize(batch)
+		batchGame := &middleware.Batch[middleware.Game]{}
+		err = middleware.DeserializeInto(batch, &batchGame)
 		if err != nil {
 			return err
 		}
 
-		actionGames.Data = append(actionGames.Data, filterByGenre(batchGame, ActionGenre)...)
-		indieGames.Data = append(indieGames.Data, filterByGenre(batchGame, IndieGenre)...)
+		actionGames = append(actionGames, filterByGenre(batchGame, ActionGenre)...)
+		indieGames = append(indieGames, filterByGenre(batchGame, IndieGenre)...)
 
-		actionGames.Data, err = sendFilteredGames(m, actionGames, config.BatchSize, ActionGenre)
+		actionGames, err = sendFilteredGames(m, actionGames, config.BatchSize, ActionGenre)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Amount of Action games after sending: %#+v\n", len(actionGames.Data))
+		fmt.Printf("Amount of Action games after sending: %#+v\n", len(actionGames))
 
-		indieGames.Data, err = sendFilteredGames(m, indieGames, config.BatchSize, IndieGenre)
+		indieGames, err = sendFilteredGames(m, indieGames, config.BatchSize, IndieGenre)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Amount of Indie games after sending: %#+v\n", len(indieGames.Data))
+		fmt.Printf("Amount of Indie games after sending: %#+v\n", len(indieGames))
 	}
 }
 
-func sendFilteredGames(m *middleware.Middleware, batch middleware.BatchGame, batchSize int, genre string) ([]middleware.Game, error) {
-	if len(batch.Data) >= batchSize {
-		batchToSend := middleware.BatchGame{}
-		batchToSend.Data = batch.Data[0:batchSize]
+func sendFilteredGames(m *middleware.Middleware, batch middleware.Batch[middleware.Game], batchSize int, genre string) ([]middleware.Game, error) {
+	if len(batch) >= batchSize {
+		batchToSend := batch[0:batchSize]
 
-		err := m.SendFilteredGames(batchToSend, genre)
+		err := m.SendToExchange(batchToSend, middleware.GenresExchange, genre)
 		if err != nil {
 			fmt.Println("Could not send batch")
 		}
-		return batch.Data[batchSize:], nil
+		return batch[batchSize:], nil
 	}
 
-	return batch.Data, nil
+	return batch, nil
 }

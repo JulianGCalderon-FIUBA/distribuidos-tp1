@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"fmt"
-
+	"log"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
