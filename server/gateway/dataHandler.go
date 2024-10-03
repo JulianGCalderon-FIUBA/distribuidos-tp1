@@ -101,6 +101,7 @@ func (g *gateway) receiveData(unm *protocol.Unmarshaller, w io.Writer) error {
 				return err
 			}
 		case *protocol.Finish:
+			fmt.Println("Finished receiving data")
 			return nil
 		}
 	}
@@ -130,17 +131,16 @@ func (g *gateway) queueGames(r io.Reader) error {
 
 		batch.Data = append(batch.Data, game)
 		if len(batch.Data) == g.config.BatchSize {
-			err = g.m.SendBatchGame(batch)
+			err = g.m.SendBatchGame(batch, "")
 			if err != nil {
 				fmt.Println("Could not send batch")
 			}
 			batch = middleware.BatchGame{}
 		}
-		// fmt.Printf("Game: %#+v\n", game)
 	}
 
 	if len(batch.Data) != 0 {
-		err := g.m.SendBatchGame(batch)
+		err := g.m.SendBatchGame(batch, "")
 		if err != nil {
 			fmt.Println("Could not send batch")
 		}
