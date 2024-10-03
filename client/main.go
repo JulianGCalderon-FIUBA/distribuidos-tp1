@@ -1,10 +1,11 @@
 package main
 
 import (
-	"log"
-
+	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
+
+var log = logging.MustGetLogger("log")
 
 type config struct {
 	ConnectionEndpointAddress string
@@ -33,9 +34,12 @@ func getConfig() (config, error) {
 func main() {
 	config, err := getConfig()
 	if err != nil {
-		log.Fatalf("failed to read config: %v", err)
+		log.Fatalf("Failed to read config: %v", err)
 	}
 
 	client := newClient(config)
-	client.start()
+	err = client.start()
+	if err != nil {
+		log.Fatalf("Failed to run client: %v", err)
+	}
 }
