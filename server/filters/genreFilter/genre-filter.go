@@ -2,7 +2,6 @@ package main
 
 import (
 	"distribuidos/tp1/server/middleware"
-	"fmt"
 	"slices"
 )
 
@@ -24,7 +23,7 @@ func filterByGenre(gameBatch *middleware.Batch[middleware.Game], genre string) [
 }
 
 func filterGames(m *middleware.Middleware, config config) error {
-	fmt.Println("Genre filter started")
+	log.Infof("Genre filter started")
 
 	actionGames := middleware.Batch[middleware.Game]{}
 	indieGames := middleware.Batch[middleware.Game]{}
@@ -48,13 +47,13 @@ func filterGames(m *middleware.Middleware, config config) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Amount of Action games after sending: %#+v\n", len(actionGames))
+		log.Infof("Amount of Action games after sending: %#+v\n", len(actionGames))
 
 		indieGames, err = sendFilteredGames(m, indieGames, config.BatchSize, IndieGenre)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Amount of Indie games after sending: %#+v\n", len(indieGames))
+		log.Infof("Amount of Indie games after sending: %#+v\n", len(indieGames))
 	}
 }
 
@@ -64,7 +63,7 @@ func sendFilteredGames(m *middleware.Middleware, batch middleware.Batch[middlewa
 
 		err := m.SendToExchange(batchToSend, middleware.GenresExchange, genre)
 		if err != nil {
-			fmt.Println("Could not send batch")
+			log.Errorf("Could not send batch")
 		}
 		return batch[batchSize:], nil
 	}

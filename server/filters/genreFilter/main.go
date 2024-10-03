@@ -2,13 +2,16 @@ package main
 
 import (
 	"distribuidos/tp1/server/middleware"
-	"log"
+
+	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
 
+var log = logging.MustGetLogger("log")
+
 type config struct {
-	RabbitIP               string
-	BatchSize              int
+	RabbitIP  string
+	BatchSize int
 }
 
 func getConfig() (config, error) {
@@ -35,11 +38,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create middleware: %v", err)
 	}
-	err = m.Init(); if err != nil {
+	err = m.Init()
+	if err != nil {
 		log.Fatalf("failed to initialize middleware: %v", err)
 	}
 
-	err = filterGames(m, cfg); if err != nil {
+	err = filterGames(m, cfg)
+	if err != nil {
 		log.Fatalf("failed to filter games: %v", err)
 	}
 }
