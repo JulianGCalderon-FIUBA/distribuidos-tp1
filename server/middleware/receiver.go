@@ -5,5 +5,12 @@ import (
 )
 
 func (m *Middleware) ReceiveFromQueue(name string) (<-chan amqp.Delivery, error) {
-	return m.ch.Consume(name, "", true, false, false, false, nil)
+	return m.ch.Consume(
+		name,
+		"",
+		false,
+		false,
+		false,
+		false,
+		nil)
 }
