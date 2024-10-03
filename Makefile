@@ -34,5 +34,5 @@ compose-down:
 .PHONY: docker-compose-down
 
 compose-logs:
-	docker compose -f compose.yaml logs -f
+	docker compose -f compose.yaml logs -f gateway client
 .PHONY: docker-compose-logs
