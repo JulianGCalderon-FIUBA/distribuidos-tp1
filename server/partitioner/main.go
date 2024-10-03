@@ -59,7 +59,7 @@ func main() {
 		log.Fatalf("Failed to read config: %v", err)
 	}
 
-	err = m.InitPartition(cfg.OutputExchange, cfg.PartitionsNumber)
+	err = m.InitPartitioner(cfg.InputQueue, cfg.OutputExchange, cfg.PartitionsNumber)
 	if err != nil {
 		log.Fatalf("Failed to init partition: %v", err)
 	}
