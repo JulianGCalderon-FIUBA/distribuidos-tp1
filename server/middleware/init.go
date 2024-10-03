@@ -138,3 +138,34 @@ func (m *Middleware) initQueue() error {
 
 	return nil
 }
+
+func (m *Middleware) InitPartition(dst string, partitionsNum int) error {
+	err := m.ch.ExchangeDeclare(
+		dst,
+		amqp.ExchangeDirect,
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	for i := 0; i < partitionsNum; i++ {
+		_, err = m.ch.QueueDeclare(fmt.Sprintf("%v-%v", dst, i),
+			false,
+			false,
+			false,
+			false,
+			nil,
+		)
+		if err != nil {
+			return err
+		}
+
+	}
+
+	return nil
+}
