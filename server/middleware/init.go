@@ -3,6 +3,7 @@ package middleware
 import (
 	"fmt"
 	"log"
+
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -72,7 +73,7 @@ func (m *Middleware) initQueues(queues map[string]string) error {
 		if err != nil {
 			return err
 		}
-	
+
 		err = m.ch.QueueBind(
 			q.Name,
 			"",
