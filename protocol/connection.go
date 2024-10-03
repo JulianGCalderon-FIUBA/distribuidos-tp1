@@ -12,10 +12,6 @@ type Conn struct {
 }
 
 func Register() {
-	gob.Register(RequestHello{})
-	gob.Register(AcceptRequest{})
-	gob.Register(DataHello{})
-	gob.Register(DataAccept{})
 	gob.Register(Batch{})
 	gob.Register(Finish{})
 }

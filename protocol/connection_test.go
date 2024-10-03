@@ -3,6 +3,7 @@ package protocol_test
 import (
 	"bytes"
 	"distribuidos/tp1/protocol"
+	"encoding/gob"
 	"reflect"
 	"testing"
 )
@@ -16,6 +17,13 @@ func (b *BufferCloser) Close() error {
 }
 
 func TestConnAny(t *testing.T) {
+	gob.Register(protocol.RequestHello{})
+	gob.Register(protocol.AcceptRequest{})
+	gob.Register(protocol.DataHello{})
+	gob.Register(protocol.DataAccept{})
+	gob.Register(protocol.Batch{})
+	gob.Register(protocol.Finish{})
+
 	messages := []any{
 		protocol.RequestHello{
 			GameSize:   1,
@@ -40,7 +48,6 @@ func TestConnAny(t *testing.T) {
 	}
 
 	var b BufferCloser
-	protocol.Register()
 	conn := protocol.NewConn(&b)
 
 	for _, msg := range messages {
