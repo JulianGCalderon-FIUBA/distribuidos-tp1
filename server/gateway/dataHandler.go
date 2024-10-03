@@ -70,6 +70,7 @@ func (g *gateway) handleClientData(netConn net.Conn) error {
 	if err != nil {
 		return err
 	}
+	gamesSend.Close()
 
 	reviewsRecv, reviewsSend := net.Pipe()
 	go func() {
@@ -82,6 +83,7 @@ func (g *gateway) handleClientData(netConn net.Conn) error {
 	if err != nil {
 		return err
 	}
+	reviewsSend.Close()
 
 	return nil
 }
