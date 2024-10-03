@@ -40,5 +40,20 @@ services:
     depends_on:
       - gateway
 
+  partitioner:
+    container_name: partitioner
+    build: .
+    entrypoint: /partitioner
+    environment:
+      - RABBIT_IP=rabbitmq
+      - INPUT_QUEUE=games-partitioner
+      - PARTITIONS_NUMBER=3
+      - TYPE=game
+    networks:
+      - net
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
 networks:
   net:
