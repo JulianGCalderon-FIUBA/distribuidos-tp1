@@ -109,6 +109,8 @@ func (g *gateway) queueGames(r io.Reader) error {
 
 	var sentGames int
 
+	_, _ = csvReader.Read()
+
 	for {
 		record, err := csvReader.Read()
 		if errors.Is(err, &csv.ParseError{}) {
@@ -157,6 +159,8 @@ func (g *gateway) queueReviews(r io.Reader) error {
 	var batch middleware.Batch[middleware.Review]
 
 	var sentReviews int
+
+	_, _ = csvReader.Read()
 
 	for {
 		record, err := csvReader.Read()
