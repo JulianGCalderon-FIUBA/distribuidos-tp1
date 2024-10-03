@@ -16,7 +16,7 @@ services:
 
   gateway:
     container_name: gateway
-    image: gateway:latest
+    build: .
     entrypoint: /gateway
     environment:
       - RABBIT_IP=rabbitmq
@@ -28,7 +28,7 @@ services:
 
   client:
     container_name: client
-    image: client:latest
+    build: .
     entrypoint: /client
     environment:
       - GATEWAY_CONN_ADDR=gateway:9001
