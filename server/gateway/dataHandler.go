@@ -105,7 +105,7 @@ func (g *gateway) receiveData(unm *protocol.Conn, w io.Writer) error {
 
 func (g *gateway) queueGames(r io.Reader) error {
 	csvReader := csv.NewReader(r)
-	batch := middleware.BatchGame{}
+	var batch middleware.Batch[middleware.Game]
 
 	for {
 		record, err := csvReader.Read()
@@ -125,19 +125,18 @@ func (g *gateway) queueGames(r io.Reader) error {
 			continue
 		}
 
-		batch.Data = append(batch.Data, game)
-		if len(batch.Data) == g.config.BatchSize {
-			err = g.m.SendBatchGame(batch)
+		batch = append(batch, game)
+		if len(batch) == g.config.BatchSize {
+			err = g.m.SendToExchange(batch, middleware.GamesExchange)
 			if err != nil {
 				fmt.Println("Could not send batch")
 			}
-			batch = middleware.BatchGame{}
+			batch = batch[:0]
 		}
-		// fmt.Printf("Game: %#+v\n", game)
 	}
 
-	if len(batch.Data) != 0 {
-		err := g.m.SendBatchGame(batch)
+	if len(batch) != 0 {
+		err := g.m.SendToExchange(batch, middleware.GamesExchange)
 		if err != nil {
 			fmt.Println("Could not send batch")
 		}
@@ -148,7 +147,7 @@ func (g *gateway) queueGames(r io.Reader) error {
 
 func (g *gateway) queueReviews(r io.Reader) error {
 	csvReader := csv.NewReader(r)
-	batch := middleware.BatchReview{}
+	var batch middleware.Batch[middleware.Review]
 
 	for {
 		record, err := csvReader.Read()
@@ -167,24 +166,23 @@ func (g *gateway) queueReviews(r io.Reader) error {
 			continue
 		}
 
-		// fmt.Printf("review: %#+v\n", review)
-
-		batch.Data = append(batch.Data, review)
-		if len(batch.Data) == g.config.BatchSize {
-			err = g.m.SendBatchReview(batch)
+		batch = append(batch, review)
+		if len(batch) == g.config.BatchSize {
+			err = g.m.SendToExchange(batch, middleware.ReviewExchange)
 			if err != nil {
 				fmt.Println("Could not send batch")
 			}
-			batch = middleware.BatchReview{}
+			batch = batch[:0]
 		}
 	}
 
-	if len(batch.Data) != 0 {
-		err := g.m.SendBatchReview(batch)
+	if len(batch) != 0 {
+		err := g.m.SendToExchange(batch, middleware.ReviewExchange)
 		if err != nil {
 			fmt.Println("Could not send batch")
 		}
 	}
+
 	return nil
 }
 
@@ -208,11 +206,7 @@ func gameFromFullRecord(record []string) (game middleware.Game, err error) {
 
 	game.AppID = uint64(appId)
 	game.Name = record[1]
-	game.ReleaseDate = middleware.Date{
-		Day:   uint8(releaseDate.Day()),
-		Month: uint8(releaseDate.Month()),
-		Year:  uint16(releaseDate.Year()),
-	}
+	game.ReleaseYear = uint16(releaseDate.Year())
 	game.Windows = record[17] == "true"
 	game.Mac = record[18] == "true"
 	game.Linux = record[19] == "true"
