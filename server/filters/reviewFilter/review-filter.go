@@ -9,7 +9,6 @@ type Batch middleware.Batch[middleware.Review]
 type ReviewFilter struct {
 	cfg config
 	m   middleware.Middleware
-	ch  chan Batch
 }
 
 func newReviewFilter(cfg config) (*ReviewFilter, error) {
@@ -22,12 +21,9 @@ func newReviewFilter(cfg config) (*ReviewFilter, error) {
 		return nil, err
 	}
 
-	ch := make(chan Batch)
-
 	return &ReviewFilter{
 		cfg: cfg,
-		m:   *m,
-		ch:  ch}, nil
+		m:   *m}, nil
 }
 
 func (rf *ReviewFilter) run() error {
