@@ -31,7 +31,7 @@ func main() {
 
 	reviewFilter, err := newReviewFilter(cfg)
 	if err != nil {
-		log.Errorf("Failed to create new review filter: %v", err)
+		log.Fatalf("Failed to create new review filter: %v", err)
 	}
 	err = reviewFilter.run()
 	if err != nil {
