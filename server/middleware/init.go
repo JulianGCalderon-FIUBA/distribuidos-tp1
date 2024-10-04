@@ -213,7 +213,7 @@ func (m *Middleware) InitReviewFilter() error {
 
 	err = m.ch.QueueBind(
 		q.Name,
-		PositiveReviews,
+		NegativeReviews,
 		ReviewsScoreFilterExchange,
 		false,
 		nil,
