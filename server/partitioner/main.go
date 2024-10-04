@@ -4,6 +4,7 @@ import (
 	"distribuidos/tp1/server/middleware"
 	"errors"
 	"fmt"
+	"strconv"
 
 	logging "github.com/op/go-logging"
 	"github.com/spf13/viper"
@@ -63,6 +64,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to init partition: %v", err)
 	}
+	log.Infof("Initialized partitioner infrastructure")
 
 	dch, err := m.Subscribe(cfg.InputQueue)
 	if err != nil {
@@ -84,7 +86,11 @@ func main() {
 		}
 
 		for partitionId, partition := range partitions {
-			m.SendToPartition(partition, cfg.OutputExchange, partitionId)
+			err = m.Send(partition, cfg.OutputExchange, strconv.Itoa(partitionId))
+			if err != nil {
+				log.Errorf("Failed to send batch: %v", err)
+				continue
+			}
 		}
 
 		d.Ack(false)

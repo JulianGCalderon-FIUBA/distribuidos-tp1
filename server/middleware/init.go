@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"strconv"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -165,13 +166,22 @@ func (m *Middleware) InitPartitioner(input string, output string, partitionsNum 
 	}
 
 	for i := 0; i < partitionsNum; i++ {
-		_, err = m.ch.QueueDeclare(fmt.Sprintf("%v-%v", output, i),
+		q, err := m.ch.QueueDeclare(fmt.Sprintf("%v-%v", output, i),
 			false,
 			false,
 			false,
 			false,
 			nil,
 		)
+		if err != nil {
+			return err
+		}
+
+		err = m.ch.QueueBind(q.Name,
+			strconv.Itoa(i),
+			output,
+			false,
+			nil)
 		if err != nil {
 			return err
 		}
