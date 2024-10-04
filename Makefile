@@ -11,6 +11,10 @@ build-gateway:
 	go build -o bin/gateway ./server/gateway
 .PHONY: build-gateway
 
+build-genre-filter:
+	go build -o bin/genre-filter ./server/filters/genreFilter
+.PHONY: build-genre-filter
+
 build-reviews-filter:
 	go build -o bin/reviews-filter ./server/filters/reviewFilter
 .PHONY: build-reviews-filter
@@ -22,6 +26,10 @@ run-client: build-client
 run-gateway: build-gateway
 	./bin/gateway
 .PHONY: run-gateway
+
+run-genre-filter: build-genre-filter
+	./bin/genre-filter
+.PHONY: run-genre-filter
 
 run-reviews-filter: build-reviews-filter
 	./bin/reviews-filter
