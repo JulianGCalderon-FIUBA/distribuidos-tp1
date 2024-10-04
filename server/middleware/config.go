@@ -4,6 +4,16 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
+// review filter
+const ReviewsScoreFilterExchange string = "review-score-filter"
+const NinetyPercentileReviewsQueue string = "90-percentile"
+const LanguageReviewsFilterQueue string = "language-filter-reviews"
+const FiftyThReviewsQueue string = "50-thousand"
+
+// keys
+const PositiveReviews string = "positive-reviews"
+const NegativeReviews string = "negative-reviews"
+
 const ReviewExchange string = "reviews"
 const GamesExchange string = "games"
 const GenresExchange string = "genres"

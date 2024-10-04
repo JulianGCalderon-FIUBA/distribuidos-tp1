@@ -38,10 +38,6 @@ func (gf *GenreFilter) start() error {
 }
 
 func (gf *GenreFilter) receive() error {
-	// lo dejo comentado para testear
-	// indieGames := 0
-	// actionGames := 0
-
 	deliveryCh, err := gf.m.ReceiveFromQueue(middleware.GamesQueue)
 	for d := range deliveryCh {
 		if err != nil {
@@ -63,12 +59,6 @@ func (gf *GenreFilter) receive() error {
 			_ = d.Nack(false, false)
 			return err
 		}
-
-		// lo dejo comentado para testear
-		// indieGames += len(indie)
-		// actionGames += len(action)
-		// log.Infof("Amount of Indie games sent: %v\n", indieGames)
-		// log.Infof("Amount of Action games sent: %v\n", actionGames)
 
 		err = gf.sendFilteredGames(action, middleware.ActionGenre)
 		if err != nil {

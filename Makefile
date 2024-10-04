@@ -15,6 +15,10 @@ build-genre-filter:
 	go build -o bin/genre-filter ./server/filters/genreFilter
 .PHONY: build-genre-filter
 
+build-reviews-filter:
+	go build -o bin/reviews-filter ./server/filters/reviewFilter
+.PHONY: build-reviews-filter
+
 run-client: build-client
 	./bin/client
 .PHONY: run-client
@@ -26,6 +30,10 @@ run-gateway: build-gateway
 run-genre-filter: build-genre-filter
 	./bin/genre-filter
 .PHONY: run-genre-filter
+
+run-reviews-filter: build-reviews-filter
+	./bin/reviews-filter
+.PHONY: run-reviews-filter
 
 docker-image:
 	docker build -f ./server/gateway/Dockerfile -t "gateway:latest" .
