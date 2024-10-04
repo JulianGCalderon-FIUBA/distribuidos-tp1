@@ -8,18 +8,15 @@ import (
 var log = logging.MustGetLogger("log")
 
 type config struct {
-	RabbitIP  string
-	BatchSize int
+	RabbitIP string
 }
 
 func getConfig() (config, error) {
 	v := viper.New()
 
 	v.SetDefault("RabbitIP", "localhost")
-	v.SetDefault("BatchSize", "100")
 
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")
-	_ = v.BindEnv("BatchSize", "BATCH_SIZE")
 
 	var c config
 	err := v.Unmarshal(&c)
