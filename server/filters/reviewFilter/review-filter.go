@@ -56,7 +56,7 @@ func (rf *ReviewFilter) receive() error {
 
 		positive, negative := rf.filterBatch(batch)
 		if len(positive) > 0 {
-			err = rf.m.SendToExchange(positive, middleware.PositiveReviewsExchange)
+			err = rf.m.Send(positive, middleware.ReviewsScoreFilterExchange, middleware.PositiveReviews)
 			if err != nil {
 				log.Errorf("Failed to send positive reviews batch: %v", err)
 				_ = d.Nack(false, false)
@@ -64,7 +64,7 @@ func (rf *ReviewFilter) receive() error {
 			}
 		}
 		if len(negative) > 0 {
-			err = rf.m.SendToExchange(negative, middleware.NegativeReviewsExchange)
+			err = rf.m.Send(negative, middleware.ReviewsScoreFilterExchange, middleware.NegativeReviews)
 			if err != nil {
 				log.Errorf("Failed to send negative reviews batch: %v", err)
 				_ = d.Nack(false, false)
