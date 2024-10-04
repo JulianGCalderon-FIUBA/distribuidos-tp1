@@ -1,8 +1,6 @@
 package main
 
 import (
-	"distribuidos/tp1/server/middleware"
-
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
@@ -34,15 +32,9 @@ func main() {
 		log.Fatalf("failed to read config: %v", err)
 	}
 
-	m, err := middleware.NewMiddleware(cfg.RabbitIP)
-	if err != nil {
-		log.Fatalf("failed to create middleware: %v", err)
-	}
-	if err = m.Init(middleware.GenreFilterExchanges, middleware.GenreFilterQueues); err != nil {
-		log.Fatalf("failed to initialize middleware: %v", err)
-	}
+	gf := NewGenreFilter(cfg)
 
-	err = filterGames(m, cfg)
+	err = gf.start()
 	if err != nil {
 		log.Fatalf("failed to filter games: %v", err)
 	}
