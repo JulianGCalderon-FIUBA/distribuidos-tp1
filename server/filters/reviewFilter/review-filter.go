@@ -27,7 +27,7 @@ func newReviewFilter(cfg config) (*ReviewFilter, error) {
 }
 
 func (rf *ReviewFilter) run() error {
-
+	log.Infof("Starting review filter")
 	err := rf.receive()
 	if err != nil {
 		log.Errorf("Failed to receive batches: %v", err)
@@ -36,6 +36,7 @@ func (rf *ReviewFilter) run() error {
 	return nil
 }
 
+// Reads from queue channel and filters read batch before sending it to exchange
 func (rf *ReviewFilter) receive() error {
 	deliveryCh, err := rf.m.ReceiveFromQueue(middleware.ReviewsFilterQueue)
 	if err != nil {
@@ -69,9 +70,12 @@ func (rf *ReviewFilter) receive() error {
 		}
 		_ = d.Ack(false)
 	}
+	// se va a llamar cuando tengamos algún tipo de finish
+	log.Infof("Done sending all filtered reviews")
 	return nil
 }
 
+// Filters batch of reviews according to score and returns two filtered batches: one with positive reviews and another one with negative reviews
 func (rf *ReviewFilter) filterBatch(batch Batch) (Batch, Batch) {
 	var positive Batch
 	var negative Batch
