@@ -11,6 +11,10 @@ build-gateway:
 	go build -o bin/gateway ./server/gateway
 .PHONY: build-gateway
 
+build-reviews-filter:
+	go build -o bin/reviews-filter ./server/filters/reviewFilter
+.PHONY: build-reviews-filter
+
 run-client: build-client
 	./bin/client
 .PHONY: run-client
@@ -18,6 +22,10 @@ run-client: build-client
 run-gateway: build-gateway
 	./bin/gateway
 .PHONY: run-gateway
+
+run-reviews-filter: build-reviews-filter
+	./bin/reviews-filter
+.PHONY: run-reviews-filter
 
 docker-image:
 	docker build -f ./server/gateway/Dockerfile -t "gateway:latest" .
