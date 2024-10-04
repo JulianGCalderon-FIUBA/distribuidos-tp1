@@ -81,12 +81,13 @@ func (rf *ReviewFilter) filterBatch(batch Batch) (Batch, Batch) {
 	var negative Batch
 
 	for _, review := range batch {
-
 		switch review.Score {
 		case middleware.PositiveScore:
-			positive = append(positive, review)
+			new := middleware.Review{AppID: review.AppID, Text: review.Text}
+			positive = append(positive, new)
 		case middleware.NegativeScore:
-			negative = append(negative, review)
+			new := middleware.Review{AppID: review.AppID}
+			negative = append(negative, new)
 		}
 	}
 	return positive, negative
