@@ -138,3 +138,111 @@ func (m *Middleware) initQueue() error {
 
 	return nil
 }
+
+func (m *Middleware) InitReviewFilter() error {
+	// Receiving queue
+	q, err := m.ch.QueueDeclare(ReviewsFilterQueue,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	err = m.ch.QueueBind(
+		q.Name,
+		"",
+		ReviewExchange,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Sending exchanges
+	err = m.ch.ExchangeDeclare(
+		ReviewsScoreFilterExchange,
+		amqp.ExchangeDirect,
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Sending queues
+	q, err = m.ch.QueueDeclare(FiftyThReviewsQueue,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	err = m.ch.QueueBind(
+		q.Name,
+		PositiveReviews,
+		ReviewsScoreFilterExchange,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	q, err = m.ch.QueueDeclare(LanguageReviewsFilterQueue,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	err = m.ch.QueueBind(
+		q.Name,
+		NegativeReviews,
+		ReviewsScoreFilterExchange,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	q, err = m.ch.QueueDeclare(NinetyPercentileReviewsQueue,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	err = m.ch.QueueBind(
+		q.Name,
+		NegativeReviews,
+		ReviewsScoreFilterExchange,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
