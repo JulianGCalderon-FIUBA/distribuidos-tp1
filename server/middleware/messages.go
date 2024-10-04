@@ -12,6 +12,11 @@ const (
 	NegativeScore Score = -1
 )
 
+const (
+	IndieGenre  = "Indie"
+	ActionGenre = "Action"
+)
+
 type Game struct {
 	AppID                  uint64
 	AveragePlaytimeForever uint64

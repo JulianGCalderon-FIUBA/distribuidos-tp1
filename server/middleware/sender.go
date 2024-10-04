@@ -6,7 +6,7 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func (m *Middleware) SendToExchange(msg any, exchange string, routingKey string) error {
+func (m *Middleware) Send(msg any, exchange string, routingKey string) error {
 	buf, err := Serialize(msg)
 	if err != nil {
 		return err
