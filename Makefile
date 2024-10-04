@@ -19,6 +19,10 @@ build-decade-filter:
 	go build -o bin/decade-filter ./server/filters/decadeFilter
 .PHONY: build-decade-filter
 
+build-reviews-filter:
+	go build -o bin/reviews-filter ./server/filters/reviewFilter
+.PHONY: build-reviews-filter
+
 run-client: build-client
 	./bin/client
 .PHONY: run-client
@@ -34,6 +38,10 @@ run-genre-filter: build-genre-filter
 run-decade-filter: build-decade-filter
 	./bin/decade-filter
 .PHONY: run-decade-filter
+
+run-reviews-filter: build-reviews-filter
+	./bin/reviews-filter
+.PHONY: run-reviews-filter
 
 docker-image:
 	docker build -f ./server/gateway/Dockerfile -t "gateway:latest" .

@@ -51,7 +51,7 @@ func (gf *GenreFilter) receive() error {
 			return err
 		}
 
-		log.Infof("Amount of games received: %#+v\n", len(batchGame))
+		// log.Infof("Amount of games received: %#+v\n", len(batchGame))
 		indie, action := gf.filterByGenre(batchGame)
 
 		err = gf.sendFilteredGames(indie, middleware.IndieGenre)
@@ -77,11 +77,11 @@ func (gf *GenreFilter) filterByGenre(gameBatch Batch) (Batch, Batch) {
 	var actionGames Batch
 
 	for _, game := range gameBatch {
-		if slices.Contains(game.Genres, middleware.IndieGames) {
+		if slices.Contains(game.Genres, middleware.IndieGenre) {
 			indieGames = append(indieGames, game)
 		}
 
-		if slices.Contains(game.Genres, middleware.ActionGames) {
+		if slices.Contains(game.Genres, middleware.ActionGenre) {
 			actionGames = append(actionGames, game)
 		}
 

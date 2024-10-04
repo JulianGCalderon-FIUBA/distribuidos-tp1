@@ -118,8 +118,9 @@ func (m *Middleware) InitDecadeFilter() error {
 		false,
 		nil,
 	)
+
 	if err != nil {
-		return err
+		return fmt.Errorf("could not declare decade queue: %w", err)
 	}
 
 	err = m.ch.QueueBind(
@@ -127,12 +128,11 @@ func (m *Middleware) InitDecadeFilter() error {
 		IndieGames,
 		GenresExchange,
 		false,
-		nil,
-	)
-	if err != nil {
-		return err
-	}
+		nil)
 
+	if err != nil {
+		return fmt.Errorf("could not bind genre queue: %w", err)
+	}
 	return nil
 }
 
