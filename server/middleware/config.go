@@ -13,14 +13,16 @@ const GamesPartitionerQueue string = "games-partitioner"
 const GamesQueue string = "games"
 const ReviewsQueue string = "reviews"
 const GenresQueue string = "genres"
+const DecadeQueue string = "decades"
+const IndiePartitionerQueue string = "indie-partitioner"
+const ActionPartitionerQueue string = "action-partitioner"
+const PercentilQueue string = "percentil"
 
-// this map has the exchange name as key and the exchange type as value
 var DataHandlerexchanges = map[string]string{
 	ReviewExchange: amqp.ExchangeFanout,
 	GamesExchange:  amqp.ExchangeFanout,
 }
 
-// this map has the queue name as key and the exchange name as value
 var DataHandlerQueues = map[string]string{
 	GamesPartitionerQueue: GamesExchange,
 	GamesQueue:            GamesExchange,
@@ -32,5 +34,9 @@ var GenreFilterExchanges = map[string]string{
 }
 
 var GenreFilterQueues = map[string]string{
-	GenresQueue: GenresExchange,
+	GamesQueue:             GamesExchange,
+	IndiePartitionerQueue:  GenresExchange,
+	ActionPartitionerQueue: GenresExchange,
+	DecadeQueue:            GenresExchange,
+	PercentilQueue:         GenresExchange,
 }

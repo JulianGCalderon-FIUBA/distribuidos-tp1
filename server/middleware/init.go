@@ -42,6 +42,19 @@ func (m *Middleware) Init(exchanges map[string]string, queues map[string]string)
 	return nil
 }
 
+func (m *Middleware) InitGenreFilter() error {
+	err := m.initExchanges(GenreFilterExchanges)
+	if err != nil {
+		return fmt.Errorf("failed to initialize exchanges %w", err)
+	}
+	err = m.initQueues(GenreFilterQueues)
+	if err != nil {
+		return fmt.Errorf("failed to initialize queues %w", err)
+	}
+
+	return nil
+}
+
 func (m *Middleware) initExchanges(exchanges map[string]string) error {
 	for exchange, kind := range exchanges {
 		err := m.ch.ExchangeDeclare(
