@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"fmt"
-	"log"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -35,19 +34,6 @@ func (m *Middleware) Init(exchanges map[string]string, queues map[string]string)
 		return fmt.Errorf("failed to initialize exchanges %w", err)
 	}
 	err = m.initQueues(queues)
-	if err != nil {
-		return fmt.Errorf("failed to initialize queues %w", err)
-	}
-
-	return nil
-}
-
-func (m *Middleware) InitGenreFilter() error {
-	err := m.initExchanges(GenreFilterExchanges)
-	if err != nil {
-		return fmt.Errorf("failed to initialize exchanges %w", err)
-	}
-	err = m.initQueues(GenreFilterQueues)
 	if err != nil {
 		return fmt.Errorf("failed to initialize queues %w", err)
 	}
@@ -102,34 +88,158 @@ func (m *Middleware) initQueues(queues map[string]string) error {
 	return nil
 }
 
-func (m *Middleware) InitGenresQueues(routingKeys []string) error {
-	q, err := m.ch.QueueDeclare(
-		"",
+func (m *Middleware) InitGenreFilter() error {
+	err := m.initExchanges(GenreFilterExchanges)
+	if err != nil {
+		return fmt.Errorf("failed to initialize exchanges %w", err)
+	}
+	err = m.initQueues(GenreFilterQueues)
+	if err != nil {
+		return fmt.Errorf("failed to initialize queues %w", err)
+	}
+
+	return nil
+}
+
+func (m *Middleware) InitDecadeFilter() error {
+	err := m.initExchanges(DecadeFilterExchanges)
+	if err != nil {
+		return fmt.Errorf("failed to initialize exchanges %w", err)
+	}
+	err = m.initQueues(DecadeFilterQueues)
+	if err != nil {
+		return fmt.Errorf("failed to initialize queues %w", err)
+	}
+
+	q, err := m.ch.QueueDeclare(DecadeQueue,
 		false,
 		false,
-		true,
+		false,
 		false,
 		nil,
 	)
-
 	if err != nil {
-		return fmt.Errorf("could not declare genre queue: %w", err)
+		return err
 	}
 
-	for _, genre := range routingKeys {
-		log.Printf("Binding queue %s to exchange %s with routing key %s",
-			q.Name, GenresExchange, genre)
-
-		err = m.ch.QueueBind(
-			q.Name,
-			genre,
-			GenresExchange,
-			false,
-			nil)
-
-		if err != nil {
-			return fmt.Errorf("could not bind genre queue: %w", err)
-		}
+	err = m.ch.QueueBind(
+		q.Name,
+		IndieGames,
+		GenresExchange,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
 	}
+
+	return nil
+}
+
+func (m *Middleware) InitReviewFilter() error {
+	// Receiving queue
+	q, err := m.ch.QueueDeclare(ReviewsQueue,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	err = m.ch.QueueBind(
+		q.Name,
+		"",
+		ReviewExchange,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Sending exchanges
+	err = m.ch.ExchangeDeclare(
+		ReviewsScoreFilterExchange,
+		amqp.ExchangeDirect,
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Sending queues
+	q, err = m.ch.QueueDeclare(FiftyThReviewsQueue,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	err = m.ch.QueueBind(
+		q.Name,
+		PositiveReviews,
+		ReviewsScoreFilterExchange,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	q, err = m.ch.QueueDeclare(LanguageReviewsFilterQueue,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	err = m.ch.QueueBind(
+		q.Name,
+		NegativeReviews,
+		ReviewsScoreFilterExchange,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	q, err = m.ch.QueueDeclare(NinetyPercentileReviewsQueue,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	err = m.ch.QueueBind(
+		q.Name,
+		NegativeReviews,
+		ReviewsScoreFilterExchange,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
