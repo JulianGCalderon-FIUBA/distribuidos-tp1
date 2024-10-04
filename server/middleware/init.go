@@ -165,21 +165,8 @@ func (m *Middleware) InitReviewFilter() error {
 
 	// Sending exchanges
 	err = m.ch.ExchangeDeclare(
-		PositiveReviewsExchange,
-		amqp.ExchangeFanout,
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		return err
-	}
-
-	err = m.ch.ExchangeDeclare(
-		NegativeReviewsExchange,
-		amqp.ExchangeFanout,
+		ReviewsScoreFilterExchange,
+		amqp.ExchangeDirect,
 		true,
 		false,
 		false,
@@ -204,8 +191,8 @@ func (m *Middleware) InitReviewFilter() error {
 
 	err = m.ch.QueueBind(
 		q.Name,
-		"",
-		PositiveReviewsExchange,
+		PositiveReviews,
+		ReviewsScoreFilterExchange,
 		false,
 		nil,
 	)
@@ -226,8 +213,8 @@ func (m *Middleware) InitReviewFilter() error {
 
 	err = m.ch.QueueBind(
 		q.Name,
-		"",
-		PositiveReviewsExchange,
+		PositiveReviews,
+		ReviewsScoreFilterExchange,
 		false,
 		nil,
 	)
@@ -248,8 +235,8 @@ func (m *Middleware) InitReviewFilter() error {
 
 	err = m.ch.QueueBind(
 		q.Name,
-		"",
-		NegativeReviewsExchange,
+		NegativeReviews,
+		ReviewsScoreFilterExchange,
 		false,
 		nil,
 	)
