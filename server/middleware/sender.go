@@ -6,7 +6,7 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func (m *Middleware) SendToExchange(msg any, exchange string) error {
+func (m *Middleware) Send(msg any, exchange string, key string) error {
 	buf, err := Serialize(msg)
 	if err != nil {
 		return err
@@ -14,7 +14,7 @@ func (m *Middleware) SendToExchange(msg any, exchange string) error {
 
 	return m.ch.PublishWithContext(context.Background(),
 		exchange,
-		"",
+		key,
 		false,
 		false,
 		amqp.Publishing{
