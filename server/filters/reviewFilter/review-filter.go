@@ -53,7 +53,7 @@ func (rf *ReviewFilter) receive() error {
 		positive, negative := rf.filterBatch(batch)
 		err = rf.sendBatches(positive, negative)
 		if err != nil {
-			log.Errorf("Could not send batches: %v", err)
+			log.Errorf("Failed to send batches: %v", err)
 			err = d.Nack(false, false)
 			if err != nil {
 				return fmt.Errorf("failed to nack batch: %v", err)
