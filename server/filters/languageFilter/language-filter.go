@@ -44,6 +44,8 @@ func (lf *LanguageFilter) receive() error {
 		return err
 	}
 
+	var sent int
+
 	for d := range deliveryCh {
 		batch, err := middleware.Deserialize[Batch](d.Body)
 		if err != nil {
@@ -75,6 +77,10 @@ func (lf *LanguageFilter) receive() error {
 		err = d.Ack(false)
 		if err != nil {
 			return fmt.Errorf("failed to ack batch: %v", err)
+		}
+		sent += len(filtered.Data)
+		if batch.EOF {
+			log.Infof("Sent %v reviews in english from client %v", sent, batch.ClientID)
 		}
 	}
 	return nil
