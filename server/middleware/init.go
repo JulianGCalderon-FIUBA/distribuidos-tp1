@@ -3,7 +3,6 @@ package middleware
 import (
 	"fmt"
 	"log"
-	"strconv"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -36,19 +35,6 @@ func (m *Middleware) Init(exchanges map[string]string, queues map[string]string)
 		return fmt.Errorf("failed to initialize exchanges %w", err)
 	}
 	err = m.initQueues(queues)
-	if err != nil {
-		return fmt.Errorf("failed to initialize queues %w", err)
-	}
-
-	return nil
-}
-
-func (m *Middleware) InitGenreFilter() error {
-	err := m.initExchanges(GenreFilterExchanges)
-	if err != nil {
-		return fmt.Errorf("failed to initialize exchanges %w", err)
-	}
-	err = m.initQueues(GenreFilterQueues)
 	if err != nil {
 		return fmt.Errorf("failed to initialize queues %w", err)
 	}
@@ -103,34 +89,27 @@ func (m *Middleware) initQueues(queues map[string]string) error {
 	return nil
 }
 
-func (m *Middleware) InitGenresQueues(routingKeys []string) error {
-	q, err := m.ch.QueueDeclare(
-		"",
-		false,
-		false,
-		true,
-		false,
-		nil,
-	)
-
+func (m *Middleware) InitGenreFilter() error {
+	err := m.initExchanges(GenreFilterExchanges)
 	if err != nil {
-		return fmt.Errorf("could not declare genre queue: %w", err)
+		return fmt.Errorf("failed to initialize exchanges %w", err)
+	}
+	err = m.initQueues(GenreFilterQueues)
+	if err != nil {
+		return fmt.Errorf("failed to initialize queues %w", err)
 	}
 
-	for _, genre := range routingKeys {
-		log.Printf("Binding queue %s to exchange %s with routing key %s",
-			q.Name, GenresExchange, genre)
+	return nil
+}
 
-		err = m.ch.QueueBind(
-			q.Name,
-			genre,
-			GenresExchange,
-			false,
-			nil)
-
-		if err != nil {
-			return fmt.Errorf("could not bind genre queue: %w", err)
-		}
+func (m *Middleware) InitDecadeFilter() error {
+	err := m.initExchanges(DecadeFilterExchanges)
+	if err != nil {
+		return fmt.Errorf("failed to initialize exchanges %w", err)
+	}
+	err = m.initQueues(DecadeFilterQueues)
+	if err != nil {
+		return fmt.Errorf("failed to initialize queues %w", err)
 	}
 	return nil
 }
@@ -159,7 +138,7 @@ func (m *Middleware) InitReviewFilter() error {
 		return err
 	}
 
-	// Sending exchanges
+	// Sending exchange
 	err = m.ch.ExchangeDeclare(
 		ReviewsScoreFilterExchange,
 		amqp.ExchangeDirect,
@@ -174,7 +153,7 @@ func (m *Middleware) InitReviewFilter() error {
 	}
 
 	// Sending queues
-	q, err = m.ch.QueueDeclare(FiftyThReviewsQueue,
+	q, err = m.ch.QueueDeclare(Top5AmountReviewsQueue,
 		false,
 		false,
 		false,
@@ -238,57 +217,6 @@ func (m *Middleware) InitReviewFilter() error {
 	)
 	if err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func (m *Middleware) InitPartitioner(input string, output string, partitionsNum int) error {
-	_, err := m.ch.QueueDeclare(input,
-		false,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		return err
-	}
-
-	err = m.ch.ExchangeDeclare(
-		output,
-		amqp.ExchangeDirect,
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		return err
-	}
-
-	for i := 0; i < partitionsNum; i++ {
-		q, err := m.ch.QueueDeclare(fmt.Sprintf("%v-%v", output, i),
-			false,
-			false,
-			false,
-			false,
-			nil,
-		)
-		if err != nil {
-			return err
-		}
-
-		err = m.ch.QueueBind(q.Name,
-			strconv.Itoa(i),
-			output,
-			false,
-			nil)
-		if err != nil {
-			return err
-		}
-
 	}
 
 	return nil
