@@ -32,7 +32,7 @@ func (rf *ReviewFilter) run() error {
 	return rf.receive()
 }
 
-// Reads from queue channel and filters read batch before sending it to exchange
+// Reads from queue channel and filters batch in positive and negative reviews before sending it to exchange
 func (rf *ReviewFilter) receive() error {
 	deliveryCh, err := rf.m.ReceiveFromQueue(middleware.ReviewsQueue)
 	if err != nil {
