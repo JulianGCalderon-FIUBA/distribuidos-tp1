@@ -16,7 +16,7 @@ services:
 
   gateway:
     container_name: gateway
-    image: gateway:latest
+    build: .
     entrypoint: /gateway
     environment:
       - RABBIT_IP=rabbitmq
@@ -28,13 +28,71 @@ services:
 
   client:
     container_name: client
-    image: client:latest
+    build: .
     entrypoint: /client
     environment:
       - GATEWAY_CONN_ADDR=gateway:9001
       - GATEWAY_DATA_ADDR=gateway:9002
     volumes:
       - ./.data:/.data
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  partitioner:
+    container_name: partitioner
+    build: .
+    entrypoint: /game-partitioner
+    environment:
+      - RABBIT_IP=rabbitmq
+      - INPUT_QUEUE=games-partitioner
+      - PARTITIONS_NUMBER=3
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  genre-filter:
+    container_name: genre-filter
+    build: .
+    entrypoint: /genre-filter
+    environment:
+      - RABBIT_IP=rabbitmq
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  decade-filter:
+    container_name: decade-filter
+    build: .
+    entrypoint: /decade-filter
+    environment:
+      - RABBIT_IP=rabbitmq
+      - DECADE=2010
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  reviews-filter:
+    container_name: reviews-filter
+    build: .
+    entrypoint: /reviews-filter
+    environment:
+      - RABBIT_IP=rabbitmq
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  language-filter:
+    container_name: language-filter
+    build: .
+    entrypoint: /language-filter
+    environment:
+      - RABBIT_IP=rabbitmq
     networks:
       - net
     depends_on:

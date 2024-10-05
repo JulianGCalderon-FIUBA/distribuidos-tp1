@@ -1,8 +1,6 @@
 package middleware
 
 import (
-	"context"
-
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -12,7 +10,7 @@ func (m *Middleware) Send(msg any, exchange string, key string) error {
 		return err
 	}
 
-	return m.ch.PublishWithContext(context.Background(),
+	return m.ch.Publish(
 		exchange,
 		key,
 		false,
