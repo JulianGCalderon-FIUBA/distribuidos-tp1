@@ -41,7 +41,7 @@ var DataHandlerQueues = map[string]string{
 }
 
 var GenreFilterExchanges = map[string]string{
-	IndieExchange: amqp.ExchangeFanout,
+	IndieExchange:  amqp.ExchangeFanout,
 	ActionExchange: amqp.ExchangeFanout,
 }
 
@@ -58,5 +58,6 @@ var DecadeFilterExchanges = map[string]string{
 }
 
 var DecadeFilterQueues = map[string]string{
+	DecadeQueue:           IndieExchange,
 	Top10HistoricAvgQueue: DecadeExchange,
 }

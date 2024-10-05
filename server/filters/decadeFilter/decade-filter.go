@@ -39,6 +39,7 @@ func (df *DecadeFilter) start() error {
 }
 
 func (df *DecadeFilter) receive() error {
+	games := 0
 	deliveryCh, err := df.m.ReceiveFromQueue(middleware.DecadeQueue)
 	for d := range deliveryCh {
 		if err != nil {
@@ -52,9 +53,10 @@ func (df *DecadeFilter) receive() error {
 			return err
 		}
 
-		// log.Infof("Amount of games received: %#+v\n", len(batch))
-
 		filteredGames := df.filterByDecade(batch, df.config.Decade)
+
+		games += len(filteredGames)
+		log.Info("Amount of deacde games filtered: ", games)
 
 		if len(filteredGames) > 0 {
 			err = df.m.Send(filteredGames, middleware.DecadeExchange, "")
@@ -80,7 +82,7 @@ func (df *DecadeFilter) filterByDecade(batch Batch, decade int) Batch {
 		if strings.Contains(releaseYear, mask) {
 			decadeGames = append(decadeGames, game)
 
-			log.Infof("Game genres: %v, Release year: %v", game.Genres, game.ReleaseYear)
+			// log.Infof("Game genres: %v, Release year: %v", game.Genres, game.ReleaseYear)
 		}
 	}
 

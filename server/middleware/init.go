@@ -110,29 +110,6 @@ func (m *Middleware) InitDecadeFilter() error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize queues %w", err)
 	}
-
-	q, err := m.ch.QueueDeclare(DecadeQueue,
-		false,
-		false,
-		false,
-		false,
-		nil,
-	)
-
-	if err != nil {
-		return fmt.Errorf("could not declare decade queue: %w", err)
-	}
-
-	err = m.ch.QueueBind(
-		q.Name,
-		"",
-		IndieExchange,
-		false,
-		nil)
-
-	if err != nil {
-		return fmt.Errorf("could not bind genre queue: %w", err)
-	}
 	return nil
 }
 
