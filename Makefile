@@ -15,6 +15,10 @@ build-genre-filter:
 	go build -o bin/genre-filter ./server/filters/genreFilter
 .PHONY: build-genre-filter
 
+build-decade-filter:
+	go build -o bin/decade-filter ./server/filters/decadeFilter
+.PHONY: build-decade-filter
+
 build-reviews-filter:
 	go build -o bin/reviews-filter ./server/filters/reviewFilter
 .PHONY: build-reviews-filter
@@ -34,6 +38,10 @@ run-gateway: build-gateway
 run-genre-filter: build-genre-filter
 	./bin/genre-filter
 .PHONY: run-genre-filter
+
+run-decade-filter: build-decade-filter
+	./bin/decade-filter
+.PHONY: run-decade-filter
 
 run-reviews-filter: build-reviews-filter
 	./bin/reviews-filter
