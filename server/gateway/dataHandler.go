@@ -111,9 +111,15 @@ func (g *gateway) receiveData(unm *protocol.Conn, w io.Writer) error {
 func (g *gateway) queueGames(r io.Reader) error {
 	csvReader := csv.NewReader(r)
 	csvReader.FieldsPerRecord = -1
-	var batch middleware.Batch[middleware.Game]
 
 	var sentGames int
+	batch := middleware.Batch[middleware.Game]{
+		Data: []middleware.Game{},
+		// todo: receive client ID
+		ClientID: 1,
+		BatchID:  1,
+		EOF:      false,
+	}
 
 	_, _ = csvReader.Read()
 
@@ -136,23 +142,23 @@ func (g *gateway) queueGames(r io.Reader) error {
 			continue
 		}
 
-		batch = append(batch, game)
+		batch.Data = append(batch.Data, game)
 		sentGames += 1
 
-		if len(batch) == g.config.BatchSize {
+		if len(batch.Data) == g.config.BatchSize {
 			err = g.m.Send(batch, middleware.GamesExchange, "")
 			if err != nil {
 				log.Errorf("Failed to send games batch: %v", err)
 			}
-			batch = batch[:0]
+			batch.Data = batch.Data[:0]
+			batch.BatchID += 1
 		}
 	}
 
-	if len(batch) != 0 {
-		err := g.m.Send(batch, middleware.GamesExchange, "")
-		if err != nil {
-			log.Errorf("Failed to send games batch: %v", err)
-		}
+	batch.EOF = true
+	err := g.m.Send(batch, middleware.GamesExchange, "")
+	if err != nil {
+		log.Errorf("Failed to send games batch: %v", err)
 	}
 
 	log.Infof("Finished sending %v games", sentGames)
@@ -162,9 +168,15 @@ func (g *gateway) queueGames(r io.Reader) error {
 
 func (g *gateway) queueReviews(r io.Reader) error {
 	csvReader := csv.NewReader(r)
-	var batch middleware.Batch[middleware.Review]
 
 	var sentReviews int
+	batch := middleware.Batch[middleware.Review]{
+		Data: []middleware.Review{},
+		// todo: receive client ID
+		ClientID: 1,
+		BatchID:  1,
+		EOF:      false,
+	}
 
 	_, _ = csvReader.Read()
 
@@ -187,23 +199,23 @@ func (g *gateway) queueReviews(r io.Reader) error {
 			continue
 		}
 
-		batch = append(batch, review)
+		batch.Data = append(batch.Data, review)
 		sentReviews += 1
 
-		if len(batch) == g.config.BatchSize {
+		if len(batch.Data) == g.config.BatchSize {
 			err = g.m.Send(batch, middleware.ReviewExchange, "")
 			if err != nil {
 				log.Errorf("Failed to send reviews batch: %v", err)
 			}
-			batch = batch[:0]
+			batch.Data = batch.Data[:0]
+			batch.BatchID += 1
 		}
 	}
 
-	if len(batch) != 0 {
-		err := g.m.Send(batch, middleware.ReviewExchange, "")
-		if err != nil {
-			log.Errorf("Failed to send reviews batch: %v", err)
-		}
+	batch.EOF = true
+	err := g.m.Send(batch, middleware.ReviewExchange, "")
+	if err != nil {
+		log.Errorf("Failed to send reviews batch: %v", err)
 	}
 
 	log.Infof("Finished sending %v reviews", sentReviews)
@@ -220,9 +232,13 @@ func gameFromFullRecord(record []string) (game middleware.Game, err error) {
 	if err != nil {
 		return
 	}
-	releaseDate, err := time.Parse("Jan 2, 2006", record[2])
+	var releaseDate time.Time
+	releaseDate, err = time.Parse("Jan 2, 2006", record[2])
 	if err != nil {
-		return
+		releaseDate, err = time.Parse("Jan 2006", record[2])
+		if err != nil {
+			return
+		}
 	}
 	averagePlaytimeForever, err := strconv.Atoi(record[29])
 	if err != nil {

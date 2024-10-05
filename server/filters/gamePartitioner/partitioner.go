@@ -52,9 +52,9 @@ func (p *Partitioner) run() error {
 		}
 
 		partitions := make([]middleware.Batch[middleware.Game], p.cfg.PartitionsNumber)
-		for _, game := range batch {
+		for _, game := range batch.Data {
 			partitionId := game.AppID % uint64(p.cfg.PartitionsNumber)
-			partitions[partitionId] = append(partitions[partitionId], game)
+			partitions[partitionId].Data = append(partitions[partitionId].Data, game)
 		}
 
 		for partitionId, partition := range partitions {
