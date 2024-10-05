@@ -173,7 +173,7 @@ func (m *Middleware) InitReviewFilter() error {
 	}
 
 	// Sending queues
-	q, err = m.ch.QueueDeclare(FiftyThReviewsQueue,
+	q, err = m.ch.QueueDeclare(FiveThReviewsQueue,
 		false,
 		false,
 		false,
