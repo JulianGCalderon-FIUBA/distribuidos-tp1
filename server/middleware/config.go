@@ -5,14 +5,18 @@ import (
 )
 
 // review filter
-const ReviewsScoreFilterExchange string = "review-score-filter"
-const NinetyPercentileReviewsQueue string = "90-percentile"
-const LanguageReviewsFilterQueue string = "language-filter-reviews"
-const FiftyThReviewsQueue string = "50-thousand"
+const ReviewsScoreFilterExchange string = "reviews-filter-score"
+const NinetyPercentileReviewsQueue string = "reviews-90-percentile"
+const LanguageReviewsFilterQueue string = "reviews-language-filter"
+const Top5AmountReviewsQueue string = "reviews-top-5-partitioner"
 
 // keys
 const PositiveReviews string = "positive-reviews"
 const NegativeReviews string = "negative-reviews"
+
+// language filter
+const EnglishReviewsFilterExchange string = "reviews-filter-english"
+const FivethEnglishReviewsQueue string = "reviews-english-5-thousand-partitioner"
 
 const ReviewExchange string = "reviews"
 const GamesExchange string = "games"

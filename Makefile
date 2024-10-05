@@ -19,6 +19,10 @@ build-reviews-filter:
 	go build -o bin/reviews-filter ./server/filters/reviewFilter
 .PHONY: build-reviews-filter
 
+build-language-filter:
+	go build -o bin/language-filter ./server/filters/languageFilter
+.PHONY: build-language-filter
+
 run-client: build-client
 	./bin/client
 .PHONY: run-client
@@ -34,6 +38,10 @@ run-genre-filter: build-genre-filter
 run-reviews-filter: build-reviews-filter
 	./bin/reviews-filter
 .PHONY: run-reviews-filter
+
+run-language-filter: build-language-filter
+	./bin/language-filter
+.PHONY: run-language-filter
 
 docker-image:
 	docker build -f ./server/gateway/Dockerfile -t "gateway:latest" .
