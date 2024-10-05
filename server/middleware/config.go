@@ -53,7 +53,7 @@ var GenreFilterQueues = map[string]string{
 	GamesQueue:                   GamesExchange,
 	DecadeQueue:                  IndieExchange,
 	Top5AmountReviews:            IndieExchange,
-	FiftyThReviewsQueue:          ActionExchange,
+	FivethEnglishReviewsQueue:    ActionExchange,
 	NinetyPercentileReviewsQueue: ActionExchange,
 }
 
