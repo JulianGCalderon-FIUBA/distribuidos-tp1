@@ -3,6 +3,7 @@ package main
 import (
 	"distribuidos/tp1/server/middleware"
 	"strconv"
+	"strings"
 )
 
 type DecadeFilter struct {
@@ -51,9 +52,18 @@ func (df *DecadeFilter) receive() error {
 			return err
 		}
 
-		log.Infof("Amount of games received: %#+v\n", len(batch))
+		// log.Infof("Amount of games received: %#+v\n", len(batch))
 
-		_ = df.filterByDecade(batch, df.config.Decade)
+		filteredGames := df.filterByDecade(batch, df.config.Decade)
+
+		if len(filteredGames) > 0 {
+			err = df.m.Send(filteredGames, middleware.DecadeExchange, "")
+			if err != nil {
+				log.Errorf("Failed to send filtered by decade games batch: %v", err)
+				_ = d.Nack(false, false)
+				continue
+			}
+		}
 
 		_ = d.Ack(false)
 	}
@@ -64,13 +74,15 @@ func (df *DecadeFilter) receive() error {
 func (df *DecadeFilter) filterByDecade(batch Batch, decade int) Batch {
 	var decadeGames Batch
 	mask := strconv.Itoa(decade)[0:3]
-	log.Info(mask)
 
-	// for _, game := range batch {
-	// 	if slices.Contains(strconv.Itoa(game.ReleaseYear), mask) {
-	// 		decadeGames = append(decadeGames, game)
-	// 	}
-	// }
+	for _, game := range batch {
+		releaseYear := strconv.Itoa(int(game.ReleaseYear))
+		if strings.Contains(releaseYear, mask) {
+			decadeGames = append(decadeGames, game)
+
+			log.Infof("Game genres: %v, Release year: %v", game.Genres, game.ReleaseYear)
+		}
+	}
 
 	return decadeGames
 }
