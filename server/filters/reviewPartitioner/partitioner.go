@@ -38,6 +38,8 @@ func (p *Partitioner) run() error {
 		return err
 	}
 
+	statistics := make([]int, p.cfg.PartitionsNumber)
+
 	for d := range dch {
 		batch, err := middleware.Deserialize[middleware.Batch[middleware.Review]](d.Body)
 		if err != nil {
@@ -58,6 +60,12 @@ func (p *Partitioner) run() error {
 		}
 
 		for partitionId, partition := range partitions {
+			partition.BatchID = batch.BatchID
+			partition.ClientID = batch.ClientID
+			partition.EOF = batch.EOF
+
+			statistics[partitionId] += len(partition.Data)
+
 			err = p.m.Send(partition, p.cfg.OutputExchange, strconv.Itoa(partitionId))
 			if err != nil {
 				log.Errorf("Failed to send batch: %v", err)
@@ -68,6 +76,13 @@ func (p *Partitioner) run() error {
 		err = d.Ack(false)
 		if err != nil {
 			return err
+		}
+
+		if batch.EOF {
+			log.Infof("Received EOF from client: %v", batch.ClientID)
+			for partitionId, partitionStat := range statistics {
+				log.Infof("Sent %v records to partition %v", partitionStat, partitionId)
+			}
 		}
 	}
 
