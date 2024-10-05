@@ -47,7 +47,11 @@ func (rf *ReviewFilter) receive() error {
 		batch, err := middleware.Deserialize[Batch](d.Body)
 		if err != nil {
 			log.Errorf("Failed to deserialize batch: %v", err)
-			_ = d.Nack(false, false)
+			err = d.Nack(false, false)
+			if err != nil {
+				log.Errorf("Failed to Nack message: %v", err)
+				break
+			}
 			continue
 		}
 
@@ -55,10 +59,18 @@ func (rf *ReviewFilter) receive() error {
 		err = rf.sendBatches(positive, negative)
 		if err != nil {
 			log.Errorf("Could not send batches: %v", err)
-			_ = d.Nack(false, false)
+			err = d.Nack(false, false)
+			if err != nil {
+				log.Errorf("Failed to Nack message: %v", err)
+				break
+			}
 			continue
 		}
-		_ = d.Ack(false)
+		err = d.Ack(false)
+		if err != nil {
+			log.Errorf("Failed to Ack message: %v", err)
+			break
+		}
 	}
 	// se va a llamar cuando tengamos algún tipo de finish
 	log.Infof("Done sending all filtered reviews")
