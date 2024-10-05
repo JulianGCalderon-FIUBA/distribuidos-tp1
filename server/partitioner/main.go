@@ -5,7 +5,6 @@ import (
 	"distribuidos/tp1/utils"
 	"errors"
 	"fmt"
-	"strconv"
 
 	logging "github.com/op/go-logging"
 	"github.com/spf13/viper"
@@ -51,50 +50,31 @@ func getConfig() (config, error) {
 	return c, err
 }
 
+type Game middleware.Game
+type Review middleware.Review
+
+func (g Game) PartitionId(partitionsNumber int) uint64 {
+	return g.AppID % uint64(partitionsNumber)
+}
+func (r Review) PartitionId(partitionsNumber int) uint64 {
+	return r.AppID % uint64(partitionsNumber)
+}
+
 func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
-	m, err := middleware.NewMiddleware(cfg.RabbitIP)
-	utils.Expect(err, "Failed to create middleware")
 
-	err = m.InitPartitioner(cfg.InputQueue, cfg.OutputExchange, cfg.PartitionsNumber)
-	utils.Expect(err, "Failed to init partitioner")
+	if cfg.Type == ReviewType {
+		p, err := newPartitioner[Game](cfg)
+		utils.Expect(err, "Failed to create partitioner")
 
-	log.Infof("Initialized partitioner infrastructure")
+		err = p.run()
+		utils.Expect(err, "Failed to run partitioner")
+	} else {
+		p, err := newPartitioner[Review](cfg)
+		utils.Expect(err, "Failed to create partitioner")
 
-	dch, err := m.Consume(cfg.InputQueue)
-	utils.Expect(err, "Failed to consume from queue")
-
-	for d := range dch {
-		batch, err := middleware.Deserialize[middleware.Batch[middleware.Game]](d.Body)
-		if err != nil {
-			log.Errorf("Failed to deserialize batch %v", err)
-
-			err = d.Nack(false, false)
-			if err != nil {
-				log.Errorf("Failed to nack message")
-			}
-
-			continue
-		}
-
-		partitions := make([]middleware.Batch[middleware.Game], cfg.PartitionsNumber)
-		for _, game := range batch {
-			partitionId := game.AppID % uint64(cfg.PartitionsNumber)
-			partitions[partitionId] = append(partitions[partitionId], game)
-		}
-
-		for partitionId, partition := range partitions {
-			err = m.Publish(partition, cfg.OutputExchange, strconv.Itoa(partitionId))
-			if err != nil {
-				log.Errorf("Failed to send batch: %v", err)
-				continue
-			}
-		}
-
-		err = d.Ack(false)
-		if err != nil {
-			log.Errorf("Failed to ack message")
-		}
+		err = p.run()
+		utils.Expect(err, "Failed to run partitioner")
 	}
 }
