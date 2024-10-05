@@ -20,7 +20,7 @@ func (g *gateway) startDataHandler() {
 		log.Fatalf("Failed to bind socket: %v", err)
 	}
 
-	err = g.m.Init()
+	err = g.m.Init(middleware.DataHandlerexchanges, middleware.DataHandlerQueues)
 	if err != nil {
 		log.Fatalf("Failed to initialize middleware")
 	}
@@ -110,6 +110,7 @@ func (g *gateway) receiveData(unm *protocol.Conn, w io.Writer) error {
 
 func (g *gateway) queueGames(r io.Reader) error {
 	csvReader := csv.NewReader(r)
+	csvReader.FieldsPerRecord = -1
 	var batch middleware.Batch[middleware.Game]
 
 	var sentGames int
@@ -139,7 +140,7 @@ func (g *gateway) queueGames(r io.Reader) error {
 		sentGames += 1
 
 		if len(batch) == g.config.BatchSize {
-			err = g.m.Send(batch, middleware.GamesExchange, "")
+			err = g.m.Publish(batch, middleware.GamesExchange, "")
 			if err != nil {
 				log.Errorf("Failed to send games batch: %v", err)
 			}
@@ -148,7 +149,7 @@ func (g *gateway) queueGames(r io.Reader) error {
 	}
 
 	if len(batch) != 0 {
-		err := g.m.Send(batch, middleware.GamesExchange, "")
+		err := g.m.Publish(batch, middleware.GamesExchange, "")
 		if err != nil {
 			log.Errorf("Failed to send games batch: %v", err)
 		}
@@ -190,7 +191,7 @@ func (g *gateway) queueReviews(r io.Reader) error {
 		sentReviews += 1
 
 		if len(batch) == g.config.BatchSize {
-			err = g.m.Send(batch, middleware.ReviewExchange, "")
+			err = g.m.Publish(batch, middleware.ReviewExchange, "")
 			if err != nil {
 				log.Errorf("Failed to send reviews batch: %v", err)
 			}
@@ -199,7 +200,7 @@ func (g *gateway) queueReviews(r io.Reader) error {
 	}
 
 	if len(batch) != 0 {
-		err := g.m.Send(batch, middleware.ReviewExchange, "")
+		err := g.m.Publish(batch, middleware.ReviewExchange, "")
 		if err != nil {
 			log.Errorf("Failed to send reviews batch: %v", err)
 		}

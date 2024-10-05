@@ -53,28 +53,28 @@ func getConfig() (config, error) {
 
 func main() {
 	cfg, err := getConfig()
-	if err != nil {
-		log.Fatalf("Failed to read config: %v", err)
-	}
+	utils.Expect(err, "Failed to read config")
 	m, err := middleware.NewMiddleware(cfg.RabbitIP)
-	if err != nil {
-		log.Fatalf("Failed to read config: %v", err)
-	}
+	utils.Expect(err, "Failed to create middleware")
 
 	err = m.InitPartitioner(cfg.InputQueue, cfg.OutputExchange, cfg.PartitionsNumber)
-	if err != nil {
-		log.Fatalf("Failed to init partition: %v", err)
-	}
+	utils.Expect(err, "Failed to init partitioner")
+
 	log.Infof("Initialized partitioner infrastructure")
 
-	dch := m.Subscribe(cfg.InputQueue)
+	dch, err := m.Consume(cfg.InputQueue)
+	utils.Expect(err, "Failed to consume from queue")
 
 	for d := range dch {
 		batch, err := middleware.Deserialize[middleware.Batch[middleware.Game]](d.Body)
 		if err != nil {
 			log.Errorf("Failed to deserialize batch %v", err)
+
 			err = d.Nack(false, false)
-			utils.Expect(err, "failed to ack message")
+			if err != nil {
+				log.Errorf("Failed to nack message")
+			}
+
 			continue
 		}
 
@@ -85,7 +85,7 @@ func main() {
 		}
 
 		for partitionId, partition := range partitions {
-			err = m.Send(partition, cfg.OutputExchange, strconv.Itoa(partitionId))
+			err = m.Publish(partition, cfg.OutputExchange, strconv.Itoa(partitionId))
 			if err != nil {
 				log.Errorf("Failed to send batch: %v", err)
 				continue
@@ -93,6 +93,8 @@ func main() {
 		}
 
 		err = d.Ack(false)
-		utils.Expect(err, "failed to ack message")
+		if err != nil {
+			log.Errorf("Failed to ack message")
+		}
 	}
 }

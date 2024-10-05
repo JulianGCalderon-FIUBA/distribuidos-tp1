@@ -1,18 +1,16 @@
 package middleware
 
 import (
-	"distribuidos/tp1/utils"
-
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func (m *Middleware) Send(msg any, exchange, key string) error {
+func (m *Middleware) Publish(msg any, exchange string, key string) error {
 	buf, err := Serialize(msg)
 	if err != nil {
 		return err
 	}
 
-	err = m.ch.Publish(
+	return m.ch.Publish(
 		exchange,
 		key,
 		false,
@@ -22,6 +20,4 @@ func (m *Middleware) Send(msg any, exchange, key string) error {
 			Body:        buf,
 		},
 	)
-	utils.Expect(err, "failed to publish message")
-	return nil
 }
