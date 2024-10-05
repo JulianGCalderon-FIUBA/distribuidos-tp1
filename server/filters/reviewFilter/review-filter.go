@@ -2,6 +2,7 @@ package main
 
 import (
 	"distribuidos/tp1/server/middleware"
+	"fmt"
 )
 
 type Batch middleware.Batch[middleware.Review]
@@ -28,12 +29,7 @@ func newReviewFilter(cfg config) (*ReviewFilter, error) {
 
 func (rf *ReviewFilter) run() error {
 	log.Infof("Starting review filter")
-	err := rf.receive()
-	if err != nil {
-		log.Errorf("Failed to receive batches: %v", err)
-	}
-
-	return nil
+	return rf.receive()
 }
 
 // Reads from queue channel and filters read batch before sending it to exchange
@@ -49,8 +45,7 @@ func (rf *ReviewFilter) receive() error {
 			log.Errorf("Failed to deserialize batch: %v", err)
 			err = d.Nack(false, false)
 			if err != nil {
-				log.Errorf("Failed to Nack message: %v", err)
-				break
+				return fmt.Errorf("failed to nack batch: %v", err)
 			}
 			continue
 		}
@@ -61,15 +56,13 @@ func (rf *ReviewFilter) receive() error {
 			log.Errorf("Could not send batches: %v", err)
 			err = d.Nack(false, false)
 			if err != nil {
-				log.Errorf("Failed to Nack message: %v", err)
-				break
+				return fmt.Errorf("failed to nack batch: %v", err)
 			}
 			continue
 		}
 		err = d.Ack(false)
 		if err != nil {
-			log.Errorf("Failed to Ack message: %v", err)
-			break
+			return fmt.Errorf("failed to ack batch: %v", err)
 		}
 	}
 	// se va a llamar cuando tengamos algún tipo de finish
