@@ -88,6 +88,7 @@ func (rf *ReviewFilter) filterBatch(batch Batch) (Batch, Batch) {
 	return positive, negative
 }
 
+// Sends batches to corresponding exchanges if they are not empty
 func (rf *ReviewFilter) sendBatches(positive Batch, negative Batch) error {
 	var err error
 	if len(positive) > 0 {
