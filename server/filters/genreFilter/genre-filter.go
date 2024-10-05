@@ -51,19 +51,18 @@ func (gf *GenreFilter) receive() error {
 			return err
 		}
 
-		// log.Infof("Amount of games received: %#+v\n", len(batchGame))
 		indie, action := gf.filterByGenre(batchGame)
 
-		err = gf.sendFilteredGames(indie, middleware.IndieGenre)
+		err = gf.sendFilteredGames(indie, middleware.IndieExchange)
 		if err != nil {
 			_ = d.Nack(false, false)
-			return err
+			continue
 		}
 
-		err = gf.sendFilteredGames(action, middleware.ActionGenre)
+		err = gf.sendFilteredGames(action, middleware.ActionExchange)
 		if err != nil {
 			_ = d.Nack(false, false)
-			return err
+			continue
 		}
 
 		_ = d.Ack(false)
@@ -90,10 +89,10 @@ func (gf *GenreFilter) filterByGenre(gameBatch Batch) (Batch, Batch) {
 	return indieGames, actionGames
 }
 
-func (gf *GenreFilter) sendFilteredGames(batch Batch, genre string) error {
+func (gf *GenreFilter) sendFilteredGames(batch Batch, exchange string) error {
 	if len(batch) > 0 {
 
-		err := gf.m.Send(batch, middleware.GenresExchange, genre)
+		err := gf.m.Send(batch, exchange, "")
 		if err != nil {
 			log.Errorf("Could not send batch")
 		}
