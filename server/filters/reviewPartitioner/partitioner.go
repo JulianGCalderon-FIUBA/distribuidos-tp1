@@ -58,7 +58,7 @@ func (p *Partitioner) run() error {
 		}
 
 		for partitionId, partition := range partitions {
-			err = p.m.Publish(partition, p.cfg.OutputExchange, strconv.Itoa(partitionId))
+			err = p.m.Send(partition, p.cfg.OutputExchange, strconv.Itoa(partitionId))
 			if err != nil {
 				log.Errorf("Failed to send batch: %v", err)
 				continue

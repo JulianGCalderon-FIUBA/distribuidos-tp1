@@ -4,7 +4,7 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func (m *Middleware) Publish(msg any, exchange string, key string) error {
+func (m *Middleware) Send(msg any, exchange string, key string) error {
 	buf, err := Serialize(msg)
 	if err != nil {
 		return err

@@ -93,7 +93,7 @@ func (gf *GenreFilter) filterByGenre(gameBatch Batch) (Batch, Batch) {
 func (gf *GenreFilter) sendFilteredGames(batch Batch, genre string) error {
 	if len(batch) > 0 {
 
-		err := gf.m.Publish(batch, middleware.GenresExchange, genre)
+		err := gf.m.Send(batch, middleware.GenresExchange, genre)
 		if err != nil {
 			log.Errorf("Could not send batch")
 		}
