@@ -56,7 +56,7 @@ func (lf *LanguageFilter) receive() error {
 		}
 		filtered, err := lf.filterBatch(batch)
 		if err != nil {
-			log.Errorf("Failed to filer batch: %v", err)
+			log.Errorf("Failed to filter batch: %v", err)
 			err = d.Nack(false, false)
 			if err != nil {
 				return fmt.Errorf("failed to nack batch: %v", err)
