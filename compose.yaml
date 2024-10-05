@@ -51,8 +51,52 @@ services:
     networks:
       - net
     depends_on:
-      rabbitmq:
-        condition: service_healthy
+      - gateway
+
+  genre-filter:
+    container_name: genre-filter
+    build: .
+    entrypoint: /genre-filter
+    environment:
+      - RABBIT_IP=rabbitmq
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  decade-filter:
+    container_name: decade-filter
+    build: .
+    entrypoint: /decade-filter
+    environment:
+      - RABBIT_IP=rabbitmq
+      - DECADE=2010
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  reviews-filter:
+    container_name: reviews-filter
+    build: .
+    entrypoint: /reviews-filter
+    environment:
+      - RABBIT_IP=rabbitmq
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  language-filter:
+    container_name: language-filter
+    build: .
+    entrypoint: /language-filter
+    environment:
+      - RABBIT_IP=rabbitmq
+    networks:
+      - net
+    depends_on:
+      - gateway
 
 networks:
   net:
