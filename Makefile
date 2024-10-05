@@ -15,11 +15,11 @@ build: deps
 	go build -o bin/language-filter ./server/filters/languageFilter
 .PHONY: build
 
-compose-build:
-	docker compose -f compose.yaml build
+docker-build:
+	docker build -t "tp1:latest" .
 .PHONY: compose-build
 
-compose-up: compose-down compose-build
+compose-up: compose-down docker-build
 	docker compose -f compose.yaml up -d
 .PHONY: compose-up
 
@@ -29,5 +29,5 @@ compose-down:
 .PHONY: compose-down
 
 compose-logs:
-	docker compose -f compose.yaml logs -f gateway client partitioner
+	docker compose -f compose.yaml logs -f gateway client partitioner genre-filter review-filter decade-filter language-filter
 .PHONY: compose-logs

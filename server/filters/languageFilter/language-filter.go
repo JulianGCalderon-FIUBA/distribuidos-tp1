@@ -83,10 +83,10 @@ func (lf *LanguageFilter) receive() error {
 // Filters to keep only reviews in English
 func (lf *LanguageFilter) filterBatch(batch Batch) (Batch, error) {
 	var english Batch
-	for _, review := range batch {
+	for _, review := range batch.Data {
 		if lf.isEnglish(review.Text) {
 			new := middleware.Review{AppID: review.AppID}
-			english = append(english, new)
+			english.Data = append(english.Data, new)
 		}
 	}
 	return english, nil
@@ -94,16 +94,11 @@ func (lf *LanguageFilter) filterBatch(batch Batch) (Batch, error) {
 
 // Sends batch to corresponding exchange if it's not empty
 func (lf *LanguageFilter) sendBatch(batch Batch) error {
-	var err error
-	if len(batch) > 0 {
-		err = lf.m.Send(batch, middleware.EnglishReviewsFilterExchange, "")
-	}
-	return err
+	return lf.m.Send(batch, middleware.ReviewsEnglishFilterExchange, "")
 }
 
 // Detects if received text is English or not
 func (lf *LanguageFilter) isEnglish(text string) bool {
 	info := getlang.FromString(text)
-	log.Infof("Detected language %v", info.LanguageName())
 	return info.LanguageName() == ENGLISH
 }

@@ -16,7 +16,7 @@ services:
 
   gateway:
     container_name: gateway
-    build: .
+    image: tp1:latest
     entrypoint: /gateway
     environment:
       - RABBIT_IP=rabbitmq
@@ -28,7 +28,7 @@ services:
 
   client:
     container_name: client
-    build: .
+    image: tp1:latest
     entrypoint: /client
     environment:
       - GATEWAY_CONN_ADDR=gateway:9001
@@ -42,11 +42,11 @@ services:
 
   partitioner:
     container_name: partitioner
-    build: .
+    image: tp1:latest
     entrypoint: /game-partitioner
     environment:
       - RABBIT_IP=rabbitmq
-      - INPUT_QUEUE=games-partitioner
+      - INPUT_QUEUE=games-per-platform
       - PARTITIONS_NUMBER=3
     networks:
       - net
@@ -55,7 +55,7 @@ services:
 
   genre-filter:
     container_name: genre-filter
-    build: .
+    image: tp1:latest
     entrypoint: /genre-filter
     environment:
       - RABBIT_IP=rabbitmq
@@ -66,7 +66,7 @@ services:
 
   decade-filter:
     container_name: decade-filter
-    build: .
+    image: tp1:latest
     entrypoint: /decade-filter
     environment:
       - RABBIT_IP=rabbitmq
@@ -76,10 +76,10 @@ services:
     depends_on:
       - gateway
 
-  reviews-filter:
-    container_name: reviews-filter
-    build: .
-    entrypoint: /reviews-filter
+  review-filter:
+    container_name: review-filter
+    image: tp1:latest
+    entrypoint: /review-filter
     environment:
       - RABBIT_IP=rabbitmq
     networks:
@@ -89,7 +89,7 @@ services:
 
   language-filter:
     container_name: language-filter
-    build: .
+    image: tp1:latest
     entrypoint: /language-filter
     environment:
       - RABBIT_IP=rabbitmq

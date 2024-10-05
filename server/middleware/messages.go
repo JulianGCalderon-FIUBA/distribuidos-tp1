@@ -34,7 +34,12 @@ type Review struct {
 	Text  string
 }
 
-type Batch[T any] []T
+type Batch[T any] struct {
+	Data     []T
+	ClientID int
+	BatchID  int
+	EOF      bool
+}
 
 func Serialize(v any) ([]byte, error) {
 	var buf bytes.Buffer

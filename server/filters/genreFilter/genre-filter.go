@@ -75,13 +75,13 @@ func (gf *GenreFilter) filterByGenre(gameBatch Batch) (Batch, Batch) {
 	var indieGames Batch
 	var actionGames Batch
 
-	for _, game := range gameBatch {
+	for _, game := range gameBatch.Data {
 		if slices.Contains(game.Genres, middleware.IndieGenre) {
-			indieGames = append(indieGames, game)
+			indieGames.Data = append(indieGames.Data, game)
 		}
 
 		if slices.Contains(game.Genres, middleware.ActionGenre) {
-			actionGames = append(actionGames, game)
+			actionGames.Data = append(actionGames.Data, game)
 		}
 
 	}
@@ -90,12 +90,9 @@ func (gf *GenreFilter) filterByGenre(gameBatch Batch) (Batch, Batch) {
 }
 
 func (gf *GenreFilter) sendFilteredGames(batch Batch, exchange string) error {
-	if len(batch) > 0 {
-
-		err := gf.m.Send(batch, exchange, "")
-		if err != nil {
-			log.Errorf("Could not send batch")
-		}
+	err := gf.m.Send(batch, exchange, "")
+	if err != nil {
+		log.Errorf("Could not send batch")
 	}
 	return nil
 }
