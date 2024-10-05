@@ -96,7 +96,7 @@ func (lf *LanguageFilter) filterBatch(batch Batch) (Batch, error) {
 func (lf *LanguageFilter) sendBatch(batch Batch) error {
 	var err error
 	if len(batch) > 0 {
-		err = lf.m.Send(batch, middleware.EnglishReviewsFilterExchange, "")
+		err = lf.m.Send(batch, middleware.ReviewsEnglishFilterExchange, "")
 	}
 	return err
 }
@@ -104,6 +104,5 @@ func (lf *LanguageFilter) sendBatch(batch Batch) error {
 // Detects if received text is English or not
 func (lf *LanguageFilter) isEnglish(text string) bool {
 	info := getlang.FromString(text)
-	log.Infof("Detected language %v", info.LanguageName())
 	return info.LanguageName() == ENGLISH
 }

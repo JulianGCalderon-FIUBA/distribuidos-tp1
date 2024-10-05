@@ -115,6 +115,19 @@ func (m *Middleware) InitDecadeFilter() error {
 }
 
 func (m *Middleware) InitReviewFilter() error {
+	err := m.ch.ExchangeDeclare(
+		ReviewExchange,
+		amqp.ExchangeFanout,
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
 	// Receiving queue
 	q, err := m.ch.QueueDeclare(ReviewsQueue,
 		false,
@@ -153,7 +166,7 @@ func (m *Middleware) InitReviewFilter() error {
 	}
 
 	// Sending queues
-	q, err = m.ch.QueueDeclare(Top5AmountReviewsQueue,
+	q, err = m.ch.QueueDeclare(TopNAmountReviewsQueue,
 		false,
 		false,
 		false,
@@ -166,7 +179,7 @@ func (m *Middleware) InitReviewFilter() error {
 
 	err = m.ch.QueueBind(
 		q.Name,
-		PositiveReviews,
+		PositiveReviewKeys,
 		ReviewsScoreFilterExchange,
 		false,
 		nil,
@@ -188,7 +201,7 @@ func (m *Middleware) InitReviewFilter() error {
 
 	err = m.ch.QueueBind(
 		q.Name,
-		NegativeReviews,
+		NegativeReviewKeys,
 		ReviewsScoreFilterExchange,
 		false,
 		nil,
@@ -210,7 +223,7 @@ func (m *Middleware) InitReviewFilter() error {
 
 	err = m.ch.QueueBind(
 		q.Name,
-		NegativeReviews,
+		NegativeReviewKeys,
 		ReviewsScoreFilterExchange,
 		false,
 		nil,
@@ -223,6 +236,19 @@ func (m *Middleware) InitReviewFilter() error {
 }
 
 func (m *Middleware) InitLanguageFilter() error {
+	err := m.ch.ExchangeDeclare(
+		ReviewsScoreFilterExchange,
+		amqp.ExchangeDirect,
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
 	// Receiving queue
 	q, err := m.ch.QueueDeclare(LanguageReviewsFilterQueue,
 		false,
@@ -237,7 +263,7 @@ func (m *Middleware) InitLanguageFilter() error {
 
 	err = m.ch.QueueBind(
 		q.Name,
-		NegativeReviews,
+		NegativeReviewKeys,
 		ReviewsScoreFilterExchange,
 		false,
 		nil,
@@ -248,7 +274,7 @@ func (m *Middleware) InitLanguageFilter() error {
 
 	// Sending exchange
 	err = m.ch.ExchangeDeclare(
-		EnglishReviewsFilterExchange,
+		ReviewsEnglishFilterExchange,
 		amqp.ExchangeDirect,
 		true,
 		false,
@@ -261,7 +287,7 @@ func (m *Middleware) InitLanguageFilter() error {
 	}
 
 	// Sending queue
-	q, err = m.ch.QueueDeclare(FivethEnglishReviewsQueue,
+	q, err = m.ch.QueueDeclare(NThousandEnglishReviewsQueue,
 		false,
 		false,
 		false,
@@ -275,7 +301,7 @@ func (m *Middleware) InitLanguageFilter() error {
 	err = m.ch.QueueBind(
 		q.Name,
 		"",
-		EnglishReviewsFilterExchange,
+		ReviewsEnglishFilterExchange,
 		false,
 		nil,
 	)

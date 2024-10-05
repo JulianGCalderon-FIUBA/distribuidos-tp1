@@ -92,10 +92,10 @@ func (rf *ReviewFilter) filterBatch(batch Batch) (Batch, Batch) {
 func (rf *ReviewFilter) sendBatches(positive Batch, negative Batch) error {
 	var err error
 	if len(positive) > 0 {
-		err = rf.m.Send(positive, middleware.ReviewsScoreFilterExchange, middleware.PositiveReviews)
+		err = rf.m.Send(positive, middleware.ReviewsScoreFilterExchange, middleware.PositiveReviewKeys)
 	}
 	if len(negative) > 0 {
-		err = rf.m.Send(negative, middleware.ReviewsScoreFilterExchange, middleware.NegativeReviews)
+		err = rf.m.Send(negative, middleware.ReviewsScoreFilterExchange, middleware.NegativeReviewKeys)
 	}
 	return err
 }
