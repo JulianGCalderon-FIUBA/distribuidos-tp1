@@ -39,7 +39,6 @@ func (df *DecadeFilter) start() error {
 }
 
 func (df *DecadeFilter) receive() error {
-	games := 0
 	deliveryCh, err := df.m.ReceiveFromQueue(middleware.DecadeQueue)
 	for d := range deliveryCh {
 		if err != nil {
@@ -54,8 +53,6 @@ func (df *DecadeFilter) receive() error {
 		}
 
 		filteredGames := df.filterByDecade(batch, df.config.Decade)
-
-		games += len(filteredGames.Data)
 
 		err = df.m.Send(filteredGames, middleware.DecadeExchange, "")
 		if err != nil {
