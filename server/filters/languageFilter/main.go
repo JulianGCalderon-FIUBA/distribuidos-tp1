@@ -30,7 +30,10 @@ func main() {
 	}
 	languageFilter, err := newLanguageFilter(cfg)
 	if err != nil {
-		log.Fatalf("Failed to create new review filter: %v", err)
+		log.Fatalf("Failed to create new language filter: %v", err)
 	}
-	languageFilter.run()
+	err = languageFilter.run()
+	if err != nil {
+		log.Fatalf("Failed to run language filter: %v", err)
+	}
 }
