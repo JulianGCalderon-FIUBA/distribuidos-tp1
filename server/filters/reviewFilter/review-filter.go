@@ -52,21 +52,11 @@ func (rf *ReviewFilter) receive() error {
 		}
 
 		positive, negative := rf.filterBatch(batch)
-		if len(positive) > 0 {
-			err = rf.m.Send(positive, middleware.ReviewsScoreFilterExchange, middleware.PositiveReviews)
-			if err != nil {
-				log.Errorf("Failed to send positive reviews batch: %v", err)
-				_ = d.Nack(false, false)
-				continue
-			}
-		}
-		if len(negative) > 0 {
-			err = rf.m.Send(negative, middleware.ReviewsScoreFilterExchange, middleware.NegativeReviews)
-			if err != nil {
-				log.Errorf("Failed to send negative reviews batch: %v", err)
-				_ = d.Nack(false, false)
-				continue
-			}
+		err = rf.sendBatches(positive, negative)
+		if err != nil {
+			log.Errorf("Could not send batches: %v", err)
+			_ = d.Nack(false, false)
+			continue
 		}
 		_ = d.Ack(false)
 	}
@@ -83,12 +73,23 @@ func (rf *ReviewFilter) filterBatch(batch Batch) (Batch, Batch) {
 	for _, review := range batch {
 		switch review.Score {
 		case middleware.PositiveScore:
-			new := middleware.Review{AppID: review.AppID, Text: review.Text}
+			new := middleware.Review{AppID: review.AppID}
 			positive = append(positive, new)
 		case middleware.NegativeScore:
-			new := middleware.Review{AppID: review.AppID}
+			new := middleware.Review{AppID: review.AppID, Text: review.Text}
 			negative = append(negative, new)
 		}
 	}
 	return positive, negative
+}
+
+func (rf *ReviewFilter) sendBatches(positive Batch, negative Batch) error {
+	var err error
+	if len(positive) > 0 {
+		err = rf.m.Send(positive, middleware.ReviewsScoreFilterExchange, middleware.PositiveReviews)
+	}
+	if len(negative) > 0 {
+		err = rf.m.Send(negative, middleware.ReviewsScoreFilterExchange, middleware.NegativeReviews)
+	}
+	return err
 }
