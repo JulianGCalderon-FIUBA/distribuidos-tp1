@@ -9,12 +9,12 @@ type Partitionable interface {
 	PartitionId(partitionsNumber int) uint64
 }
 
-type Partitioner[T Partitionable] struct {
+type Partitioner struct {
 	cfg config
 	m   middleware.Middleware
 }
 
-func newPartitioner[T Partitionable](cfg config) (*Partitioner[T], error) {
+func newPartitioner(cfg config) (*Partitioner, error) {
 	m, err := middleware.NewMiddleware(cfg.RabbitIP)
 	if err != nil {
 		return nil, err
@@ -26,20 +26,20 @@ func newPartitioner[T Partitionable](cfg config) (*Partitioner[T], error) {
 
 	log.Infof("Initialized partitioner infrastructure")
 
-	return &Partitioner[T]{
+	return &Partitioner{
 		cfg: cfg,
 		m:   *m,
 	}, nil
 }
 
-func (p *Partitioner[T]) run() error {
+func (p *Partitioner) run() error {
 	dch, err := p.m.Consume(p.cfg.InputQueue)
 	if err != nil {
 		return err
 	}
 
 	for d := range dch {
-		batch, err := middleware.Deserialize[middleware.Batch[T]](d.Body)
+		batch, err := middleware.Deserialize[middleware.Batch[middleware.Review]](d.Body)
 		if err != nil {
 			log.Errorf("Failed to deserialize batch %v", err)
 
@@ -51,10 +51,10 @@ func (p *Partitioner[T]) run() error {
 			continue
 		}
 
-		partitions := make([]middleware.Batch[T], p.cfg.PartitionsNumber)
-		for _, game := range batch {
-			partitionId := game.PartitionId(p.cfg.PartitionsNumber)
-			partitions[partitionId] = append(partitions[partitionId], game)
+		partitions := make([]middleware.Batch[middleware.Review], p.cfg.PartitionsNumber)
+		for _, review := range batch {
+			partitionId := review.AppID % uint64(p.cfg.PartitionsNumber)
+			partitions[partitionId] = append(partitions[partitionId], review)
 		}
 
 		for partitionId, partition := range partitions {
