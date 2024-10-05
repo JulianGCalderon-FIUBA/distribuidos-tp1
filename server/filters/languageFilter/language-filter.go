@@ -9,6 +9,8 @@ import (
 
 type Batch middleware.Batch[middleware.Review]
 
+const ENGLISH = "English"
+
 type LanguageFilter struct {
 	cfg config
 	m   middleware.Middleware
@@ -35,6 +37,7 @@ func (lf *LanguageFilter) run() error {
 	return lf.receive()
 }
 
+// Reads from queue channel and filters batch, keeping only reviews in English, before sending to exchange
 func (lf *LanguageFilter) receive() error {
 	deliveryCh, err := lf.m.ReceiveFromQueue(middleware.LanguageReviewsFilterQueue)
 	if err != nil {
@@ -77,6 +80,7 @@ func (lf *LanguageFilter) receive() error {
 	return nil
 }
 
+// Filters to keep only reviews in English
 func (lf *LanguageFilter) filterBatch(batch Batch) (Batch, error) {
 	var english Batch
 	for _, review := range batch {
@@ -88,6 +92,7 @@ func (lf *LanguageFilter) filterBatch(batch Batch) (Batch, error) {
 	return english, nil
 }
 
+// Sends batch to corresponding exchange if it's not empty
 func (lf *LanguageFilter) sendBatch(batch Batch) error {
 	var err error
 	if len(batch) > 0 {
@@ -96,8 +101,9 @@ func (lf *LanguageFilter) sendBatch(batch Batch) error {
 	return err
 }
 
+// Detects if received text is English or not
 func (lf *LanguageFilter) isEnglish(text string) bool {
 	info := getlang.FromString(text)
 	log.Infof("Detected language %v", info.LanguageName())
-	return info.LanguageName() == "English"
+	return info.LanguageName() == ENGLISH
 }
