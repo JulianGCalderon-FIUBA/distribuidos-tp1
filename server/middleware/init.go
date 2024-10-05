@@ -2,8 +2,8 @@ package middleware
 
 import (
 	"fmt"
-	"strconv"
 	"log"
+	"strconv"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
