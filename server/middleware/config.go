@@ -14,6 +14,10 @@ const Top5IndieReviewsFilterQueue string = "top-5-indie-reviews"
 const PositiveReviews string = "positive-reviews"
 const NegativeReviews string = "negative-reviews"
 
+// language filter
+const EnglishReviewsFilterExchange string = "english-reviews-filter"
+const FivethEnglishReviewsQueue string = "5-thousand-english-reviews"
+
 const ReviewExchange string = "reviews"
 const GamesExchange string = "games"
 const GenresExchange string = "genres"
