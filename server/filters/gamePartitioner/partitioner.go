@@ -33,7 +33,7 @@ func newPartitioner(cfg config) (*Partitioner, error) {
 }
 
 func (p *Partitioner) run() error {
-	dch, err := p.m.Consume(p.cfg.InputQueue)
+	dch, err := p.m.ReceiveFromQueue(p.cfg.InputQueue)
 	if err != nil {
 		return err
 	}

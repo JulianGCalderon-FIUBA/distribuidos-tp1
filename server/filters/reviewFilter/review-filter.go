@@ -34,7 +34,7 @@ func (rf *ReviewFilter) run() error {
 
 // Reads from queue channel and filters read batch before sending it to exchange
 func (rf *ReviewFilter) receive() error {
-	deliveryCh, err := rf.m.Consume(middleware.ReviewsQueue)
+	deliveryCh, err := rf.m.ReceiveFromQueue(middleware.ReviewsQueue)
 	if err != nil {
 		return err
 	}

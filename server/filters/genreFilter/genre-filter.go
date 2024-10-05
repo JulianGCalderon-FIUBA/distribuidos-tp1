@@ -38,7 +38,7 @@ func (gf *GenreFilter) start() error {
 }
 
 func (gf *GenreFilter) receive() error {
-	deliveryCh, err := gf.m.Consume(middleware.GamesQueue)
+	deliveryCh, err := gf.m.ReceiveFromQueue(middleware.GamesQueue)
 	for d := range deliveryCh {
 		if err != nil {
 			_ = d.Nack(false, false)
