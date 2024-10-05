@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"fmt"
-	"log"
+	"strconv"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -217,6 +217,121 @@ func (m *Middleware) InitReviewFilter() error {
 	)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (m *Middleware) InitLanguageFilter() error {
+	// Receiving queue
+	q, err := m.ch.QueueDeclare(LanguageReviewsFilterQueue,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	err = m.ch.QueueBind(
+		q.Name,
+		NegativeReviews,
+		ReviewsScoreFilterExchange,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Sending exchange
+	err = m.ch.ExchangeDeclare(
+		EnglishReviewsFilterExchange,
+		amqp.ExchangeDirect,
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Sending queue
+	q, err = m.ch.QueueDeclare(FivethEnglishReviewsQueue,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	err = m.ch.QueueBind(
+		q.Name,
+		"",
+		EnglishReviewsFilterExchange,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Middleware) InitPartitioner(input string, output string, partitionsNum int) error {
+	_, err := m.ch.QueueDeclare(input,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	err = m.ch.ExchangeDeclare(
+		output,
+		amqp.ExchangeDirect,
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	for i := 0; i < partitionsNum; i++ {
+		q, err := m.ch.QueueDeclare(fmt.Sprintf("%v-%v", output, i),
+			false,
+			false,
+			false,
+			false,
+			nil,
+		)
+		if err != nil {
+			return err
+		}
+
+		err = m.ch.QueueBind(q.Name,
+			strconv.Itoa(i),
+			output,
+			false,
+			nil)
+		if err != nil {
+			return err
+		}
+
 	}
 
 	return nil
