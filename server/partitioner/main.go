@@ -2,6 +2,7 @@ package main
 
 import (
 	"distribuidos/tp1/server/middleware"
+	"distribuidos/tp1/utils"
 	"errors"
 	"fmt"
 	"strconv"
@@ -38,10 +39,10 @@ func getConfig() (config, error) {
 	err := v.Unmarshal(&c)
 
 	if c.InputQueue == "" {
-		errors.New("InputQueue should not be empty")
+		return c, errors.New("InputQueue should not be empty")
 	}
 	if c.Type != GameType && c.Type != ReviewType {
-		errors.New("Type should not be game or review")
+		return c, errors.New("Type should not be game or review")
 	}
 	if c.OutputExchange == "" {
 		c.OutputExchange = fmt.Sprintf("%v-x", c.InputQueue)
@@ -66,16 +67,14 @@ func main() {
 	}
 	log.Infof("Initialized partitioner infrastructure")
 
-	dch, err := m.Subscribe(cfg.InputQueue)
-	if err != nil {
-		log.Fatalf("Failed to subscribe to input queue: %v", err)
-	}
+	dch := m.Subscribe(cfg.InputQueue)
 
 	for d := range dch {
 		batch, err := middleware.Deserialize[middleware.Batch[middleware.Game]](d.Body)
 		if err != nil {
 			log.Errorf("Failed to deserialize batch %v", err)
-			d.Nack(false, false)
+			err = d.Nack(false, false)
+			utils.Expect(err, "failed to ack message")
 			continue
 		}
 
@@ -93,6 +92,7 @@ func main() {
 			}
 		}
 
-		d.Ack(false)
+		err = d.Ack(false)
+		utils.Expect(err, "failed to ack message")
 	}
 }
