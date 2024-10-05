@@ -232,9 +232,13 @@ func gameFromFullRecord(record []string) (game middleware.Game, err error) {
 	if err != nil {
 		return
 	}
-	releaseDate, err := time.Parse("Jan 2, 2006", record[2])
+	var releaseDate time.Time
+	releaseDate, err = time.Parse("Jan 2, 2006", record[2])
 	if err != nil {
-		return
+		releaseDate, err = time.Parse("Jan 2006", record[2])
+		if err != nil {
+			return
+		}
 	}
 	averagePlaytimeForever, err := strconv.Atoi(record[29])
 	if err != nil {
