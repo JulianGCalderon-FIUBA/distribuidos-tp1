@@ -125,8 +125,8 @@ func (m *Middleware) InitDecadeFilter() error {
 
 	err = m.ch.QueueBind(
 		q.Name,
-		IndieGames,
-		GenresExchange,
+		"",
+		IndieExchange,
 		false,
 		nil)
 
