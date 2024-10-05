@@ -32,7 +32,7 @@ func (rf *ReviewFilter) run() error {
 	return rf.receive()
 }
 
-// Reads from queue channel and filters read batch before sending it to exchange
+// Reads from queue channel and filters batch in positive and negative reviews before sending it to exchange
 func (rf *ReviewFilter) receive() error {
 	deliveryCh, err := rf.m.ReceiveFromQueue(middleware.ReviewsQueue)
 	if err != nil {
@@ -53,7 +53,7 @@ func (rf *ReviewFilter) receive() error {
 		positive, negative := rf.filterBatch(batch)
 		err = rf.sendBatches(positive, negative)
 		if err != nil {
-			log.Errorf("Could not send batches: %v", err)
+			log.Errorf("Failed to send batches: %v", err)
 			err = d.Nack(false, false)
 			if err != nil {
 				return fmt.Errorf("failed to nack batch: %v", err)
@@ -88,6 +88,7 @@ func (rf *ReviewFilter) filterBatch(batch Batch) (Batch, Batch) {
 	return positive, negative
 }
 
+// Sends batches to corresponding exchanges if they are not empty
 func (rf *ReviewFilter) sendBatches(positive Batch, negative Batch) error {
 	var err error
 	if len(positive) > 0 {
