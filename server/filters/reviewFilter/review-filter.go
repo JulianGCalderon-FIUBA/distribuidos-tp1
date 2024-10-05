@@ -75,14 +75,14 @@ func (rf *ReviewFilter) filterBatch(batch Batch) (Batch, Batch) {
 	var positive Batch
 	var negative Batch
 
-	for _, review := range batch {
+	for _, review := range batch.Data {
 		switch review.Score {
 		case middleware.PositiveScore:
 			new := middleware.Review{AppID: review.AppID}
-			positive = append(positive, new)
+			positive.Data = append(positive.Data, new)
 		case middleware.NegativeScore:
 			new := middleware.Review{AppID: review.AppID, Text: review.Text}
-			negative = append(negative, new)
+			negative.Data = append(negative.Data, new)
 		}
 	}
 	return positive, negative
@@ -91,11 +91,14 @@ func (rf *ReviewFilter) filterBatch(batch Batch) (Batch, Batch) {
 // Sends batches to corresponding exchanges if they are not empty
 func (rf *ReviewFilter) sendBatches(positive Batch, negative Batch) error {
 	var err error
-	if len(positive) > 0 {
-		err = rf.m.Send(positive, middleware.ReviewsScoreFilterExchange, middleware.PositiveReviewKeys)
+	err = rf.m.Send(positive, middleware.ReviewsScoreFilterExchange, middleware.PositiveReviewKeys)
+	if err != nil {
+		return err
 	}
-	if len(negative) > 0 {
-		err = rf.m.Send(negative, middleware.ReviewsScoreFilterExchange, middleware.NegativeReviewKeys)
+	err = rf.m.Send(negative, middleware.ReviewsScoreFilterExchange, middleware.NegativeReviewKeys)
+	if err != nil {
+		return err
 	}
-	return err
+
+	return nil
 }

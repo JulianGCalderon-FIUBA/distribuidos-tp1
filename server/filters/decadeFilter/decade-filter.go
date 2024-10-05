@@ -55,15 +55,13 @@ func (df *DecadeFilter) receive() error {
 
 		filteredGames := df.filterByDecade(batch, df.config.Decade)
 
-		games += len(filteredGames)
+		games += len(filteredGames.Data)
 
-		if len(filteredGames) > 0 {
-			err = df.m.Send(filteredGames, middleware.DecadeExchange, "")
-			if err != nil {
-				log.Errorf("Failed to send filtered by decade games batch: %v", err)
-				_ = d.Nack(false, false)
-				continue
-			}
+		err = df.m.Send(filteredGames, middleware.DecadeExchange, "")
+		if err != nil {
+			log.Errorf("Failed to send filtered by decade games batch: %v", err)
+			_ = d.Nack(false, false)
+			continue
 		}
 
 		_ = d.Ack(false)
@@ -76,10 +74,10 @@ func (df *DecadeFilter) filterByDecade(batch Batch, decade int) Batch {
 	var decadeGames Batch
 	mask := strconv.Itoa(decade)[0:3]
 
-	for _, game := range batch {
+	for _, game := range batch.Data {
 		releaseYear := strconv.Itoa(int(game.ReleaseYear))
 		if strings.Contains(releaseYear, mask) {
-			decadeGames = append(decadeGames, game)
+			decadeGames.Data = append(decadeGames.Data, game)
 
 		}
 	}
