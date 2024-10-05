@@ -10,6 +10,8 @@ type Batch middleware.Batch[middleware.Review]
 type ReviewFilter struct {
 	cfg config
 	m   middleware.Middleware
+	p   int
+	n   int
 }
 
 func newReviewFilter(cfg config) (*ReviewFilter, error) {
@@ -64,16 +66,30 @@ func (rf *ReviewFilter) receive() error {
 		if err != nil {
 			return fmt.Errorf("failed to ack batch: %v", err)
 		}
+		if batch.EOF {
+			log.Infof("Sent %v positive reviews from client %v", rf.p, batch.ClientID)
+			log.Infof("Sent %v negative reviews from client %v", rf.n, batch.ClientID)
+			rf.p = 0
+			rf.n = 0
+		}
 	}
-	// se va a llamar cuando tengamos algún tipo de finish
-	log.Infof("Done sending all filtered reviews")
 	return nil
 }
 
 // Filters batch of reviews according to score and returns two filtered batches: one with positive reviews and another one with negative reviews
 func (rf *ReviewFilter) filterBatch(batch Batch) (Batch, Batch) {
-	var positive Batch
-	var negative Batch
+	positive := Batch{
+		Data:     []middleware.Review{},
+		ClientID: batch.ClientID,
+		BatchID:  batch.BatchID,
+		EOF:      batch.EOF,
+	}
+	negative := Batch{
+		Data:     []middleware.Review{},
+		ClientID: batch.ClientID,
+		BatchID:  batch.BatchID,
+		EOF:      batch.EOF,
+	}
 
 	for _, review := range batch.Data {
 		switch review.Score {
@@ -85,6 +101,10 @@ func (rf *ReviewFilter) filterBatch(batch Batch) (Batch, Batch) {
 			negative.Data = append(negative.Data, new)
 		}
 	}
+
+	rf.p += len(positive.Data)
+	rf.n += len(negative.Data)
+
 	return positive, negative
 }
 
