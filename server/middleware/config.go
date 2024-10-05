@@ -8,7 +8,7 @@ import (
 const ReviewsScoreFilterExchange string = "review-score-filter"
 const NinetyPercentileReviewsQueue string = "90-percentile"
 const LanguageReviewsFilterQueue string = "language-filter-reviews"
-const FiveThReviewsQueue string = "5-thousand"
+const Top5IndieReviewsFilterQueue string = "top-5-indie-reviews"
 
 // keys
 const PositiveReviews string = "positive-reviews"
