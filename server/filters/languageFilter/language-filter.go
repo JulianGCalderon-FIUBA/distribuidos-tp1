@@ -12,7 +12,7 @@ func newLanguageFilter(cfg config) (*LanguageFilter, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = m.InitReviewFilter()
+	err = m.InitLanguageFilter()
 	if err != nil {
 		return nil, err
 	}
