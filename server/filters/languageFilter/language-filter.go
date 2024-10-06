@@ -88,7 +88,12 @@ func (lf *LanguageFilter) receive() error {
 
 // Filters to keep only reviews in English
 func (lf *LanguageFilter) filterBatch(batch Batch) (Batch, error) {
-	var english Batch
+	english := Batch{
+		Data:     []middleware.Review{},
+		ClientID: batch.ClientID,
+		BatchID:  batch.BatchID,
+		EOF:      batch.EOF,
+	}
 	for _, review := range batch.Data {
 		if lf.isEnglish(review.Text) {
 			new := middleware.Review{AppID: review.AppID}
