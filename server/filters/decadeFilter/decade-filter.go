@@ -39,7 +39,7 @@ func (df *DecadeFilter) start() error {
 }
 
 func (df *DecadeFilter) receive() error {
-	games := 0
+	var sent int
 	deliveryCh, err := df.m.ReceiveFromQueue(middleware.DecadeQueue)
 	for d := range deliveryCh {
 		if err != nil {
@@ -55,13 +55,18 @@ func (df *DecadeFilter) receive() error {
 
 		filteredGames := df.filterByDecade(batch, df.config.Decade)
 
-		games += len(filteredGames.Data)
-
 		err = df.m.Send(filteredGames, middleware.DecadeExchange, "")
 		if err != nil {
 			log.Errorf("Failed to send filtered by decade games batch: %v", err)
 			_ = d.Nack(false, false)
 			continue
+		}
+
+		sent += len(filteredGames.Data)
+
+		if batch.EOF {
+			log.Infof("Finished filtering data for client: %v", batch.ClientID)
+			log.Infof("Decade games sent: %v", sent)
 		}
 
 		_ = d.Ack(false)
@@ -71,7 +76,12 @@ func (df *DecadeFilter) receive() error {
 }
 
 func (df *DecadeFilter) filterByDecade(batch Batch, decade int) Batch {
-	var decadeGames Batch
+	decadeGames := Batch{
+		Data:     []middleware.Game{},
+		ClientID: batch.ClientID,
+		BatchID:  batch.BatchID,
+		EOF:      batch.EOF,
+	}
 	mask := strconv.Itoa(decade)[0:3]
 
 	for _, game := range batch.Data {
