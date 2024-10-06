@@ -39,6 +39,8 @@ func (rf *ReviewFilter) receive() error {
 		return err
 	}
 
+	var p, n int
+
 	for d := range deliveryCh {
 		batch, err := middleware.Deserialize[Batch](d.Body)
 		if err != nil {
@@ -64,16 +66,33 @@ func (rf *ReviewFilter) receive() error {
 		if err != nil {
 			return fmt.Errorf("failed to ack batch: %v", err)
 		}
+		p += len(positive.Data)
+		n += len(negative.Data)
+		if batch.EOF {
+			log.Infof("Received EOF from client %v", batch.ClientID)
+			log.Infof("Sent %v positive reviews", p)
+			log.Infof("Sent %v negative reviews", n)
+			p = 0
+			n = 0
+		}
 	}
-	// se va a llamar cuando tengamos algún tipo de finish
-	log.Infof("Done sending all filtered reviews")
 	return nil
 }
 
 // Filters batch of reviews according to score and returns two filtered batches: one with positive reviews and another one with negative reviews
 func (rf *ReviewFilter) filterBatch(batch Batch) (Batch, Batch) {
-	var positive Batch
-	var negative Batch
+	positive := Batch{
+		Data:     []middleware.Review{},
+		ClientID: batch.ClientID,
+		BatchID:  batch.BatchID,
+		EOF:      batch.EOF,
+	}
+	negative := Batch{
+		Data:     []middleware.Review{},
+		ClientID: batch.ClientID,
+		BatchID:  batch.BatchID,
+		EOF:      batch.EOF,
+	}
 
 	for _, review := range batch.Data {
 		switch review.Score {
@@ -85,6 +104,7 @@ func (rf *ReviewFilter) filterBatch(batch Batch) (Batch, Batch) {
 			negative.Data = append(negative.Data, new)
 		}
 	}
+
 	return positive, negative
 }
 

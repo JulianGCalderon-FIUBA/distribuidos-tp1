@@ -9,7 +9,7 @@ services:
     networks:
       - net
     healthcheck:
-      test: rabbitmq-diagnostics -q ping
+      test: ["CMD", "rabbitmqctl", "status"]
       interval: 5s
       timeout: 5s
       retries: 3
