@@ -2,20 +2,25 @@ package main
 
 import (
 	"distribuidos/tp1/protocol"
+	"encoding/csv"
 	"fmt"
 	"io"
 	"net"
 	"os"
+	"sync"
 )
 
 const GAMES_PATH = ".data/games.csv"
 const REVIEWS_PATH = ".data/reviews.csv"
+const RESULTS_PATH = ".results"
+const MAX_RESULTS = 5
 
 type client struct {
 	config   config
 	id       uint64
 	reqConn  *protocol.Conn
 	dataConn *protocol.Conn
+	results  int
 }
 
 func newClient(config config) *client {
@@ -30,11 +35,15 @@ func (c *client) start() error {
 	if err := c.startConnection(); err != nil {
 		return err
 	}
-
-	if err := c.startDataConnection(); err != nil {
-		return err
-	}
-
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		if err := c.startDataConnection(); err != nil {
+			log.Infof("Failed to start data connection: %v", err)
+		}
+	}()
+	go c.waitResults()
+	wg.Wait()
 	return nil
 }
 
@@ -161,10 +170,72 @@ func (c *client) sendFile(filePath string) error {
 	return c.dataConn.SendAny(&protocol.Finish{})
 }
 
+func (c *client) waitResults() {
+	log.Infof("Waiting for results")
+	defer c.reqConn.Close()
+
+	for {
+		var results protocol.Results
+		err := c.reqConn.Recv(&results)
+		if err != nil {
+			log.Error("Failed to receive results message: %v", err)
+		}
+		switch r := results.(type) {
+		case protocol.Q1Results:
+			log.Infof("Received Q1 results: %#v", results)
+			c.results += 1
+			writeResults(r, 1)
+		case protocol.Q2Results:
+			log.Infof("Received Q2 results: %#v", results)
+			c.results += 1
+			writeResults(r, 2)
+		case protocol.Q3Results:
+			log.Infof("Received Q3 results: %#v", results)
+			c.results += 1
+			writeResults(r, 3)
+		case protocol.Q4Results:
+			log.Infof("Received Q4 results: %#v", results)
+			if r.EOF {
+				c.results += 1
+			}
+			writeResults(r, 4)
+		case protocol.Q5Results:
+			log.Infof("Received Q5 results: %#v", results)
+			c.results += 1
+			writeResults(r, 5)
+		}
+
+		if c.results == MAX_RESULTS {
+			log.Infof("Received all results")
+			break
+		}
+	}
+}
+
 func getFileSize(filePath string) (uint64, error) {
 	file, err := os.Stat(filePath)
 	if err != nil {
 		return 0, err
 	}
 	return uint64(file.Size()), nil
+}
+
+func writeResults(result protocol.Results, query int) {
+	err := os.MkdirAll(RESULTS_PATH, os.ModePerm)
+	if err != nil {
+		log.Errorf("Failed to create directory for results files: %v", err)
+	}
+	path := fmt.Sprintf("%v/%v.csv", RESULTS_PATH, query)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Errorf("Failed to open results file for query %v: %v", query, err)
+	}
+	defer f.Close()
+
+	w := csv.NewWriter(f)
+	err = w.Write(result.ToCSV())
+	if err != nil {
+		log.Errorf("Failed to write results from query %v: %v", query, err)
+	}
+	w.Flush()
 }

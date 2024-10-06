@@ -14,6 +14,11 @@ type Conn struct {
 func Register() {
 	gob.Register(Batch{})
 	gob.Register(Finish{})
+	gob.Register(Q1Results{})
+	gob.Register(Q2Results{})
+	gob.Register(Q3Results{})
+	gob.Register(Q4Results{})
+	gob.Register(Q5Results{})
 }
 
 func NewConn(conn io.ReadWriteCloser) *Conn {
