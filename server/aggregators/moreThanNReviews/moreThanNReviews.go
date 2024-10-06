@@ -25,7 +25,7 @@ type GameReviewJoiner struct {
 type BatchGame middleware.Batch[middleware.Game]
 type BatchReview middleware.Batch[middleware.Review]
 
-func newAggregator(cfg config) (*GameReviewJoiner, error) {
+func newJoiner(cfg config) (*GameReviewJoiner, error) {
 	m, err := middleware.NewMiddleware(cfg.RabbitIP)
 	if err != nil {
 		return nil, err

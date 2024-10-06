@@ -35,7 +35,7 @@ func main() {
 		log.Fatalf("Failed to read config: %v", err)
 	}
 
-	joiner, err := newAggregator(config)
+	joiner, err := newJoiner(config)
 	if err != nil {
 		log.Fatalf("Failed to create new aggregator: %v", err)
 	}
