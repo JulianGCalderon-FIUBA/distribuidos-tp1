@@ -34,7 +34,7 @@ func main() {
 
 	gf := NewGenreFilter(cfg)
 
-	err = gf.start()
+	err = gf.run()
 	if err != nil {
 		log.Fatalf("failed to filter games: %v", err)
 	}
