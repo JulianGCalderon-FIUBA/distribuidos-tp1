@@ -15,7 +15,7 @@ RUN CGO_ENABLED=0 go build -o bin/review-filter ./server/filters/reviewFilter
 RUN CGO_ENABLED=0 go build -o bin/decade-filter ./server/filters/decadeFilter
 RUN CGO_ENABLED=0 go build -o bin/language-filter ./server/filters/languageFilter
 RUN CGO_ENABLED=0 go build -o bin/games-per-platform ./server/aggregators/gamesPerPlatform
-RUN CGO_ENABLED=0 go build -o bin/games-per-platform-joiner ./server/joiners/gamsePerPlatformJoiner
+RUN CGO_ENABLED=0 go build -o bin/games-per-platform-joiner ./server/joiners/gamesPerPlatformJoiner
 
 FROM alpine:latest
 COPY --from=builder /build/bin/client /client
