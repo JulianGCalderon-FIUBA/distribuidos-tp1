@@ -170,6 +170,7 @@ func (c *client) sendFile(filePath string) error {
 
 func (c *client) waitResults() {
 	log.Infof("Waiting for results")
+	defer c.reqConn.Close()
 	for {
 		var results any
 		err := c.reqConn.Recv(&results)
