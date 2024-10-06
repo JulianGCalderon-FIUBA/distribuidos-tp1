@@ -30,11 +30,15 @@ const NegativeReviewKeys string = "negative-reviews"
 
 // decade filter
 const DecadeExchange string = "decades"
-const TopNHistoricAvgQueue string = "top-n-historic-avg"
+const TopNHistoricAvgPQueue string = "top-n-historic-avg-partitioner"
 
 // language filter
 const ReviewsEnglishFilterExchange string = "reviews-filter-english"
 const NThousandEnglishReviewsQueue string = "reviews-english-n-thousand-partitioner"
+
+// topNHistoricAvg aggregator
+const TopNHistoricAvgExchange string = "top-n-historic-avg"
+const TopNHistoricAvgQueue string = "top-n-historic-avg"
 
 type queueConfig struct {
 	name       string
@@ -73,5 +77,9 @@ var DecadeFilterExchanges = map[string]string{
 
 var DecadeFilterQueues = []queueConfig{
 	{DecadeQueue, GenresExchange, ""},
-	{TopNHistoricAvgQueue, DecadeExchange, ""},
+	{TopNHistoricAvgPQueue, DecadeExchange, ""},
+}
+
+var TopNHistoricAvgExchanges = map[string]string{
+	TopNHistoricAvgExchange: amqp.ExchangeDirect,
 }

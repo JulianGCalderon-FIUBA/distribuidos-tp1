@@ -362,3 +362,34 @@ func (m *Middleware) InitPartitioner(input string, output string, partitionsNum 
 
 	return nil
 }
+
+func (m *Middleware) InitTopNHistoricAvg(partition int) error {
+	err := m.initExchanges(TopNHistoricAvgExchanges)
+	if err != nil {
+		return fmt.Errorf("failed to initialize exchanges %w", err)
+	}
+
+	q, err := m.ch.QueueDeclare(fmt.Sprintf("%v-%v", TopNHistoricAvgQueue, partition),
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	err = m.ch.QueueBind(q.Name,
+		strconv.Itoa(partition),
+		TopNHistoricAvgExchange,
+		false,
+		nil)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Initialized queue: %v", q.Name)
+
+	return nil
+}
