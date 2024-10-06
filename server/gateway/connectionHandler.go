@@ -30,6 +30,12 @@ func (g *gateway) startConnectionHandler() {
 	}
 	defer listener.Close()
 
+	err = g.m.InitResultsQueue()
+	if err != nil {
+		log.Errorf("Failed to initialize results queue: %v", err)
+		return
+	}
+
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -74,12 +80,6 @@ func (g *gateway) handleClient(netConn net.Conn) error {
 		if err != nil {
 			return err
 		}
-
-		err = g.m.InitResultsQueue()
-		if err != nil {
-			return err
-		}
-
 		err = g.receiveResults(conn)
 		if err != nil {
 			return err
