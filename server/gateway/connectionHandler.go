@@ -2,10 +2,13 @@ package main
 
 import (
 	"distribuidos/tp1/protocol"
+	"distribuidos/tp1/server/middleware"
 	"fmt"
 	"io"
 	"net"
 )
+
+const MAX_RESULTS = 5
 
 func (g *gateway) getActiveClients() int {
 	g.mu.Lock()
@@ -71,5 +74,52 @@ func (g *gateway) handleClient(netConn net.Conn) error {
 		if err != nil {
 			return err
 		}
+
+		err = g.m.InitResultsQueue()
+		if err != nil {
+			return err
+		}
+
+		err = g.receiveResults()
+		if err != nil {
+			return err
+		}
 	}
+}
+
+func (g *gateway) receiveResults() error {
+	deliveryCh, err := g.m.ReceiveFromQueue(middleware.ResultsQueue)
+	if err != nil {
+		return err
+	}
+
+	results := 0
+
+	for d := range deliveryCh {
+		var recv any
+		err = middleware.DeserializeResults(d.Body, &recv)
+		if err != nil {
+			return err
+		}
+		switch r := recv.(type) {
+		case protocol.Q1Results:
+			results += 1
+		case protocol.Q2Results:
+			results += 1
+		case protocol.Q3Results:
+			results += 1
+		case protocol.Q4Results:
+			if r.EOF {
+				results += 1
+			}
+		case protocol.Q5Results:
+			results += 1
+		}
+
+		if results == MAX_RESULTS {
+			log.Infof("Sent all results to client")
+			break
+		}
+	}
+	return nil
 }
