@@ -138,7 +138,10 @@ func (g *gateway) queueGames(r io.Reader) error {
 
 		game, err := gameFromFullRecord(record)
 		if err != nil {
-			log.Errorf("Failed to parse game: %v", err)
+			// ignoring known errors to avoid spam
+			if err != emptyGameNameError && err != emptyGameGenresError {
+				log.Errorf("Failed to parse game: %v", err)
+			}
 			continue
 		}
 
@@ -195,7 +198,10 @@ func (g *gateway) queueReviews(r io.Reader) error {
 
 		review, err := reviewFromFullRecord(record)
 		if err != nil {
-			log.Errorf("Failed to parse review: %v", err)
+			// ignoring known errors to avoid spam
+			if err != emptyReviewTextError {
+				log.Errorf("Failed to parse review: %v", err)
+			}
 			continue
 		}
 
@@ -223,6 +229,10 @@ func (g *gateway) queueReviews(r io.Reader) error {
 	return nil
 }
 
+var emptyGameNameError = errors.New("game name should not be empty")
+var emptyGameGenresError = errors.New("game genres should not be empty")
+var emptyReviewTextError = errors.New("review text should not be empty")
+
 func gameFromFullRecord(record []string) (game middleware.Game, err error) {
 	if len(record) < 37 {
 		err = fmt.Errorf("expected 37 fields, got %v", len(record))
@@ -247,11 +257,19 @@ func gameFromFullRecord(record []string) (game middleware.Game, err error) {
 
 	game.AppID = uint64(appId)
 	game.Name = record[1]
+	if game.Name == "" {
+		err = emptyGameNameError
+		return
+	}
 	game.ReleaseYear = uint16(releaseDate.Year())
 	game.Windows = record[17] == "true"
 	game.Mac = record[18] == "true"
 	game.Linux = record[19] == "true"
 	game.AveragePlaytimeForever = uint64(averagePlaytimeForever)
+	if record[36] == "" {
+		err = emptyGameGenresError
+		return
+	}
 	game.Genres = strings.Split(record[36], ",")
 
 	return
@@ -273,6 +291,10 @@ func reviewFromFullRecord(record []string) (review middleware.Review, err error)
 
 	review.AppID = uint64(appId)
 	review.Text = record[2]
+	if review.Text == "" {
+		err = emptyReviewTextError
+		return
+	}
 	review.Score = middleware.Score(score)
 
 	return
