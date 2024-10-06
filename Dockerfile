@@ -2,7 +2,7 @@ FROM golang:1.23 AS builder
 
 WORKDIR /build
 
-COPY go.mod go.sum .
+COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 
@@ -14,6 +14,7 @@ RUN CGO_ENABLED=0 go build -o bin/genre-filter ./server/filters/genreFilter
 RUN CGO_ENABLED=0 go build -o bin/review-filter ./server/filters/reviewFilter
 RUN CGO_ENABLED=0 go build -o bin/decade-filter ./server/filters/decadeFilter
 RUN CGO_ENABLED=0 go build -o bin/language-filter ./server/filters/languageFilter
+RUN CGO_ENABLED=0 go build -o bin/joiner ./server/aggregators/moreThanNReviews
 
 FROM alpine:latest
 COPY --from=builder /build/bin/client /client
@@ -24,4 +25,6 @@ COPY --from=builder /build/bin/genre-filter /genre-filter
 COPY --from=builder /build/bin/review-filter /review-filter
 COPY --from=builder /build/bin/decade-filter /decade-filter
 COPY --from=builder /build/bin/language-filter /language-filter
-ENTRYPOINT ["/bin/sh"]
+COPY --from=builder /build/bin/joiner /joiner
+
+ENTRYPOINT ["/bin/sh"]  
