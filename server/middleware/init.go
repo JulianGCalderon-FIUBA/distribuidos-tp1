@@ -362,3 +362,26 @@ func (m *Middleware) InitPartitioner(input string, output string, partitionsNum 
 
 	return nil
 }
+
+func (m *Middleware) InitResultsQueue() error {
+	q, err := m.ch.QueueDeclare(ResultsQueue,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	err = m.ch.QueueBind(q.Name,
+		"",
+		"",
+		false,
+		nil)
+	if err != nil {
+		return err
+	}
+	return nil
+}
