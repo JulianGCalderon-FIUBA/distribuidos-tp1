@@ -17,7 +17,7 @@ func getConfig() (config, error) {
 	v := viper.New()
 
 	v.SetDefault("RabbitIP", "localhost")
-	v.SetDefault("N", "10")
+	v.SetDefault("TopN", "10")
 	v.SetDefault("PartitionNumber", "0")
 
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")

@@ -389,7 +389,5 @@ func (m *Middleware) InitTopNHistoricAvg(partition int) error {
 		return err
 	}
 
-	fmt.Printf("Initialized queue: %v", q.Name)
-
 	return nil
 }

@@ -3,11 +3,14 @@ package main
 import (
 	"distribuidos/tp1/server/middleware"
 	"fmt"
+	"sort"
 )
 
 type Aggregator struct {
-	config config
-	m      *middleware.Middleware
+	config         config
+	m              *middleware.Middleware
+	receivingQueue string
+	games          []middleware.Game
 }
 
 type Batch middleware.Batch[middleware.Game]
@@ -22,14 +25,14 @@ func NewAggregator(config config) *Aggregator {
 		log.Fatalf("failed to initialize middleware: %v", err)
 	}
 	return &Aggregator{
-		config: config,
-		m:      m,
+		config:         config,
+		m:              m,
+		receivingQueue: fmt.Sprintf("%v-%v", middleware.TopNHistoricAvgQueue, config.PartitionNumber),
 	}
 }
 
 func (a *Aggregator) run() error {
-	log.Infof("Top N historic avg started")
-	log.Infof("Partition number: %v", a.config.PartitionNumber)
+	log.Infof("Top %v historic avg started", a.config.TopN)
 
 	err := a.receive()
 	if err != nil {
@@ -40,8 +43,7 @@ func (a *Aggregator) run() error {
 }
 
 func (a *Aggregator) receive() error {
-	receivingQueue := fmt.Sprintf("%v-%v", middleware.TopNHistoricAvgQueue, a.config.PartitionNumber)
-	deliveryCh, err := a.m.ReceiveFromQueue(receivingQueue)
+	deliveryCh, err := a.m.ReceiveFromQueue(a.receivingQueue)
 	for d := range deliveryCh {
 		if err != nil {
 			_ = d.Nack(false, false)
@@ -54,22 +56,21 @@ func (a *Aggregator) receive() error {
 			return err
 		}
 
-		log.Infof("Received batch with %v games", len(batch.Data))
+		a.games = append(a.games, batch.Data...)
 
 		if batch.EOF {
-			log.Infof("Received EOF")
-		}
+			log.Infof("Finished receiving batches for client %v", batch.ClientID)
 
-		// avg := a.calculateAvg(batch)
-		// err = a.m.Send(avg, middleware.TopNAvgExchange, "")
-		// if err != nil {
-		// 	log.Errorf("Failed to send top N avg games batch: %v", err)
-		// }
+			sort.Slice(a.games, func(i, j int) bool {
+				return a.games[i].AveragePlaytimeForever > a.games[j].AveragePlaytimeForever
+			})
+
+			for _, game := range a.games[:a.config.TopN] {
+				log.Infof("%v: %v", game.Name, game.AveragePlaytimeForever)
+			}
+		}
+		_ = d.Ack(false)
 	}
 
 	return nil
 }
-
-// func (a *Aggregator) calculateAvg(batch Batch) Batch {
-
-// }
