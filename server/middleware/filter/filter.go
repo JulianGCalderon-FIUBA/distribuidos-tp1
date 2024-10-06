@@ -27,8 +27,8 @@ type Handler[T any] interface {
 
 type Config struct {
 	RabbitIP string
-	// Name of the node, used for the declared exchange
-	Name string
+	// Exchange to send records to
+	Exchange string
 	// Name of the queue to read from
 	Input string
 	// Output configuration: contains routing keys
@@ -78,7 +78,7 @@ func NewFilter[T any](cfg Config, h Handler[T]) (*Filter[T], error) {
 	}
 
 	err = c.ExchangeDeclare(
-		cfg.Name,
+		cfg.Exchange,
 		amqp.ExchangeDirect,
 		false,
 		false,
@@ -106,7 +106,7 @@ func NewFilter[T any](cfg Config, h Handler[T]) (*Filter[T], error) {
 			err = c.QueueBind(
 				string(q),
 				string(k),
-				cfg.Name,
+				cfg.Exchange,
 				false,
 				nil,
 			)
@@ -139,6 +139,10 @@ func (f *Filter[T]) Run(ctx context.Context) error {
 	}
 
 	partitions := make(map[RoutingKey]middleware.Batch[T])
+	for rk := range f.cfg.Output {
+		partitions[rk] = middleware.Batch[T]{}
+	}
+
 	statistics := make(map[RoutingKey]int)
 
 	for d := range dch {
@@ -176,7 +180,7 @@ func (f *Filter[T]) Run(ctx context.Context) error {
 			}
 
 			err = f.rabbitCh.Publish(
-				f.cfg.Name,
+				f.cfg.Exchange,
 				string(rk),
 				false,
 				false,

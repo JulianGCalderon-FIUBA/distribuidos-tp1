@@ -60,7 +60,7 @@ type gameHandler struct {
 }
 
 func (h gameHandler) Filter(g middleware.Game) filter.RoutingKey {
-	return filter.RoutingKey(strconv.Itoa(int(g.AppID) % h.partitionsNumber))
+	return filter.RoutingKey(strconv.Itoa(int(g.AppID)%h.partitionsNumber + 1))
 }
 
 type reviewHandler struct {
@@ -68,7 +68,7 @@ type reviewHandler struct {
 }
 
 func (h reviewHandler) Filter(r middleware.Review) filter.RoutingKey {
-	return filter.RoutingKey(strconv.Itoa(int(r.AppID) % h.partitionsNumber))
+	return filter.RoutingKey(strconv.Itoa(int(r.AppID)%h.partitionsNumber + 1))
 }
 
 func main() {
@@ -77,7 +77,7 @@ func main() {
 
 	filterCfg := filter.Config{
 		RabbitIP: cfg.RabbitIP,
-		Name:     cfg.Output,
+		Exchange: cfg.Output,
 		Input:    cfg.Input,
 		Output:   map[filter.RoutingKey][]filter.QueueName{},
 	}
