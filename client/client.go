@@ -233,4 +233,6 @@ func writeResults(result protocol.Results, query int) {
 	if err != nil {
 		log.Errorf("Failed to write results from query %v", query)
 	}
+
+	w.Flush()
 }
