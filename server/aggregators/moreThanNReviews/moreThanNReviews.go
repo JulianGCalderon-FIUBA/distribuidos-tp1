@@ -1,8 +1,11 @@
 package main
 
 import (
+	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/server/middleware"
+	"encoding/gob"
 	"fmt"
+	"slices"
 	"sync"
 )
 
@@ -31,7 +34,7 @@ func newAggregator(cfg config) (*GameReviewJoiner, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	gob.Register(protocol.Q4Results{})
 	games := map[uint64]Join{}
 	reviews := map[uint64]int{}
 
@@ -71,6 +74,9 @@ func (j *GameReviewJoiner) receiveGames() error {
 		return err
 	}
 
+	var last int
+	var missing []int
+
 	for d := range deliveryCh {
 		batch, err := middleware.Deserialize[BatchGame](d.Body)
 		if err != nil {
@@ -81,15 +87,25 @@ func (j *GameReviewJoiner) receiveGames() error {
 			}
 			continue
 		}
+		if i, contains := slices.BinarySearch(missing, batch.BatchID); contains {
+			missing[i] = missing[len(missing)-1]
+			missing = missing[:len(missing)-1]
+		}
 		j.saveGames(batch)
 		err = d.Ack(false)
 		if err != nil {
 			return fmt.Errorf("failed to ack batch: %v", err)
 		}
 		if batch.EOF {
-			log.Infof("Received games EOF from client %v", batch.ClientID)
-			break
+			if batch.BatchID != last+1 {
+				for i := last + 1; i < batch.BatchID; i++ {
+					missing = append(missing, i)
+				}
+			} else {
+				log.Infof("Received games EOF from client %v", batch.ClientID)
+			}
 		}
+		last = batch.BatchID
 	}
 	return nil
 }
@@ -99,6 +115,9 @@ func (j *GameReviewJoiner) receiveReviews() error {
 	if err != nil {
 		return err
 	}
+
+	var last int
+	var missing []int
 
 	for d := range deliveryCh {
 		batch, err := middleware.Deserialize[BatchReview](d.Body)
@@ -110,16 +129,27 @@ func (j *GameReviewJoiner) receiveReviews() error {
 			}
 			continue
 		}
+		if i, contains := slices.BinarySearch(missing, batch.BatchID); contains {
+			missing[i] = missing[len(missing)-1]
+			missing = missing[:len(missing)-1]
+		}
 		j.saveReviews(batch)
-		j.sendResults()
 		err = d.Ack(false)
 		if err != nil {
 			return fmt.Errorf("failed to ack batch: %v", err)
 		}
 		if batch.EOF {
-			log.Infof("Received reviews EOF from client %v", batch.ClientID)
-			break
+			if batch.BatchID != last+1 {
+				for i := last + 1; i < batch.BatchID; i++ {
+					missing = append(missing, i)
+				}
+			} else if batch.BatchID == last+1 && len(missing) == 0 {
+				log.Infof("Received reviews EOF from client %v", batch.ClientID)
+				clear(j.games)
+				clear(j.reviews)
+			}
 		}
+		last = batch.BatchID
 	}
 	return nil
 }
@@ -137,21 +167,29 @@ func (j *GameReviewJoiner) saveGames(batch BatchGame) {
 }
 
 func (j *GameReviewJoiner) saveReviews(batch BatchReview) {
-	for _, review := range batch.Data {
+	for i, review := range batch.Data {
 		if val, ok := j.games[review.AppID]; ok {
 			j.games[review.AppID] = Join{name: val.name, review_num: val.review_num + 1}
+			if j.games[review.AppID].review_num >= 5000 {
+				eof := false
+				if i == len(batch.Data)-1 {
+					eof = true
+				}
+				j.sendResults(review.AppID, j.games[review.AppID].name, eof)
+			}
 		} else {
 			j.reviews[review.AppID] += 1
 		}
 	}
 }
 
-func (j *GameReviewJoiner) sendResults() {
-	for k, v := range j.games {
-		if v.review_num >= j.cfg.N {
-			// después hay que enviar el resultado
-			delete(j.games, k)
-			log.Infof("Result: %v", v.name)
-		}
+func (j *GameReviewJoiner) sendResults(id uint64, name string, eof bool) {
+	delete(j.games, id)
+	r := protocol.Q4Results{
+		Name: name,
+		EOF:  eof,
+	}
+	if err := j.m.SendAny(r, "", middleware.ResultsQueue); err != nil {
+		log.Errorf("Failed to send results: %v", err)
 	}
 }
