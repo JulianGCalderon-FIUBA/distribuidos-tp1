@@ -109,6 +109,7 @@ func (g *gateway) receiveResults() error {
 		case protocol.Q3Results:
 			results += 1
 		case protocol.Q4Results:
+			// se puede perder algún resultado si se desordenan pero no se si handlearlo o ignorarlo
 			if r.EOF {
 				results += 1
 			}
