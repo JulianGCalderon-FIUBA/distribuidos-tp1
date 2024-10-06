@@ -98,8 +98,8 @@ services:
     depends_on:
       - gateway
 
-  games-per-platform-0:
-    container_name: games-per-platform-0
+  games-per-platform-1:
+    container_name: games-per-platform-1
     image: tp1:latest
     entrypoint: /games-per-platform
     environment:
@@ -110,8 +110,8 @@ services:
     depends_on:
       - gateway
 
-  games-per-platform-1:
-    container_name: games-per-platform-1
+  games-per-platform-2:
+    container_name: games-per-platform-2
     image: tp1:latest
     entrypoint: /games-per-platform
     environment:
@@ -122,8 +122,8 @@ services:
     depends_on:
       - gateway
 
-  games-per-platform-2:
-    container_name: games-per-platform-2
+  games-per-platform-3:
+    container_name: games-per-platform-3
     image: tp1:latest
     entrypoint: /games-per-platform
     environment:
@@ -140,7 +140,7 @@ services:
     entrypoint: /games-per-platform-joiner
     environment:
       - RABBIT_IP=rabbitmq
-      - PARTITIONS_NUMBER=3
+      - PARTITIONS=3
     networks:
       - net
     depends_on:

@@ -101,7 +101,9 @@ func (f *Joiner[T]) Run(ctx context.Context) error {
 
 loop:
 	for d := range dch {
-		batch, err := middleware.Deserialize[middleware.Batch[T]](d.Body)
+		log.Info("Received partial result")
+
+		result, err := middleware.Deserialize[T](d.Body)
 		if err != nil {
 			log.Errorf("Failed to deserialize batch %v", err)
 
@@ -113,16 +115,16 @@ loop:
 			continue
 		}
 
-		for _, record := range batch.Data {
-			err := f.handler.Aggregate(record)
+		err = f.handler.Aggregate(result)
+		if err != nil {
+			err = d.Nack(false, false)
 			if err != nil {
-				err = d.Nack(false, false)
-				if err != nil {
-					return err
-				}
-				continue loop
+				return err
 			}
+			continue loop
 		}
+
+		received += 1
 
 		// todo: handle disordered batches
 		if received == f.cfg.PartitionsNumber {

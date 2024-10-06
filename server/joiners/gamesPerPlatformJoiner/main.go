@@ -46,7 +46,7 @@ type handler struct {
 
 func (h handler) Aggregate(c map[Platform]int) error {
 	for k, v := range c {
-		c[k] += v
+		h.count[k] += v
 	}
 
 	return nil
@@ -54,7 +54,7 @@ func (h handler) Aggregate(c map[Platform]int) error {
 
 func (h handler) Conclude() (any, error) {
 	for k, v := range h.count {
-		log.Infof("Found %v games with $v support", v, string(k))
+		log.Infof("Found %v games with %v support", v, string(k))
 	}
 	return h.count, nil
 }

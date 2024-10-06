@@ -60,7 +60,7 @@ func (h handler) Aggregate(g middleware.Game) error {
 
 func (h handler) Conclude() (any, error) {
 	for k, v := range h.count {
-		log.Infof("Found %v games with $v support", v, string(k))
+		log.Infof("Found %v games with %v support", v, string(k))
 	}
 	return h.count, nil
 }
