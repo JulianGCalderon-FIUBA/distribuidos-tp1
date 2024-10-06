@@ -5,12 +5,12 @@ import (
 	"maps"
 )
 
-type Platform int
+type Platform string
 
 const (
-	Mac Platform = iota
-	Linux
-	Windows
+	Mac     Platform = "mac"
+	Linux   Platform = "linux"
+	Windows Platform = "windows"
 )
 
 type Count struct {
@@ -54,14 +54,14 @@ func (p *Joiner) run() error {
 
 	for msg := range dch {
 		_ = msg
-		count, err := middleware.Deserialize[Count](msg.Body)
+		count, err := middleware.Deserialize[map[Platform]int](msg.Body)
 		if err != nil {
-			log.Errorf("Failed to deserialize")
+			log.Errorf("Failed to deserialize %v", err)
 			_ = msg.Nack(false, false)
 			continue
 		}
 
-		p.count.Count = mergeCounts(p.count.Count, count.Count)
+		p.count.Count = mergeCounts(p.count.Count, count)
 
 		received += 1
 

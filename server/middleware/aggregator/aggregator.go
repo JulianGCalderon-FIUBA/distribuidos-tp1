@@ -3,6 +3,7 @@ package aggregator
 import (
 	"context"
 	"distribuidos/tp1/server/middleware"
+	"errors"
 	"fmt"
 
 	logging "github.com/op/go-logging"
@@ -16,13 +17,16 @@ type Handler[T any] interface {
 	// Given a record T, process it.
 	Aggregate(record T) error
 	// Called when EOF is reached.
-	Conclude(ch *amqp.Channel)
+	// Result is sent to Output queue
+	Conclude() (any, error)
 }
 
 type Config struct {
 	RabbitIP string
 	// Name of the queue to read from
 	Input string
+	// Name of the queue to send result to
+	Output string
 }
 
 // Aggregator structure, abstracting away queue system details
@@ -50,6 +54,17 @@ func NewAggregator[T any](cfg Config, h Handler[T]) (*Aggregator[T], error) {
 
 	_, err = c.QueueDeclare(
 		cfg.Input,
+		false,
+		false,
+		false,
+		false,
+		nil)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = c.QueueDeclare(
+		cfg.Output,
 		false,
 		false,
 		false,
@@ -106,15 +121,39 @@ loop:
 			}
 		}
 
-		err = d.Ack(false)
-		if err != nil {
-			return err
-		}
-
 		// todo: handle disordered batches
 		if batch.EOF {
 			log.Info("Received EOF from client")
-			f.handler.Conclude(f.rabbitCh)
+			result, err := f.handler.Conclude()
+			if err != nil {
+				nackErr := d.Nack(false, false)
+				return errors.Join(err, nackErr)
+			}
+			buf, err := middleware.Serialize(result)
+			if err != nil {
+				nackErr := d.Nack(false, false)
+				return errors.Join(err, nackErr)
+			}
+
+			err = f.rabbitCh.Publish(
+				"",
+				f.cfg.Output,
+				false,
+				false,
+				amqp.Publishing{
+					ContentType: "text/plain",
+					Body:        buf,
+				},
+			)
+			if err != nil {
+				nackErr := d.Nack(false, false)
+				return errors.Join(err, nackErr)
+			}
+		}
+
+		err = d.Ack(false)
+		if err != nil {
+			return err
 		}
 	}
 

@@ -14,8 +14,8 @@ RUN CGO_ENABLED=0 go build -o bin/genre-filter ./server/filters/genreFilter
 RUN CGO_ENABLED=0 go build -o bin/review-filter ./server/filters/reviewFilter
 RUN CGO_ENABLED=0 go build -o bin/decade-filter ./server/filters/decadeFilter
 RUN CGO_ENABLED=0 go build -o bin/language-filter ./server/filters/languageFilter
-RUN CGO_ENABLED=0 go build -o bin/per-platform ./server/aggregators/perPlatform
-RUN CGO_ENABLED=0 go build -o bin/per-platform-joiner ./server/joiners/perPlatformJoiner
+RUN CGO_ENABLED=0 go build -o bin/games-per-platform ./server/aggregators/gamesPerPlatform
+RUN CGO_ENABLED=0 go build -o bin/games-per-platform-joiner ./server/joiners/gamsePerPlatformJoiner
 
 FROM alpine:latest
 COPY --from=builder /build/bin/client /client
@@ -26,6 +26,6 @@ COPY --from=builder /build/bin/genre-filter /genre-filter
 COPY --from=builder /build/bin/review-filter /review-filter
 COPY --from=builder /build/bin/decade-filter /decade-filter
 COPY --from=builder /build/bin/language-filter /language-filter
-COPY --from=builder /build/bin/per-platform /per-platform
-COPY --from=builder /build/bin/per-platform-joiner /per-platform-joiner
+COPY --from=builder /build/bin/games-per-platform /games-per-platform
+COPY --from=builder /build/bin/games-per-platform-joiner /games-per-platform-joiner
 ENTRYPOINT ["/bin/sh"]
