@@ -175,7 +175,8 @@ func (c *client) waitResults() {
 		var results any
 		err := c.reqConn.Recv(&results)
 		if err != nil {
-			log.Error("Failed to receive results message")
+			continue
+			// log.Error("Failed to receive results message") -> lo comento porque si se llena la pantalla cuando todavia no esta recibiendo resultados
 		}
 		switch r := results.(type) {
 		case protocol.Q1Results:
