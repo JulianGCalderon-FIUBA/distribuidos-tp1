@@ -29,5 +29,5 @@ compose-down:
 .PHONY: compose-down
 
 compose-logs:
-	docker compose -f compose.yaml logs -f gateway client partitioner genre-filter review-filter decade-filter language-filter
+	docker compose -f compose.yaml logs -f gateway client partitioner genre-filter review-filter decade-filter language-filter q4-game-partitioner q4-review-partitioner joiner
 .PHONY: compose-logs
