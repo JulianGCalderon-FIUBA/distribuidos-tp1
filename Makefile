@@ -7,8 +7,7 @@ deps:
 build: deps
 	go build -o bin/client ./client
 	go build -o bin/gateway ./server/gateway
-	go build -o bin/game-partitioner ./server/filters/gamePartitioner
-	go build -o bin/review-partitioner ./server/filters/reviewPartitioner
+	go build -o bin/partitioner ./server/filters/partitioner
 	go build -o bin/genre-filter ./server/filters/genreFilter
 	go build -o bin/review-filter ./server/filters/reviewFilter
 	go build -o bin/decade-filter ./server/filters/decadeFilter
