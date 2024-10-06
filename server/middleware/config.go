@@ -39,6 +39,8 @@ const NThousandEnglishReviewsQueue string = "reviews-english-n-thousand-partitio
 
 // games per platform
 const GamesPerPlatformJoin string = "games-per-platform-join"
+// Results
+const ResultsQueue string = "results"
 
 var DataHandlerexchanges = map[string]string{
 	ReviewExchange: amqp.ExchangeFanout,

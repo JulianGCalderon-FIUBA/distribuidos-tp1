@@ -363,11 +363,8 @@ func (m *Middleware) InitPartitioner(input string, output string, partitionsNum 
 	return nil
 }
 
-func (m *Middleware) InitPerPlatform(partitionID int) error {
-	xName := fmt.Sprintf("%v-x", GamesPerPlatformQueue)
-	err := m.ch.ExchangeDeclare(
-		xName,
-		amqp.ExchangeDirect,
+func (m *Middleware) InitResultsQueue() error {
+	_, err := m.ch.QueueDeclare(ResultsQueue,
 		false,
 		false,
 		false,
@@ -377,58 +374,5 @@ func (m *Middleware) InitPerPlatform(partitionID int) error {
 	if err != nil {
 		return err
 	}
-
-	qName := fmt.Sprintf("%v-%v", xName, partitionID)
-	q, err := m.ch.QueueDeclare(
-		qName,
-		false,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		return err
-	}
-
-	err = m.ch.QueueBind(
-		q.Name,
-		strconv.Itoa(partitionID),
-		xName,
-		false,
-		nil,
-	)
-	if err != nil {
-		return err
-	}
-
-	_, err = m.ch.QueueDeclare(
-		GamesPerPlatformJoin,
-		false,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *Middleware) InitPerPlatformJoiner() error {
-	_, err := m.ch.QueueDeclare(
-		GamesPerPlatformJoin,
-		false,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
