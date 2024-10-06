@@ -43,12 +43,11 @@ type Q1Results struct {
 }
 
 func (q1 Q1Results) ToCSV() []string {
-	q := "Query 1"
 	w := fmt.Sprintf("windows: %v", q1.Windows)
 	l := fmt.Sprintf("linux: %v", q1.Linux)
 	m := fmt.Sprintf("mac: %v", q1.Mac)
 
-	return []string{q, w, l, m}
+	return []string{w, l, m}
 }
 
 type Q2Results struct {
@@ -56,11 +55,7 @@ type Q2Results struct {
 }
 
 func (q2 Q2Results) ToCSV() []string {
-	s := make([]string, len(q2.TopN)+1)
-	q := "Query 2"
-	s = append(s, q)
-	s = append(s, q2.TopN...)
-	return s
+	return q2.TopN
 }
 
 type Q3Results struct {
@@ -68,11 +63,7 @@ type Q3Results struct {
 }
 
 func (q3 Q3Results) ToCSV() []string {
-	s := make([]string, len(q3.TopN)+1)
-	q := "Query 3"
-	s = append(s, q)
-	s = append(s, q3.TopN...)
-	return s
+	return q3.TopN
 }
 
 type Q4Results struct {
@@ -81,11 +72,7 @@ type Q4Results struct {
 }
 
 func (q4 Q4Results) ToCSV() []string {
-	s := make([]string, 2)
-	q := "Query 4"
-	s = append(s, q)
-	s = append(s, q4.Name)
-	return s
+	return []string{q4.Name}
 }
 
 type Q5Results struct {
@@ -93,9 +80,5 @@ type Q5Results struct {
 }
 
 func (q5 Q5Results) ToCSV() []string {
-	s := make([]string, len(q5.Percentile90)+1)
-	q := "Query 5"
-	s = append(s, q)
-	s = append(s, q5.Percentile90...)
-	return s
+	return q5.Percentile90
 }
