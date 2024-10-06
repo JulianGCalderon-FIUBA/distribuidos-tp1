@@ -53,6 +53,19 @@ services:
     depends_on:
       - gateway
 
+  q2-game-partitioner:
+    container_name: q2-game-partitioner
+    image: tp1:latest
+    entrypoint: /game-partitioner
+    environment:
+      - RABBIT_IP=rabbitmq
+      - INPUT_QUEUE=top-n-historic-avg-partitioner
+      - PARTITIONS_NUMBER=1
+    networks:
+      - net
+    depends_on:
+      - gateway
+
   genre-filter:
     container_name: genre-filter
     image: tp1:latest

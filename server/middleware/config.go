@@ -37,8 +37,10 @@ const ReviewsEnglishFilterExchange string = "reviews-filter-english"
 const NThousandEnglishReviewsQueue string = "reviews-english-n-thousand-partitioner"
 
 // topNHistoricAvg aggregator
-const TopNHistoricAvgExchange string = "top-n-historic-avg"
 const TopNHistoricAvgQueue string = "top-n-historic-avg"
+const TopNHistoricAvgJQueue string = "top-n-historic-avg-joiner"
+const TopNHistoricAvgExchange string = "top-n-historic-avg-x"
+
 
 type queueConfig struct {
 	name       string
