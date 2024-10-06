@@ -47,7 +47,7 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - INPUT_QUEUE=games-per-platform
-      - PARTITIONS_NUMBER=2
+      - PARTITIONS_NUMBER=3
     networks:
       - net
     depends_on:
@@ -117,6 +117,30 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=1
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  per-platform-2:
+    container_name: per-platform-2
+    image: tp1:latest
+    entrypoint: /per-platform
+    environment:
+      - RABBIT_IP=rabbitmq
+      - PARTITION_ID=2
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  per-platform-joiner:
+    container_name: per-platform-joiner
+    image: tp1:latest
+    entrypoint: /per-platform-joiner
+    environment:
+      - RABBIT_IP=rabbitmq
+      - PARTITIONS_NUMBER=3
     networks:
       - net
     depends_on:
