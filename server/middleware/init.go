@@ -433,7 +433,10 @@ func (m *Middleware) InitMoreThanNReviews(id int) error {
 	if err != nil {
 		return err
 	}
-	return nil
+
+	// sending queue
+
+	return m.InitResultsQueue()
 }
 
 func (m *Middleware) InitResultsQueue() error {
