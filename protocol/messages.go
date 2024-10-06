@@ -28,3 +28,27 @@ type Batch struct {
 
 // Sent by the client to indicate that it has finished sending data
 type Finish struct{}
+
+// Results Messages
+type Q1Results struct {
+	Windows int
+	Linux   int
+	Mac     int
+}
+
+type Q2Results struct {
+	TopN []string
+}
+
+type Q3Results struct {
+	TopN []string
+}
+
+type Q4Results struct {
+	Name string
+	EOF  bool
+}
+
+type Q5Results struct {
+	Percentile90 []string
+}
