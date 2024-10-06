@@ -80,14 +80,14 @@ func (g *gateway) handleClient(netConn net.Conn) error {
 			return err
 		}
 
-		err = g.receiveResults()
+		err = g.receiveResults(conn)
 		if err != nil {
 			return err
 		}
 	}
 }
 
-func (g *gateway) receiveResults() error {
+func (g *gateway) receiveResults(conn *protocol.Conn) error {
 	deliveryCh, err := g.m.ReceiveFromQueue(middleware.ResultsQueue)
 	if err != nil {
 		return err
@@ -96,10 +96,12 @@ func (g *gateway) receiveResults() error {
 	results := 0
 
 	for d := range deliveryCh {
-		var recv any
-		err = middleware.DeserializeResults(d.Body, &recv)
+		recv, err := middleware.Deserialize[any](d.Body)
 		if err != nil {
-			return err
+			err = d.Nack(false, false)
+			if err != nil {
+				return fmt.Errorf("failed to nack result: %v", err)
+			}
 		}
 		switch r := recv.(type) {
 		case protocol.Q1Results:
@@ -115,6 +117,15 @@ func (g *gateway) receiveResults() error {
 			}
 		case protocol.Q5Results:
 			results += 1
+		}
+
+		err = d.Ack(false)
+		if err != nil {
+			return fmt.Errorf("failed to ack result: %v", err)
+		}
+		err = conn.SendAny(recv)
+		if err != nil {
+			return fmt.Errorf("failed to send result: %v", err)
 		}
 
 		if results == MAX_RESULTS {
