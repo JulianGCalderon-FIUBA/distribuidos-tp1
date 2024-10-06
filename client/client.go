@@ -6,16 +6,19 @@ import (
 	"io"
 	"net"
 	"os"
+	"sync"
 )
 
 const GAMES_PATH = ".data/games.csv"
 const REVIEWS_PATH = ".data/reviews.csv"
+const MAX_RESULTS = 5
 
 type client struct {
 	config   config
 	id       uint64
 	reqConn  *protocol.Conn
 	dataConn *protocol.Conn
+	results  int
 }
 
 func newClient(config config) *client {
@@ -30,11 +33,15 @@ func (c *client) start() error {
 	if err := c.startConnection(); err != nil {
 		return err
 	}
-
-	if err := c.startDataConnection(); err != nil {
-		return err
-	}
-
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		if err := c.startDataConnection(); err != nil {
+			log.Infof("Failed to start data connection: %v", err)
+		}
+	}()
+	go c.waitResults()
+	wg.Wait()
 	return nil
 }
 
@@ -159,6 +166,43 @@ func (c *client) sendFile(filePath string) error {
 	}
 
 	return c.dataConn.SendAny(&protocol.Finish{})
+}
+
+func (c *client) waitResults() {
+	log.Infof("Waiting for results")
+	defer c.reqConn.Close()
+	for {
+		var results any
+		err := c.reqConn.Recv(&results)
+		if err != nil {
+			continue
+			// log.Error("Failed to receive results message") -> lo comento porque si se llena la pantalla cuando todavia no esta recibiendo resultados
+		}
+		switch r := results.(type) {
+		case protocol.Q1Results:
+			log.Infof("Received Q1 results: %#v", results)
+			c.results += 1
+		case protocol.Q2Results:
+			log.Infof("Received Q2 results: %#v", results)
+			c.results += 1
+		case protocol.Q3Results:
+			log.Infof("Received Q3 results: %#v", results)
+			c.results += 1
+		case protocol.Q4Results:
+			log.Infof("Received Q4 results: %#v", results)
+			if r.EOF {
+				c.results += 1
+			}
+		case protocol.Q5Results:
+			log.Infof("Received Q5 results: %#v", results)
+			c.results += 1
+		}
+
+		if c.results == MAX_RESULTS {
+			log.Infof("Received all results")
+			break
+		}
+	}
 }
 
 func getFileSize(filePath string) (uint64, error) {

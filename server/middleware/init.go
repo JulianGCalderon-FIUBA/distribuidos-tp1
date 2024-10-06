@@ -391,17 +391,16 @@ func (m *Middleware) InitMoreThanNReviews(id int) error {
 	}
 
 	// Receiving queues
-	q, err := m.ch.QueueDeclare(fmt.Sprintf("%v-x-%v", MoreThanNReviewsGamesQueue, id),
+	q, err := m.ch.QueueDeclare(
+		fmt.Sprintf("%v-x-%v", MoreThanNReviewsGamesQueue, id),
 		false,
 		false,
 		false,
 		false,
-		nil,
-	)
+		nil)
 	if err != nil {
 		return err
 	}
-
 	err = m.ch.QueueBind(
 		q.Name,
 		"",
@@ -434,6 +433,19 @@ func (m *Middleware) InitMoreThanNReviews(id int) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
 
+func (m *Middleware) InitResultsQueue() error {
+	_, err := m.ch.QueueDeclare(ResultsQueue,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
 	return nil
 }
