@@ -12,6 +12,7 @@ import (
 type Join struct {
 	name       string
 	review_num int
+	sent       bool
 }
 
 type GameReviewJoiner struct {
@@ -134,6 +135,7 @@ func (j *GameReviewJoiner) receiveReviews() error {
 			missing = missing[:len(missing)-1]
 		}
 		j.saveReviews(batch)
+		j.sendResults()
 		err = d.Ack(false)
 		if err != nil {
 			return fmt.Errorf("failed to ack batch: %v", err)
@@ -167,29 +169,26 @@ func (j *GameReviewJoiner) saveGames(batch BatchGame) {
 }
 
 func (j *GameReviewJoiner) saveReviews(batch BatchReview) {
-	for i, review := range batch.Data {
+	for _, review := range batch.Data {
 		if val, ok := j.games[review.AppID]; ok {
 			j.games[review.AppID] = Join{name: val.name, review_num: val.review_num + 1}
-			if j.games[review.AppID].review_num >= 5000 {
-				eof := false
-				if i == len(batch.Data)-1 {
-					eof = true
-				}
-				j.sendResults(review.AppID, j.games[review.AppID].name, eof)
-			}
 		} else {
 			j.reviews[review.AppID] += 1
 		}
 	}
 }
 
-func (j *GameReviewJoiner) sendResults(id uint64, name string, eof bool) {
-	delete(j.games, id)
-	r := protocol.Q4Results{
-		Name: name,
-		EOF:  eof,
-	}
-	if err := j.m.SendAny(r, "", middleware.ResultsQueue); err != nil {
-		log.Errorf("Failed to send results: %v", err)
+func (j *GameReviewJoiner) sendResults() {
+	for _, game := range j.games {
+		if game.review_num >= j.cfg.N && !game.sent {
+			r := protocol.Q4Results{
+				Name: game.name,
+				EOF:  false,
+			}
+			if err := j.m.SendAny(r, "", middleware.ResultsQueue); err != nil {
+				log.Errorf("Failed to send results: %v", err)
+			}
+			game.sent = true
+		}
 	}
 }
