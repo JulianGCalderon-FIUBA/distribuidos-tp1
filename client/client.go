@@ -12,7 +12,7 @@ import (
 
 const GAMES_PATH = ".data/games.csv"
 const REVIEWS_PATH = ".data/reviews.csv"
-const RESULTS_PATH = "./client/results/"
+const RESULTS_PATH = ".results"
 const MAX_RESULTS = 5
 
 type client struct {
@@ -221,18 +221,21 @@ func getFileSize(filePath string) (uint64, error) {
 }
 
 func writeResults(result protocol.Results, query int) {
-	path := fmt.Sprintf("%v%v.csv", RESULTS_PATH, query)
-	f, err := os.Open(path)
+	err := os.MkdirAll(RESULTS_PATH, os.ModePerm)
 	if err != nil {
-		log.Errorf("Failed to open results file for query %v", query)
+		log.Errorf("Failed to create directory for results files: %v", err)
+	}
+	path := fmt.Sprintf("%v/%v.csv", RESULTS_PATH, query)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Errorf("Failed to open results file for query %v: %v", query, err)
 	}
 	defer f.Close()
 
 	w := csv.NewWriter(f)
 	err = w.Write(result.ToCSV())
 	if err != nil {
-		log.Errorf("Failed to write results from query %v", query)
+		log.Errorf("Failed to write results from query %v: %v", query, err)
 	}
-
 	w.Flush()
 }
