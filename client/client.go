@@ -2,6 +2,7 @@ package main
 
 import (
 	"distribuidos/tp1/protocol"
+	"encoding/csv"
 	"fmt"
 	"io"
 	"net"
@@ -11,6 +12,7 @@ import (
 
 const GAMES_PATH = ".data/games.csv"
 const REVIEWS_PATH = ".data/reviews.csv"
+const RESULTS_PATH = "./client/results/"
 const MAX_RESULTS = 5
 
 type client struct {
@@ -171,8 +173,9 @@ func (c *client) sendFile(filePath string) error {
 func (c *client) waitResults() {
 	log.Infof("Waiting for results")
 	defer c.reqConn.Close()
+
 	for {
-		var results any
+		var results protocol.Results
 		err := c.reqConn.Recv(&results)
 		if err != nil {
 			log.Error("Failed to receive results message: %v", err)
@@ -181,20 +184,25 @@ func (c *client) waitResults() {
 		case protocol.Q1Results:
 			log.Infof("Received Q1 results: %#v", results)
 			c.results += 1
+			writeResults(r, 1)
 		case protocol.Q2Results:
 			log.Infof("Received Q2 results: %#v", results)
 			c.results += 1
+			writeResults(r, 2)
 		case protocol.Q3Results:
 			log.Infof("Received Q3 results: %#v", results)
 			c.results += 1
+			writeResults(r, 3)
 		case protocol.Q4Results:
 			log.Infof("Received Q4 results: %#v", results)
 			if r.EOF {
 				c.results += 1
 			}
+			writeResults(r, 4)
 		case protocol.Q5Results:
 			log.Infof("Received Q5 results: %#v", results)
 			c.results += 1
+			writeResults(r, 5)
 		}
 
 		if c.results == MAX_RESULTS {
@@ -210,4 +218,21 @@ func getFileSize(filePath string) (uint64, error) {
 		return 0, err
 	}
 	return uint64(file.Size()), nil
+}
+
+func writeResults(result protocol.Results, query int) {
+	path := fmt.Sprintf("%v%v.csv", RESULTS_PATH, query)
+	f, err := os.Open(path)
+	if err != nil {
+		log.Errorf("Failed to open results file for query %v", query)
+	}
+	defer f.Close()
+
+	w := csv.NewWriter(f)
+	err = w.Write(result.ToCSV())
+	if err != nil {
+		log.Errorf("Failed to write results from query %v", query)
+	}
+
+	w.Flush()
 }
