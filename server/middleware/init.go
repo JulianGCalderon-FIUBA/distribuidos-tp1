@@ -391,11 +391,44 @@ func (m *Middleware) InitPerPlatform(partitionID int) error {
 		return err
 	}
 
-	return m.ch.QueueBind(
+	err = m.ch.QueueBind(
 		q.Name,
 		strconv.Itoa(partitionID),
 		xName,
 		false,
 		nil,
 	)
+	if err != nil {
+		return err
+	}
+
+	_, err = m.ch.QueueDeclare(
+		GamesPerPlatformJoin,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Middleware) InitPerPlatformJoiner() error {
+	_, err := m.ch.QueueDeclare(
+		GamesPerPlatformJoin,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -13,10 +13,15 @@ const (
 	Windows
 )
 
+type Count struct {
+	ClientID uint64
+	Count    map[Platform]int
+}
+
 type Aggregator struct {
 	cfg   config
 	m     middleware.Middleware
-	count map[Platform]int
+	count Count
 }
 
 func newAggregator(cfg config) (*Aggregator, error) {
@@ -31,7 +36,10 @@ func newAggregator(cfg config) (*Aggregator, error) {
 
 	log.Infof("Initialized per platform infrastructure")
 
-	count := make(map[Platform]int)
+	count := Count{
+		ClientID: 0,
+		Count:    make(map[Platform]int),
+	}
 
 	return &Aggregator{
 		cfg:   cfg,
@@ -56,21 +64,26 @@ func (a *Aggregator) run() error {
 
 		for _, game := range batch.Data {
 			if game.Windows {
-				a.count[Windows] += 1
+				a.count.Count[Windows] += 1
 			}
 			if game.Linux {
-				a.count[Linux] += 1
+				a.count.Count[Linux] += 1
 			}
 			if game.Mac {
-				a.count[Mac] += 1
+				a.count.Count[Mac] += 1
 			}
 		}
 
 		if batch.EOF {
 			log.Infof("Received EOF from client: %v", batch.ClientID)
-			log.Infof("Got %v games with linux support", a.count[Linux])
-			log.Infof("Got %v games with mac support", a.count[Mac])
-			log.Infof("Got %v games with windows support", a.count[Windows])
+			log.Infof("Got %v games with linux support", a.count.Count[Linux])
+			log.Infof("Got %v games with mac support", a.count.Count[Mac])
+			log.Infof("Got %v games with windows support", a.count.Count[Windows])
+
+			err := a.m.Send(a.count, "", middleware.GamesPerPlatformJoin)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
