@@ -362,3 +362,78 @@ func (m *Middleware) InitPartitioner(input string, output string, partitionsNum 
 
 	return nil
 }
+
+func (m *Middleware) InitMoreThanNReviews(id int) error {
+	// Receiving exchanges
+	err := m.ch.ExchangeDeclare(
+		fmt.Sprintf("%v-x", MoreThanNReviewsGamesQueue),
+		amqp.ExchangeDirect,
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+	err = m.ch.ExchangeDeclare(
+		fmt.Sprintf("%v-x", NThousandEnglishReviewsQueue),
+		amqp.ExchangeDirect,
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Receiving queues
+	q, err := m.ch.QueueDeclare(fmt.Sprintf("%v-x-%v", MoreThanNReviewsGamesQueue, id),
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	err = m.ch.QueueBind(
+		q.Name,
+		"",
+		fmt.Sprintf("%v-x", MoreThanNReviewsGamesQueue),
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	q, err = m.ch.QueueDeclare(fmt.Sprintf("%v-x-%v", NThousandEnglishReviewsQueue, id),
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	err = m.ch.QueueBind(
+		q.Name,
+		"",
+		fmt.Sprintf("%v-x", NThousandEnglishReviewsQueue),
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
