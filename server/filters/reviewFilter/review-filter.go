@@ -69,8 +69,9 @@ func (rf *ReviewFilter) receive() error {
 		p += len(positive.Data)
 		n += len(negative.Data)
 		if batch.EOF {
-			log.Infof("Sent %v positive reviews from client %v", p, batch.ClientID)
-			log.Infof("Sent %v negative reviews from client %v", n, batch.ClientID)
+			log.Infof("Received EOF from client %v", batch.ClientID)
+			log.Infof("Sent %v positive reviews", p)
+			log.Infof("Sent %v negative reviews", n)
 			p = 0
 			n = 0
 		}

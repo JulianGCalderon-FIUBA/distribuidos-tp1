@@ -80,7 +80,8 @@ func (lf *LanguageFilter) receive() error {
 		}
 		sent += len(filtered.Data)
 		if batch.EOF {
-			log.Infof("Sent %v reviews in english from client %v", sent, batch.ClientID)
+			log.Infof("Received EOF from client %v", batch.ClientID)
+			log.Infof("Sent %v reviews in english", sent)
 		}
 	}
 	return nil
