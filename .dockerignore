@@ -5,3 +5,6 @@ README.md
 
 Dockerfile
 compose.yaml
+
+.data/
+bin/
