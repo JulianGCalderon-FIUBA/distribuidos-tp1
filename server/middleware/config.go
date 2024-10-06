@@ -37,6 +37,9 @@ const TopNHistoricAvgQueue string = "top-n-historic-avg"
 const ReviewsEnglishFilterExchange string = "reviews-filter-english"
 const NThousandEnglishReviewsQueue string = "reviews-english-n-thousand-partitioner"
 
+// Results
+const ResultsQueue string = "results"
+
 var DataHandlerexchanges = map[string]string{
 	ReviewExchange: amqp.ExchangeFanout,
 	GamesExchange:  amqp.ExchangeFanout,
