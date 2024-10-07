@@ -12,14 +12,13 @@ import (
 	"github.com/spf13/viper"
 )
 
-const batchSize = 100
-
 type config struct {
 	RabbitIP    string
 	PartitionID int
 	GameInput   string
 	ReviewInput string
 	Output      string
+	BatchSize   int
 }
 
 func getConfig() (config, error) {
@@ -27,12 +26,14 @@ func getConfig() (config, error) {
 
 	v.SetDefault("RabbitIP", "localhost")
 	v.SetDefault("PartitionID", "1")
+	v.SetDefault("BatchSize", "100")
 
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")
 	_ = v.BindEnv("PartitionID", "PARTITION_ID")
 	_ = v.BindEnv("GameInput", "GAME_INPUT")
 	_ = v.BindEnv("ReviewInput", "REVIEW_INPUT")
 	_ = v.BindEnv("Output", "OUTPUT")
+	_ = v.BindEnv("BatchSize", "BATCH_SIZE")
 
 	var c config
 	err := v.Unmarshal(&c)
@@ -41,9 +42,10 @@ func getConfig() (config, error) {
 }
 
 type reviewHandler struct {
-	games   map[uint64]middleware.ReviewsPerGame
-	reviews map[uint64]int
-	gameEof bool
+	games     map[uint64]middleware.ReviewsPerGame
+	reviews   map[uint64]int
+	gameEof   bool
+	batchSize int
 }
 
 type gameHandler struct {
@@ -96,7 +98,7 @@ func (h reviewHandler) Conclude() ([]any, error) {
 	batches := make([]any, 0)
 
 	for len(games) > 0 {
-		currBatchSize := min(batchSize, len(games))
+		currBatchSize := min(h.batchSize, len(games))
 		var batchData []middleware.ReviewsPerGame
 		games, batchData = games[currBatchSize:], games[:currBatchSize]
 
@@ -126,18 +128,20 @@ func main() {
 	}
 
 	h := reviewHandler{
-		games:   make(map[uint64]middleware.ReviewsPerGame),
-		reviews: make(map[uint64]int),
-		gameEof: false,
+		games:     make(map[uint64]middleware.ReviewsPerGame),
+		reviews:   make(map[uint64]int),
+		gameEof:   false,
+		batchSize: cfg.BatchSize,
 	}
 	gh := gameHandler{
 		h: &h,
 	}
 
 	gameAgg, err := aggregator.NewAggregator(gameAggCfg, gh)
-	utils.Expect(err, "Failed to create partitioner")
+	utils.Expect(err, "Failed to create game aggregator")
 	err = gameAgg.Run(context.Background())
-	utils.Expect(err, "Failed to run partitioner")
+	utils.Expect(err, "Failed to run game aggregator")
+
 	qName = fmt.Sprintf("%v-x-%v", cfg.ReviewInput, cfg.PartitionID)
 	reviewCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
@@ -146,7 +150,7 @@ func main() {
 	}
 
 	reviewAgg, err := aggregator.NewAggregator(reviewCfg, h)
-	utils.Expect(err, "Failed to create partitioner")
+	utils.Expect(err, "Failed to create review aggregator")
 	err = reviewAgg.Run(context.Background())
-	utils.Expect(err, "Failed to run partitioner")
+	utils.Expect(err, "Failed to run review aggregator")
 }
