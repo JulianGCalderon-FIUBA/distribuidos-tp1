@@ -21,6 +21,7 @@ type client struct {
 	reqConn  *protocol.Conn
 	dataConn *protocol.Conn
 	results  int
+	wg       sync.WaitGroup
 }
 
 func newClient(config config) *client {
@@ -35,15 +36,15 @@ func (c *client) start() error {
 	if err := c.startConnection(); err != nil {
 		return err
 	}
-	var wg sync.WaitGroup
-	wg.Add(2)
+	c.wg = sync.WaitGroup{}
+	c.wg.Add(2)
 	go func() {
 		if err := c.startDataConnection(); err != nil {
 			log.Infof("Failed to start data connection: %v", err)
 		}
 	}()
 	go c.waitResults()
-	wg.Wait()
+	c.wg.Wait()
 	return nil
 }
 
@@ -104,6 +105,7 @@ func (c *client) receiveID() error {
 func (c *client) startDataConnection() error {
 	dataConn, err := net.Dial("tcp", c.config.DataEndpointAddress)
 	if err != nil {
+		c.wg.Done()
 		return err
 	}
 
@@ -114,18 +116,22 @@ func (c *client) startDataConnection() error {
 
 	err = c.sendDataHello()
 	if err != nil {
+		c.wg.Done()
 		return fmt.Errorf("failed to send data hello: %w", err)
 	}
 	err = c.sendFile(GAMES_PATH)
 	if err != nil {
+		c.wg.Done()
 		return fmt.Errorf("failed to send games: %w", err)
 	}
 	log.Info("Sent all games")
 	err = c.sendFile(REVIEWS_PATH)
 	if err != nil {
+		c.wg.Done()
 		return fmt.Errorf("failed to send reviews: %w", err)
 	}
 	log.Info("Sent all reviews")
+	c.wg.Done()
 	return nil
 }
 
@@ -180,6 +186,7 @@ func (c *client) waitResults() {
 		if err != nil {
 			if err == io.EOF {
 				log.Errorf("Connection closed: %v", err)
+				c.wg.Done()
 				break
 			}
 			log.Errorf("Failed to receive results message: %v", err)
