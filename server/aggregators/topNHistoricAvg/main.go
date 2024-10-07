@@ -26,7 +26,7 @@ func getConfig() (config, error) {
 
 	v.SetDefault("RabbitIP", "localhost")
 	v.SetDefault("TopN", "10")
-	v.SetDefault("PartitionId", "0")
+	v.SetDefault("PartitionId", "1")
 
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")
 	_ = v.BindEnv("TopN", "TOP_N")
@@ -37,28 +37,9 @@ func getConfig() (config, error) {
 	return c, err
 }
 
-type GameHeap []middleware.AvgPlaytimeGame
-
-func (g GameHeap) Len() int { return len(g) }
-func (g GameHeap) Less(i, j int) bool {
-	return g[i].AveragePlaytimeForever < g[j].AveragePlaytimeForever
-}
-func (g GameHeap) Swap(i, j int) { g[i], g[j] = g[j], g[i] }
-func (g *GameHeap) Push(x any) {
-	*g = append(*g, x.(middleware.AvgPlaytimeGame))
-}
-
-func (g *GameHeap) Pop() any {
-	old := *g
-	n := len(old)
-	x := old[n-1]
-	*g = old[0 : n-1]
-	return x
-}
-
 type handler struct {
 	topN    int
-	results GameHeap
+	results utils.GameHeap
 }
 
 func (h handler) Aggregate(g middleware.Game) error {
@@ -107,7 +88,7 @@ func main() {
 
 	h := handler{
 		topN:    cfg.TopN,
-		results: make(GameHeap, cfg.TopN),
+		results: make(utils.GameHeap, cfg.TopN),
 	}
 
 	agg, err := aggregator.NewAggregator(aggCfg, h)
