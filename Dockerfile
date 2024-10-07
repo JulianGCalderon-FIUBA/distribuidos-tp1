@@ -16,6 +16,7 @@ RUN CGO_ENABLED=0 go build -o bin/language-filter ./server/filters/languageFilte
 RUN CGO_ENABLED=0 go build -o bin/games-per-platform ./server/aggregators/gamesPerPlatform
 RUN CGO_ENABLED=0 go build -o bin/games-per-platform-joiner ./server/joiners/gamesPerPlatformJoiner
 RUN CGO_ENABLED=0 go build -o bin/group-by-game ./server/aggregators/groupByGame
+RUN CGO_ENABLED=0 go build -o bin/top-n-reviews ./server/aggregators/topNReviews
 RUN CGO_ENABLED=0 go build -o bin/more-than-n-reviews ./server/aggregators/moreThanNReviews
 RUN CGO_ENABLED=0 go build -o bin/90-percentile ./server/aggregators/90Percentile
 
@@ -30,6 +31,7 @@ COPY --from=builder /build/bin/language-filter /language-filter
 COPY --from=builder /build/bin/games-per-platform /games-per-platform
 COPY --from=builder /build/bin/games-per-platform-joiner /games-per-platform-joiner
 COPY --from=builder /build/bin/group-by-game /group-by-game
+COPY --from=builder /build/bin/top-n-reviews /top-n-reviews
 COPY --from=builder /build/bin/more-than-n-reviews /more-than-n-reviews
 COPY --from=builder /build/bin/90-percentile /90-percentile
 ENTRYPOINT ["/bin/sh"]
