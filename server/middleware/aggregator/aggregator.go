@@ -163,6 +163,8 @@ loop:
 					return errors.Join(err, nackErr)
 				}
 			}
+			err = d.Ack(false)
+			return err
 		}
 
 		err = d.Ack(false)
