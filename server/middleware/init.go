@@ -428,3 +428,17 @@ func (m *Middleware) InitTopNHistoricAvgJoiner() error {
 
 	return nil
 }
+
+func (m *Middleware) InitResultsQueue() error {
+	_, err := m.ch.QueueDeclare(ResultsQueue,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
