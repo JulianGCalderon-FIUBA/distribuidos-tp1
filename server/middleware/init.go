@@ -29,7 +29,7 @@ func NewMiddleware(ip string) (*Middleware, error) {
 	}, nil
 }
 
-func (m *Middleware) Init(exchanges map[string]string, queues map[string]string) error {
+func (m *Middleware) Init(exchanges map[string]string, queues []queueConfig) error {
 	err := m.initExchanges(exchanges)
 	if err != nil {
 		return fmt.Errorf("failed to initialize exchanges %w", err)
@@ -61,9 +61,9 @@ func (m *Middleware) initExchanges(exchanges map[string]string) error {
 	return nil
 }
 
-func (m *Middleware) initQueues(queues map[string]string) error {
-	for queue, exchange := range queues {
-		q, err := m.ch.QueueDeclare(queue,
+func (m *Middleware) initQueues(queues []queueConfig) error {
+	for _, queue := range queues {
+		q, err := m.ch.QueueDeclare(queue.name,
 			false,
 			false,
 			false,
@@ -76,8 +76,8 @@ func (m *Middleware) initQueues(queues map[string]string) error {
 
 		err = m.ch.QueueBind(
 			q.Name,
-			"",
-			exchange,
+			queue.routingKey,
+			queue.exchange,
 			false,
 			nil,
 		)

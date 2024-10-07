@@ -38,6 +38,8 @@ func (gf *GenreFilter) start() error {
 }
 
 func (gf *GenreFilter) receive() error {
+	var indieSent int
+	var actionSent int
 	deliveryCh, err := gf.m.ReceiveFromQueue(middleware.GamesQueue)
 	for d := range deliveryCh {
 		if err != nil {
@@ -45,24 +47,33 @@ func (gf *GenreFilter) receive() error {
 			return err
 		}
 
-		batchGame, err := middleware.Deserialize[Batch](d.Body)
+		batch, err := middleware.Deserialize[Batch](d.Body)
 		if err != nil {
 			_ = d.Nack(false, false)
 			return err
 		}
 
-		indie, action := gf.filterByGenre(batchGame)
+		indie, action := gf.filterByGenre(batch)
 
-		err = gf.sendFilteredGames(indie, middleware.IndieExchange)
+		indieSent += len(indie.Data)
+		actionSent += len(action.Data)
+
+		err = gf.sendFilteredGames(indie, middleware.IndieGameKeys)
 		if err != nil {
 			_ = d.Nack(false, false)
 			continue
 		}
 
-		err = gf.sendFilteredGames(action, middleware.ActionExchange)
+		err = gf.sendFilteredGames(action, middleware.ActionGameKeys)
 		if err != nil {
 			_ = d.Nack(false, false)
 			continue
+		}
+
+		if batch.EOF {
+			log.Infof("Finished filtering data for client: %v", batch.ClientID)
+			log.Infof("Sent %v Indie games", indieSent)
+			log.Infof("Sent %v Action games", actionSent)
 		}
 
 		_ = d.Ack(false)
@@ -72,8 +83,19 @@ func (gf *GenreFilter) receive() error {
 }
 
 func (gf *GenreFilter) filterByGenre(gameBatch Batch) (Batch, Batch) {
-	var indieGames Batch
-	var actionGames Batch
+	indieGames := Batch{
+		Data:     []middleware.Game{},
+		ClientID: gameBatch.ClientID,
+		BatchID:  gameBatch.BatchID,
+		EOF:      gameBatch.EOF,
+	}
+
+	actionGames := Batch{
+		Data:     []middleware.Game{},
+		ClientID: gameBatch.ClientID,
+		BatchID:  gameBatch.BatchID,
+		EOF:      gameBatch.EOF,
+	}
 
 	for _, game := range gameBatch.Data {
 		if slices.Contains(game.Genres, middleware.IndieGenre) {
@@ -83,14 +105,13 @@ func (gf *GenreFilter) filterByGenre(gameBatch Batch) (Batch, Batch) {
 		if slices.Contains(game.Genres, middleware.ActionGenre) {
 			actionGames.Data = append(actionGames.Data, game)
 		}
-
 	}
 
 	return indieGames, actionGames
 }
 
-func (gf *GenreFilter) sendFilteredGames(batch Batch, exchange string) error {
-	err := gf.m.Send(batch, exchange, "")
+func (gf *GenreFilter) sendFilteredGames(batch Batch, genre string) error {
+	err := gf.m.Send(batch, middleware.GenresExchange, genre)
 	if err != nil {
 		log.Errorf("Could not send batch")
 	}
