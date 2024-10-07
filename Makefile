@@ -33,5 +33,6 @@ compose-down:
 compose-logs:
 	docker compose -f compose.yaml logs -f gateway client \
 		genre-filter review-filter decade-filter language-filter \
-		q1-partitioner q1-1 q1-2 q1-joiner
+		q1-partitioner q1-1 q1-2 q1-joiner \
+		q3-games-partitioner q3-reviews-partitioner q3-group-1
 .PHONY: compose-logs
