@@ -113,7 +113,7 @@ func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
 
-	qName := fmt.Sprintf("%v-x-%v", middleware.TopNAmountReviewsGamesQueue, cfg.PartitionID)
+	qName := fmt.Sprintf("%v-x-%v", cfg.GameInput, cfg.PartitionID)
 	gameAggCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
 		Input:    qName,
@@ -133,7 +133,7 @@ func main() {
 	utils.Expect(err, "Failed to create partitioner")
 	err = gameAgg.Run(context.Background())
 	utils.Expect(err, "Failed to run partitioner")
-	qName = fmt.Sprintf("%v-x-%v", middleware.TopNAmountReviewsQueue, cfg.PartitionID)
+	qName = fmt.Sprintf("%v-x-%v", cfg.ReviewInput, cfg.PartitionID)
 	reviewCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
 		Input:    qName,
