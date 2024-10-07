@@ -136,41 +136,58 @@ services:
       - gateway
 
   q2-games-partitioner:
-      container_name: q2-games-partitioner
-      image: tp1:latest
-      entrypoint: /partitioner
-      environment:
-        - RABBIT_IP=rabbitmq
-        - INPUT=top-n-historic-avg-partitioner
-        - PARTITIONS=1
-        - TYPE=game
-      networks:
-        - net
-      depends_on:
-        - gateway
-
-  top-n-historic-avg-aggregator:
-    container_name: top-n-historic-avg-aggregator
+    container_name: q2-games-partitioner
     image: tp1:latest
-    entrypoint: /top-n-historic-avg-aggregator
+    entrypoint: /partitioner
     environment:
       - RABBIT_IP=rabbitmq
-      - PARTITION_ID=0
+      - INPUT=top-n-historic-avg-partitioner
+      - OUTPUT=top-n-historic-avg
+      - PARTITIONS=1
+      - TYPE=game
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  top-n-historic-avg-1:
+    container_name: top-n-historic-avg-1
+    image: tp1:latest
+    entrypoint: /top-n-historic-avg
+    environment:
+      - RABBIT_IP=rabbitmq
+      - PARTITION_ID=1
       - TOP_N=10
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  q2-joiner:
+    container_name: q2-joiner
+    image: tp1:latest
+    entrypoint: /top-n-historic-avg-joiner
+    environment:
+      - RABBIT_IP=rabbitmq
+      - PARTITIONS=1
+    networks:
+      - net
+    depends_on:
+      - gateway
 
   q3-games-partitioner:
-      container_name: q3-games-partitioner
-      image: tp1:latest
-      entrypoint: /partitioner
-      environment:
-        - RABBIT_IP=rabbitmq
-        - INPUT=games-top-n-amount-reviews
-        - PARTITIONS=1
-        - TYPE=game
-      networks:
-        - net
-      depends_on:
-        - gateway
+    container_name: q3-games-partitioner
+    image: tp1:latest
+    entrypoint: /partitioner
+    environment:
+      - RABBIT_IP=rabbitmq
+      - INPUT=games-top-n-amount-reviews
+      - PARTITIONS=1
+      - TYPE=game
+    networks:
+      - net
+    depends_on:
+      - gateway
 
   q3-reviews-partitioner:
     container_name: q3-reviews-partitioner
