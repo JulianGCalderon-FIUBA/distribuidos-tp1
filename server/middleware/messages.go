@@ -35,6 +35,12 @@ type Review struct {
 	Text  string
 }
 
+type ReviewsPerGame struct {
+	AppID   uint64
+	Name    string
+	Reviews int
+}
+
 type Batch[T any] struct {
 	Data     []T
 	ClientID int

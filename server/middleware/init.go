@@ -47,7 +47,7 @@ func (m *Middleware) initExchanges(exchanges map[string]string) error {
 		err := m.ch.ExchangeDeclare(
 			exchange,
 			kind,
-			true,
+			false,
 			false,
 			false,
 			false,
@@ -118,7 +118,7 @@ func (m *Middleware) InitReviewFilter() error {
 	err := m.ch.ExchangeDeclare(
 		ReviewExchange,
 		amqp.ExchangeFanout,
-		true,
+		false,
 		false,
 		false,
 		false,
@@ -155,7 +155,7 @@ func (m *Middleware) InitReviewFilter() error {
 	err = m.ch.ExchangeDeclare(
 		ReviewsScoreFilterExchange,
 		amqp.ExchangeDirect,
-		true,
+		false,
 		false,
 		false,
 		false,
@@ -179,7 +179,7 @@ func (m *Middleware) InitReviewFilter() error {
 
 	err = m.ch.QueueBind(
 		q.Name,
-		PositiveReviewKeys,
+		PositiveReviewKey,
 		ReviewsScoreFilterExchange,
 		false,
 		nil,
@@ -201,7 +201,7 @@ func (m *Middleware) InitReviewFilter() error {
 
 	err = m.ch.QueueBind(
 		q.Name,
-		NegativeReviewKeys,
+		NegativeReviewKey,
 		ReviewsScoreFilterExchange,
 		false,
 		nil,
@@ -223,7 +223,7 @@ func (m *Middleware) InitReviewFilter() error {
 
 	err = m.ch.QueueBind(
 		q.Name,
-		NegativeReviewKeys,
+		NegativeReviewKey,
 		ReviewsScoreFilterExchange,
 		false,
 		nil,
@@ -239,7 +239,7 @@ func (m *Middleware) InitLanguageFilter() error {
 	err := m.ch.ExchangeDeclare(
 		ReviewsScoreFilterExchange,
 		amqp.ExchangeDirect,
-		true,
+		false,
 		false,
 		false,
 		false,
@@ -263,7 +263,7 @@ func (m *Middleware) InitLanguageFilter() error {
 
 	err = m.ch.QueueBind(
 		q.Name,
-		NegativeReviewKeys,
+		NegativeReviewKey,
 		ReviewsScoreFilterExchange,
 		false,
 		nil,
@@ -276,7 +276,7 @@ func (m *Middleware) InitLanguageFilter() error {
 	err = m.ch.ExchangeDeclare(
 		ReviewsEnglishFilterExchange,
 		amqp.ExchangeDirect,
-		true,
+		false,
 		false,
 		false,
 		false,
@@ -327,7 +327,7 @@ func (m *Middleware) InitPartitioner(input string, output string, partitionsNum 
 	err = m.ch.ExchangeDeclare(
 		output,
 		amqp.ExchangeDirect,
-		true,
+		false,
 		false,
 		false,
 		false,
@@ -361,82 +361,6 @@ func (m *Middleware) InitPartitioner(input string, output string, partitionsNum 
 	}
 
 	return nil
-}
-
-func (m *Middleware) InitMoreThanNReviews(id int) error {
-	// Receiving exchanges
-	err := m.ch.ExchangeDeclare(
-		fmt.Sprintf("%v-x", MoreThanNReviewsGamesQueue),
-		amqp.ExchangeDirect,
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		return err
-	}
-	err = m.ch.ExchangeDeclare(
-		fmt.Sprintf("%v-x", NThousandEnglishReviewsQueue),
-		amqp.ExchangeDirect,
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		return err
-	}
-
-	// Receiving queues
-	q, err := m.ch.QueueDeclare(
-		fmt.Sprintf("%v-x-%v", MoreThanNReviewsGamesQueue, id),
-		false,
-		false,
-		false,
-		false,
-		nil)
-	if err != nil {
-		return err
-	}
-	err = m.ch.QueueBind(
-		q.Name,
-		"",
-		fmt.Sprintf("%v-x", MoreThanNReviewsGamesQueue),
-		false,
-		nil,
-	)
-	if err != nil {
-		return err
-	}
-
-	q, err = m.ch.QueueDeclare(fmt.Sprintf("%v-x-%v", NThousandEnglishReviewsQueue, id),
-		false,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		return err
-	}
-
-	err = m.ch.QueueBind(
-		q.Name,
-		"",
-		fmt.Sprintf("%v-x", NThousandEnglishReviewsQueue),
-		false,
-		nil,
-	)
-	if err != nil {
-		return err
-	}
-
-	// sending queue
-
-	return m.InitResultsQueue()
 }
 
 func (m *Middleware) InitResultsQueue() error {

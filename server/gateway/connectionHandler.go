@@ -10,6 +10,8 @@ import (
 
 const MAX_RESULTS = 5
 
+const MAX_RESULTS = 5
+
 func (g *gateway) getActiveClients() int {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -29,6 +31,12 @@ func (g *gateway) startConnectionHandler() {
 		log.Fatalf("Failed to bind socket: %v", err)
 	}
 	defer listener.Close()
+
+	err = g.m.InitResultsQueue()
+	if err != nil {
+		log.Errorf("Failed to initialize results queue: %v", err)
+		return
+	}
 
 	for {
 		conn, err := listener.Accept()
@@ -74,12 +82,6 @@ func (g *gateway) handleClient(netConn net.Conn) error {
 		if err != nil {
 			return err
 		}
-
-		err = g.m.InitResultsQueue()
-		if err != nil {
-			return err
-		}
-
 		err = g.receiveResults(conn)
 		if err != nil {
 			return err

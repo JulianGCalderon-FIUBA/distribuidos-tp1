@@ -262,9 +262,9 @@ func gameFromFullRecord(record []string) (game middleware.Game, err error) {
 		return
 	}
 	game.ReleaseYear = uint16(releaseDate.Year())
-	game.Windows = record[17] == "true"
-	game.Mac = record[18] == "true"
-	game.Linux = record[19] == "true"
+	game.Windows = record[17] == "True"
+	game.Mac = record[18] == "True"
+	game.Linux = record[19] == "True"
 	game.AveragePlaytimeForever = uint64(averagePlaytimeForever)
 	if record[36] == "" {
 		err = emptyGameGenresError

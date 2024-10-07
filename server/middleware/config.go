@@ -25,9 +25,10 @@ const ReviewsScoreFilterExchange string = "reviews-filter-score"
 const NinetyPercentileReviewsQueue string = "reviews-90-percentile"
 const LanguageReviewsFilterQueue string = "reviews-language-filter"
 const TopNAmountReviewsQueue string = "reviews-top-n-partitioner"
-const PositiveReviewKeys string = "positive-reviews"
-const NegativeReviewKeys string = "negative-reviews"
+const PositiveReviewKey string = "positive-review"
+const NegativeReviewKey string = "negative-review"
 
+// decade filter
 // decade filter
 const DecadeExchange string = "decades"
 const TopNHistoricAvgQueue string = "top-n-historic-avg"
@@ -36,14 +37,17 @@ const TopNHistoricAvgQueue string = "top-n-historic-avg"
 const ReviewsEnglishFilterExchange string = "reviews-filter-english"
 const NThousandEnglishReviewsQueue string = "reviews-english-n-thousand-partitioner"
 
-// Results
-const ResultsQueue string = "results"
-
 type queueConfig struct {
 	name       string
 	exchange   string
 	routingKey string
 }
+
+// games per platform
+const GamesPerPlatformJoin string = "games-per-platform-join"
+
+// Results
+const ResultsQueue string = "results"
 
 var DataHandlerexchanges = map[string]string{
 	ReviewExchange: amqp.ExchangeFanout,
