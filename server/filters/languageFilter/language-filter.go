@@ -44,6 +44,8 @@ func (lf *LanguageFilter) receive() error {
 		return err
 	}
 
+	var sent int
+
 	for d := range deliveryCh {
 		batch, err := middleware.Deserialize[Batch](d.Body)
 		if err != nil {
@@ -76,13 +78,23 @@ func (lf *LanguageFilter) receive() error {
 		if err != nil {
 			return fmt.Errorf("failed to ack batch: %v", err)
 		}
+		sent += len(filtered.Data)
+		if batch.EOF {
+			log.Infof("Received EOF from client %v", batch.ClientID)
+			log.Infof("Sent %v reviews in english", sent)
+		}
 	}
 	return nil
 }
 
 // Filters to keep only reviews in English
 func (lf *LanguageFilter) filterBatch(batch Batch) (Batch, error) {
-	var english Batch
+	english := Batch{
+		Data:     []middleware.Review{},
+		ClientID: batch.ClientID,
+		BatchID:  batch.BatchID,
+		EOF:      batch.EOF,
+	}
 	for _, review := range batch.Data {
 		if lf.isEnglish(review.Text) {
 			new := middleware.Review{AppID: review.AppID}

@@ -25,8 +25,8 @@ const ReviewsScoreFilterExchange string = "reviews-filter-score"
 const NinetyPercentileReviewsQueue string = "reviews-90-percentile"
 const LanguageReviewsFilterQueue string = "reviews-language-filter"
 const TopNAmountReviewsQueue string = "reviews-top-n-partitioner"
-const PositiveReviewKeys string = "positive-reviews"
-const NegativeReviewKeys string = "negative-reviews"
+const PositiveReviewKey string = "positive-review"
+const NegativeReviewKey string = "negative-review"
 
 // decade filter
 const DecadeExchange string = "decades"
@@ -41,6 +41,9 @@ type queueConfig struct {
 	exchange   string
 	routingKey string
 }
+
+// Results
+const ResultsQueue string = "results"
 
 var DataHandlerexchanges = map[string]string{
 	ReviewExchange: amqp.ExchangeFanout,
