@@ -5,7 +5,6 @@ import (
 	"distribuidos/tp1/server/middleware"
 	"encoding/gob"
 	"fmt"
-	"slices"
 	"sync"
 )
 
@@ -16,10 +15,11 @@ type Join struct {
 }
 
 type GameReviewJoiner struct {
-	cfg     config
-	m       middleware.Middleware
-	games   map[uint64]Join
-	reviews map[uint64]int
+	cfg      config
+	m        middleware.Middleware
+	games    map[uint64]Join
+	reviews  map[uint64]int
+	game_eof bool
 }
 
 type BatchGame middleware.Batch[middleware.Game]
@@ -76,7 +76,8 @@ func (j *GameReviewJoiner) receiveGames() error {
 	}
 
 	var last int
-	var missing []int
+	missing := make(map[int]struct{})
+	recv_eof := false
 
 	for d := range deliveryCh {
 		batch, err := middleware.Deserialize[BatchGame](d.Body)
@@ -88,9 +89,9 @@ func (j *GameReviewJoiner) receiveGames() error {
 			}
 			continue
 		}
-		if i, contains := slices.BinarySearch(missing, batch.BatchID); contains {
-			missing[i] = missing[len(missing)-1]
-			missing = missing[:len(missing)-1]
+		delete(missing, batch.BatchID)
+		for i := last + 1; i < batch.BatchID; i++ {
+			missing[i] = struct{}{}
 		}
 		j.saveGames(batch)
 		err = d.Ack(false)
@@ -98,13 +99,12 @@ func (j *GameReviewJoiner) receiveGames() error {
 			return fmt.Errorf("failed to ack batch: %v", err)
 		}
 		if batch.EOF {
-			if batch.BatchID != last+1 {
-				for i := last + 1; i < batch.BatchID; i++ {
-					missing = append(missing, i)
-				}
-			} else {
-				log.Infof("Received games EOF from client %v", batch.ClientID)
-			}
+			log.Infof("Received games EOF from client %v", batch.ClientID)
+			recv_eof = true
+		}
+		if recv_eof && len(missing) == 0 {
+			clear(j.reviews)
+			j.game_eof = true
 		}
 		last = batch.BatchID
 	}
@@ -179,7 +179,7 @@ func (j *GameReviewJoiner) saveReviews(batch BatchReview) {
 		if val, ok := j.games[review.AppID]; ok {
 			val.review_num += 1
 			j.games[review.AppID] = val
-		} else {
+		} else if !ok && !j.game_eof {
 			j.reviews[review.AppID] += 1
 		}
 	}
