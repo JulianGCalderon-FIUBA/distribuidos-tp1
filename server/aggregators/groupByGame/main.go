@@ -12,6 +12,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+const batchSize = 100
+
 type config struct {
 	RabbitIP    string
 	PartitionID int
@@ -76,14 +78,35 @@ func (h reviewHandler) Aggregate(r middleware.Review) error {
 	return nil
 }
 
-func (h gameHandler) Conclude() (any, error) {
+func (h gameHandler) Conclude() ([]any, error) {
 	h.h.gameEof = true
 	clear(h.h.reviews)
 	return nil, nil
 }
-func (h reviewHandler) Conclude() (any, error) {
+func (h reviewHandler) Conclude() ([]any, error) {
 	games := slices.Collect(maps.Values(h.games))
-	return games, nil
+
+	batchID := 0
+	clientID := 1
+	batches := make([]any, 0)
+
+	for len(games) > 0 {
+		currBatchSize := min(batchSize, len(games))
+		var batchData []middleware.ReviewsPerGame
+		games, batchData = games[currBatchSize:], games[:currBatchSize]
+
+		batch := middleware.Batch[middleware.ReviewsPerGame]{
+			Data:     batchData,
+			ClientID: clientID,
+			BatchID:  batchID,
+			EOF:      len(games) == 0,
+		}
+		batches = append(batches, batch)
+
+		batchID += 1
+	}
+
+	return batches, nil
 }
 
 func main() {
