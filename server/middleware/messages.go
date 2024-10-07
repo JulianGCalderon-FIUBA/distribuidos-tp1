@@ -34,6 +34,11 @@ type Review struct {
 	Text  string
 }
 
+type AvgPlaytimeGame struct {
+	Name                   string
+	AveragePlaytimeForever uint64
+}
+
 type Batch[T any] struct {
 	Data     []T
 	ClientID int

@@ -10,7 +10,7 @@ var log = logging.MustGetLogger("log")
 type config struct {
 	RabbitIP        string
 	TopN            int
-	PartitionNumber int
+	PartitionId int
 }
 
 func getConfig() (config, error) {
@@ -18,11 +18,11 @@ func getConfig() (config, error) {
 
 	v.SetDefault("RabbitIP", "localhost")
 	v.SetDefault("TopN", "10")
-	v.SetDefault("PartitionNumber", "0")
+	v.SetDefault("PartitionId", "0")
 
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")
 	_ = v.BindEnv("TopN", "TOP_N")
-	_ = v.BindEnv("PartitionNumber", "PARTITION_NUMBER")
+	_ = v.BindEnv("PartitionId", "PARTITION_ID")
 
 	var c config
 	err := v.Unmarshal(&c)

@@ -389,5 +389,42 @@ func (m *Middleware) InitTopNHistoricAvg(partition int) error {
 		return err
 	}
 
+	q, err = m.ch.QueueDeclare(TopNHistoricAvgJQueue,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Middleware) InitTopNHistoricAvgJoiner() error {
+	_, err := m.ch.QueueDeclare(ResultsQueue,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	_, err = m.ch.QueueDeclare(TopNHistoricAvgJQueue,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

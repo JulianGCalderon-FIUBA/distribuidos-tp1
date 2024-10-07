@@ -39,8 +39,10 @@ const NThousandEnglishReviewsQueue string = "reviews-english-n-thousand-partitio
 // topNHistoricAvg aggregator
 const TopNHistoricAvgQueue string = "top-n-historic-avg"
 const TopNHistoricAvgJQueue string = "top-n-historic-avg-joiner"
-const TopNHistoricAvgExchange string = "top-n-historic-avg-x"
+const TopNHistoricAvgExchange string = "top-n-historic-avg"
 
+// results
+const ResultsQueue string = "results"
 
 type queueConfig struct {
 	name       string
@@ -84,4 +86,8 @@ var DecadeFilterQueues = []queueConfig{
 
 var TopNHistoricAvgExchanges = map[string]string{
 	TopNHistoricAvgExchange: amqp.ExchangeDirect,
+}
+
+var TopNHistoricAvgQueues = []queueConfig{
+	{TopNHistoricAvgJQueue, "", ""},
 }
