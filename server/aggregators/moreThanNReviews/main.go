@@ -50,7 +50,7 @@ func (h handler) Conclude() ([]any, error) {
 		r = append(r, &res)
 	}
 	r = append(r, &eof)
-	log.Infof("sending: %v", r)
+	log.Infof("sending: %#v", r)
 	return r, nil
 }
 
