@@ -4,16 +4,15 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-// Data Handler
+// data Handler
 const GamesExchange string = "games"
 const ReviewExchange string = "reviews"
 const GamesQueue string = "games"
 const ReviewsQueue string = "reviews"
 const GamesPerPlatformQueue string = "games-per-platform"
 
-// Genre Filter
-const IndieExchange string = "indie"
-const ActionExchange string = "action"
+// genre Filter
+const GenresExchange string = "genres"
 const DecadeQueue string = "decades"
 const TopNAmountReviewsGamesQueue string = "games-top-n-amount-reviews"
 const MoreThanNReviewsGamesQueue string = "games-more-than-n-reviews"
@@ -21,21 +20,27 @@ const NinetyPercentileGamesQueue string = "games-90-percentile"
 const IndieGameKeys string = "indie"
 const ActionGameKeys string = "action"
 
-// Review filter
+// review filter
 const ReviewsScoreFilterExchange string = "reviews-filter-score"
 const NinetyPercentileReviewsQueue string = "reviews-90-percentile"
 const LanguageReviewsFilterQueue string = "reviews-language-filter"
 const TopNAmountReviewsQueue string = "reviews-top-n-partitioner"
-const PositiveReviewKeys string = "positive-reviews"
-const NegativeReviewKeys string = "negative-reviews"
+const PositiveReviewKey string = "positive-review"
+const NegativeReviewKey string = "negative-review"
 
-// Decade filter
+// decade filter
 const DecadeExchange string = "decades"
 const TopNHistoricAvgQueue string = "top-n-historic-avg"
 
 // language filter
 const ReviewsEnglishFilterExchange string = "reviews-filter-english"
 const NThousandEnglishReviewsQueue string = "reviews-english-n-thousand-partitioner"
+
+type queueConfig struct {
+	name       string
+	exchange   string
+	routingKey string
+}
 
 // games per platform
 const GamesPerPlatformJoin string = "games-per-platform-join"
@@ -48,32 +53,31 @@ var DataHandlerexchanges = map[string]string{
 	GamesExchange:  amqp.ExchangeFanout,
 }
 
-var DataHandlerQueues = map[string]string{
-	GamesPerPlatformQueue: GamesExchange,
-	GamesQueue:            GamesExchange,
-	ReviewsQueue:          ReviewExchange,
+var DataHandlerQueues = []queueConfig{
+	{GamesQueue, GamesExchange, ""},
+	{ReviewsQueue, ReviewExchange, ""},
+	{GamesPerPlatformQueue, GamesExchange, ""},
 }
 
 var GenreFilterExchanges = map[string]string{
 	GamesExchange:  amqp.ExchangeFanout,
-	IndieExchange:  amqp.ExchangeFanout,
-	ActionExchange: amqp.ExchangeFanout,
+	GenresExchange: amqp.ExchangeDirect,
 }
 
-var GenreFilterQueues = map[string]string{
-	GamesQueue:                  GamesExchange,
-	DecadeQueue:                 IndieExchange,
-	TopNAmountReviewsGamesQueue: IndieExchange,
-	MoreThanNReviewsGamesQueue:  ActionExchange,
-	NinetyPercentileGamesQueue:  ActionExchange,
+var GenreFilterQueues = []queueConfig{
+	{GamesQueue, GamesExchange, ""},
+	{DecadeQueue, GenresExchange, IndieGameKeys},
+	{TopNAmountReviewsGamesQueue, GenresExchange, IndieGameKeys},
+	{MoreThanNReviewsGamesQueue, GenresExchange, ActionGameKeys},
+	{NinetyPercentileGamesQueue, GenresExchange, ActionGameKeys},
 }
 
 var DecadeFilterExchanges = map[string]string{
-	IndieExchange:  amqp.ExchangeFanout,
+	GenresExchange: amqp.ExchangeDirect,
 	DecadeExchange: amqp.ExchangeDirect,
 }
 
-var DecadeFilterQueues = map[string]string{
-	DecadeQueue:          IndieExchange,
-	TopNHistoricAvgQueue: DecadeExchange,
+var DecadeFilterQueues = []queueConfig{
+	{DecadeQueue, GenresExchange, ""},
+	{TopNHistoricAvgQueue, DecadeExchange, ""},
 }
