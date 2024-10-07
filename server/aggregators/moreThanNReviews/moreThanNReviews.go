@@ -118,7 +118,8 @@ func (j *GameReviewJoiner) receiveReviews() error {
 	}
 
 	var last int
-	var missing []int
+	missing := make(map[int]struct{})
+	recv_eof := false
 
 	for d := range deliveryCh {
 		batch, err := middleware.Deserialize[BatchReview](d.Body)
@@ -130,9 +131,10 @@ func (j *GameReviewJoiner) receiveReviews() error {
 			}
 			continue
 		}
-		if i, contains := slices.BinarySearch(missing, batch.BatchID); contains {
-			missing[i] = missing[len(missing)-1]
-			missing = missing[:len(missing)-1]
+
+		delete(missing, batch.BatchID)
+		for i := last + 1; i < batch.BatchID; i++ {
+			missing[i] = struct{}{}
 		}
 		j.saveReviews(batch)
 		j.sendResults()
@@ -141,14 +143,19 @@ func (j *GameReviewJoiner) receiveReviews() error {
 			return fmt.Errorf("failed to ack batch: %v", err)
 		}
 		if batch.EOF {
-			if batch.BatchID != last+1 {
-				for i := last + 1; i < batch.BatchID; i++ {
-					missing = append(missing, i)
-				}
-			} else if batch.BatchID == last+1 && len(missing) == 0 {
-				log.Infof("Received reviews EOF from client %v", batch.ClientID)
-				clear(j.games)
-				clear(j.reviews)
+			log.Infof("Received reviews EOF from client %v", batch.ClientID)
+			recv_eof = true
+		}
+		if recv_eof && len(missing) == 0 {
+			clear(j.games)
+			clear(j.reviews)
+			// mandar eof al siguiente nodo
+			r := protocol.Q4Results{
+				Name: "",
+				EOF:  true,
+			}
+			if err := j.m.SendAny(r, "", middleware.ResultsQueue); err != nil {
+				log.Errorf("Failed to send results: %v", err)
 			}
 		}
 		last = batch.BatchID
@@ -159,11 +166,10 @@ func (j *GameReviewJoiner) receiveReviews() error {
 func (j *GameReviewJoiner) saveGames(batch BatchGame) {
 	for _, game := range batch.Data {
 		if val, ok := j.reviews[game.AppID]; ok {
-			j.games[game.AppID] = Join{name: game.Name, review_num: val}
+			j.games[game.AppID] = Join{name: game.Name, review_num: val, sent: false}
 			delete(j.reviews, game.AppID)
-			return
 		} else {
-			j.games[game.AppID] = Join{name: game.Name, review_num: 0}
+			j.games[game.AppID] = Join{name: game.Name, review_num: 0, sent: false}
 		}
 	}
 }
@@ -171,7 +177,8 @@ func (j *GameReviewJoiner) saveGames(batch BatchGame) {
 func (j *GameReviewJoiner) saveReviews(batch BatchReview) {
 	for _, review := range batch.Data {
 		if val, ok := j.games[review.AppID]; ok {
-			j.games[review.AppID] = Join{name: val.name, review_num: val.review_num + 1}
+			val.review_num += 1
+			j.games[review.AppID] = val
 		} else {
 			j.reviews[review.AppID] += 1
 		}
@@ -179,8 +186,9 @@ func (j *GameReviewJoiner) saveReviews(batch BatchReview) {
 }
 
 func (j *GameReviewJoiner) sendResults() {
-	for _, game := range j.games {
-		if game.review_num >= j.cfg.N && !game.sent {
+	for k, game := range j.games {
+		if game.review_num > j.cfg.N && !game.sent {
+			game.sent = true
 			r := protocol.Q4Results{
 				Name: game.name,
 				EOF:  false,
@@ -188,7 +196,7 @@ func (j *GameReviewJoiner) sendResults() {
 			if err := j.m.SendAny(r, "", middleware.ResultsQueue); err != nil {
 				log.Errorf("Failed to send results: %v", err)
 			}
-			game.sent = true
+			j.games[k] = game
 		}
 	}
 }
