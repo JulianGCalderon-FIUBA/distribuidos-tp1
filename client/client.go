@@ -175,10 +175,14 @@ func (c *client) waitResults() {
 	defer c.reqConn.Close()
 
 	for {
-		var results protocol.Results
+		var results any
 		err := c.reqConn.Recv(&results)
 		if err != nil {
-			log.Error("Failed to receive results message: %v", err)
+			if err == io.EOF {
+				log.Errorf("Connection closed: %v", err)
+				break
+			}
+			log.Errorf("Failed to receive results message: %v", err)
 		}
 		switch r := results.(type) {
 		case protocol.Q1Results:
