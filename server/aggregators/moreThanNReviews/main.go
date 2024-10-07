@@ -10,11 +10,8 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
-
-var log = logging.MustGetLogger("log")
 
 type config struct {
 	RabbitIP string
@@ -24,16 +21,12 @@ type config struct {
 
 type handler struct {
 	N       int
-	results map[uint64]protocol.Q4Results
+	results map[uint64]middleware.ReviewsPerGame
 }
 
 func (h handler) Aggregate(r middleware.ReviewsPerGame) error {
 	if r.Reviews > h.N {
-		res := protocol.Q4Results{
-			Name: r.Name,
-			EOF:  false,
-		}
-		h.results[r.AppID] = res
+		h.results[r.AppID] = r
 	}
 	return nil
 }
@@ -41,16 +34,13 @@ func (h handler) Aggregate(r middleware.ReviewsPerGame) error {
 func (h handler) Conclude() ([]any, error) {
 	results := slices.Collect(maps.Values(h.results))
 	r := make([]any, 0)
-	eof := protocol.Q4Results{
-		Name: "",
-		EOF:  true,
+	for i, res := range results {
+		var p any = protocol.Q4Results{
+			Name: res.Name,
+			EOF:  i == len(results)-1,
+		}
+		r = append(r, &p)
 	}
-
-	for _, res := range results {
-		r = append(r, &res)
-	}
-	r = append(r, &eof)
-	log.Infof("sending: %#v", r)
 	return r, nil
 }
 
@@ -82,7 +72,7 @@ func main() {
 
 	h := handler{
 		N:       cfg.N,
-		results: make(map[uint64]protocol.Q4Results),
+		results: make(map[uint64]middleware.ReviewsPerGame),
 	}
 
 	agg, err := aggregator.NewAggregator(aggCfg, h)
