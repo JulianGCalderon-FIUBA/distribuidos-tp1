@@ -136,29 +136,32 @@ loop:
 		if fakeEof && len(missingBatchIDs) == 0 {
 			log.Info("Received EOF from client")
 			result, err := f.handler.Conclude()
-			if err != nil {
-				nackErr := d.Nack(false, false)
-				return errors.Join(err, nackErr)
-			}
-			buf, err := middleware.Serialize(result)
-			if err != nil {
-				nackErr := d.Nack(false, false)
-				return errors.Join(err, nackErr)
-			}
+			if result != nil {
 
-			err = f.rabbitCh.Publish(
-				"",
-				f.cfg.Output,
-				false,
-				false,
-				amqp.Publishing{
-					ContentType: "text/plain",
-					Body:        buf,
-				},
-			)
-			if err != nil {
-				nackErr := d.Nack(false, false)
-				return errors.Join(err, nackErr)
+				if err != nil {
+					nackErr := d.Nack(false, false)
+					return errors.Join(err, nackErr)
+				}
+				buf, err := middleware.Serialize(result)
+				if err != nil {
+					nackErr := d.Nack(false, false)
+					return errors.Join(err, nackErr)
+				}
+
+				err = f.rabbitCh.Publish(
+					"",
+					f.cfg.Output,
+					false,
+					false,
+					amqp.Publishing{
+						ContentType: "text/plain",
+						Body:        buf,
+					},
+				)
+				if err != nil {
+					nackErr := d.Nack(false, false)
+					return errors.Join(err, nackErr)
+				}
 			}
 		}
 
