@@ -25,8 +25,8 @@ const ReviewsScoreFilterExchange string = "reviews-filter-score"
 const NinetyPercentileReviewsQueue string = "reviews-90-percentile"
 const LanguageReviewsFilterQueue string = "reviews-language-filter"
 const TopNAmountReviewsQueue string = "reviews-top-n-partitioner"
-const PositiveReviewKeys string = "positive-reviews"
-const NegativeReviewKeys string = "negative-reviews"
+const PositiveReviewKey string = "positive-review"
+const NegativeReviewKey string = "negative-review"
 
 // decade filter
 const DecadeExchange string = "decades"
@@ -42,6 +42,12 @@ const TopNHistoricAvgJQueue string = "top-n-historic-avg-joiner"
 const TopNHistoricAvgExchange string = "top-n-historic-avg"
 
 // results
+const ResultsQueue string = "results"
+
+// games per platform
+const GamesPerPlatformJoin string = "games-per-platform-join"
+
+// Results
 const ResultsQueue string = "results"
 
 type queueConfig struct {

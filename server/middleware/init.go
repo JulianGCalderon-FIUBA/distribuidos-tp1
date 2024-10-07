@@ -47,7 +47,7 @@ func (m *Middleware) initExchanges(exchanges map[string]string) error {
 		err := m.ch.ExchangeDeclare(
 			exchange,
 			kind,
-			true,
+			false,
 			false,
 			false,
 			false,
@@ -118,7 +118,7 @@ func (m *Middleware) InitReviewFilter() error {
 	err := m.ch.ExchangeDeclare(
 		ReviewExchange,
 		amqp.ExchangeFanout,
-		true,
+		false,
 		false,
 		false,
 		false,
@@ -155,7 +155,7 @@ func (m *Middleware) InitReviewFilter() error {
 	err = m.ch.ExchangeDeclare(
 		ReviewsScoreFilterExchange,
 		amqp.ExchangeDirect,
-		true,
+		false,
 		false,
 		false,
 		false,
@@ -179,7 +179,7 @@ func (m *Middleware) InitReviewFilter() error {
 
 	err = m.ch.QueueBind(
 		q.Name,
-		PositiveReviewKeys,
+		PositiveReviewKey,
 		ReviewsScoreFilterExchange,
 		false,
 		nil,
@@ -201,7 +201,7 @@ func (m *Middleware) InitReviewFilter() error {
 
 	err = m.ch.QueueBind(
 		q.Name,
-		NegativeReviewKeys,
+		NegativeReviewKey,
 		ReviewsScoreFilterExchange,
 		false,
 		nil,
@@ -223,7 +223,7 @@ func (m *Middleware) InitReviewFilter() error {
 
 	err = m.ch.QueueBind(
 		q.Name,
-		NegativeReviewKeys,
+		NegativeReviewKey,
 		ReviewsScoreFilterExchange,
 		false,
 		nil,
@@ -239,7 +239,7 @@ func (m *Middleware) InitLanguageFilter() error {
 	err := m.ch.ExchangeDeclare(
 		ReviewsScoreFilterExchange,
 		amqp.ExchangeDirect,
-		true,
+		false,
 		false,
 		false,
 		false,
@@ -263,7 +263,7 @@ func (m *Middleware) InitLanguageFilter() error {
 
 	err = m.ch.QueueBind(
 		q.Name,
-		NegativeReviewKeys,
+		NegativeReviewKey,
 		ReviewsScoreFilterExchange,
 		false,
 		nil,
@@ -276,7 +276,7 @@ func (m *Middleware) InitLanguageFilter() error {
 	err = m.ch.ExchangeDeclare(
 		ReviewsEnglishFilterExchange,
 		amqp.ExchangeDirect,
-		true,
+		false,
 		false,
 		false,
 		false,
@@ -327,7 +327,7 @@ func (m *Middleware) InitPartitioner(input string, output string, partitionsNum 
 	err = m.ch.ExchangeDeclare(
 		output,
 		amqp.ExchangeDirect,
-		true,
+		false,
 		false,
 		false,
 		false,
