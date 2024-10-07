@@ -87,11 +87,3 @@ var DecadeFilterQueues = []queueConfig{
 	{DecadeQueue, GenresExchange, ""},
 	{TopNHistoricAvgPQueue, DecadeExchange, ""},
 }
-
-var TopNHistoricAvgExchanges = map[string]string{
-	TopNHistoricAvgExchange: amqp.ExchangeDirect,
-}
-
-var TopNHistoricAvgQueues = []queueConfig{
-	{TopNHistoricAvgJQueue, "", ""},
-}
