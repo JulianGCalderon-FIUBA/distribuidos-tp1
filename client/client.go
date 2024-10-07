@@ -207,7 +207,7 @@ func (c *client) waitResults() {
 				c.results += 1
 			}
 		case protocol.Q5Results:
-			log.Infof("Received Q5 results: %#v", results)
+			log.Infof("Received Q5 results")
 			c.results += 1
 			writeResults(r, 5)
 		}
