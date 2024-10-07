@@ -15,6 +15,7 @@ build: deps
 	go build -o bin/games-per-platform ./server/aggregators/gamesPerPlatform
 	go build -o bin/games-per-platform-joiner ./server/joiners/gamesPerPlatformJoiner
 	go build -o bin/group-by-game ./server/aggregators/groupByGame
+	go build -o bin/more-than-n-reviews ./server/aggregators/moreThanNReviews
 .PHONY: build
 
 docker-build:
@@ -34,5 +35,5 @@ compose-logs:
 	docker compose -f compose.yaml logs -f gateway client \
 		genre-filter review-filter decade-filter language-filter \
 		q1-partitioner q1-1 q1-2 q1-joiner \
-		q3-games-partitioner q3-reviews-partitioner q3-group-1
+		q4-games-partitioner q4-reviews-partitioner q4-group-1 q4
 .PHONY: compose-logs
