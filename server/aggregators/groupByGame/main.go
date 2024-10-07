@@ -97,7 +97,11 @@ func main() {
 		Output:   cfg.Output,
 	}
 
-	h := reviewHandler{}
+	h := reviewHandler{
+		games:   make(map[uint64]middleware.ReviewsPerGame),
+		reviews: make(map[uint64]int),
+		gameEof: false,
+	}
 	gh := gameHandler{
 		h: &h,
 	}
