@@ -41,6 +41,8 @@ type queueConfig struct {
 	exchange   string
 	routingKey string
 }
+// games per platform
+const GamesPerPlatformJoin string = "games-per-platform-join"
 
 // Results
 const ResultsQueue string = "results"
