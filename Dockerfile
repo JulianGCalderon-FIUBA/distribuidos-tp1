@@ -14,6 +14,7 @@ RUN CGO_ENABLED=0 go build -o bin/genre-filter ./server/filters/genreFilter
 RUN CGO_ENABLED=0 go build -o bin/review-filter ./server/filters/reviewFilter
 RUN CGO_ENABLED=0 go build -o bin/decade-filter ./server/filters/decadeFilter
 RUN CGO_ENABLED=0 go build -o bin/language-filter ./server/filters/languageFilter
+RUN CGO_ENABLED=0 go build -o bin/top-n-historic-avg ./server/aggregators/topNHistoricAvg
 
 FROM alpine:latest
 COPY --from=builder /build/bin/client /client
@@ -24,4 +25,5 @@ COPY --from=builder /build/bin/genre-filter /genre-filter
 COPY --from=builder /build/bin/review-filter /review-filter
 COPY --from=builder /build/bin/decade-filter /decade-filter
 COPY --from=builder /build/bin/language-filter /language-filter
+COPY --from=builder /build/bin/top-n-historic-avg /top-n-historic-avg
 ENTRYPOINT ["/bin/sh"]

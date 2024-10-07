@@ -9,7 +9,7 @@ services:
     networks:
       - net
     healthcheck:
-      test: ["CMD", "rabbitmqctl", "status"]
+      test: [ "CMD", "rabbitmqctl", "status" ]
       interval: 5s
       timeout: 5s
       retries: 3
@@ -106,6 +106,19 @@ services:
     entrypoint: /language-filter
     environment:
       - RABBIT_IP=rabbitmq
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  top-n-historic-avg-aggregator:
+    container_name: top-n-historic-avg-aggregator
+    image: tp1:latest
+    entrypoint: /top-n-historic-avg-aggregator
+    environment:
+      - RABBIT_IP=rabbitmq
+      - PARTITION_ID=0
+      - TOP_N=10
     networks:
       - net
     depends_on:
