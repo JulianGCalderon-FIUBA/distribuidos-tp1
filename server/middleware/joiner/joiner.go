@@ -126,7 +126,6 @@ loop:
 
 		received += 1
 
-		// todo: handle disordered batches
 		if received == f.cfg.PartitionsNumber {
 			log.Info("Received all partial results")
 			result, err := f.handler.Conclude()
