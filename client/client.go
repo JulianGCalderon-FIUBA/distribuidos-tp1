@@ -239,12 +239,6 @@ func writeResults(result protocol.Results, query int) {
 	}
 	defer f.Close()
 
-	/* w := csv.NewWriter(f)
-	err = w.Write(result.ToCSV())
-	if err != nil {
-		log.Errorf("Failed to write results from query %v: %v", query, err)
-	}
-	w.Flush() */
 	for _, s := range result.ToStringArray() {
 		n, err := f.WriteString(s)
 		if n != len([]byte(s)) || err != nil {
