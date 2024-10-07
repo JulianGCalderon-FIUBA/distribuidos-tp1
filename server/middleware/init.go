@@ -179,7 +179,7 @@ func (m *Middleware) InitReviewFilter() error {
 
 	err = m.ch.QueueBind(
 		q.Name,
-		PositiveReviewKeys,
+		PositiveReviewKey,
 		ReviewsScoreFilterExchange,
 		false,
 		nil,
@@ -201,7 +201,7 @@ func (m *Middleware) InitReviewFilter() error {
 
 	err = m.ch.QueueBind(
 		q.Name,
-		NegativeReviewKeys,
+		NegativeReviewKey,
 		ReviewsScoreFilterExchange,
 		false,
 		nil,
@@ -223,7 +223,7 @@ func (m *Middleware) InitReviewFilter() error {
 
 	err = m.ch.QueueBind(
 		q.Name,
-		NegativeReviewKeys,
+		NegativeReviewKey,
 		ReviewsScoreFilterExchange,
 		false,
 		nil,
@@ -263,7 +263,7 @@ func (m *Middleware) InitLanguageFilter() error {
 
 	err = m.ch.QueueBind(
 		q.Name,
-		NegativeReviewKeys,
+		NegativeReviewKey,
 		ReviewsScoreFilterExchange,
 		false,
 		nil,

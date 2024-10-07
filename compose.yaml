@@ -43,11 +43,12 @@ services:
   partitioner:
     container_name: partitioner
     image: tp1:latest
-    entrypoint: /game-partitioner
+    entrypoint: /partitioner
     environment:
       - RABBIT_IP=rabbitmq
-      - INPUT_QUEUE=games-per-platform
-      - PARTITIONS_NUMBER=3
+      - INPUT=games-per-platform
+      - PARTITIONS=3
+      - TYPE=game
     networks:
       - net
     depends_on:
