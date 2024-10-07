@@ -20,3 +20,7 @@ func (g *GameHeap) Pop() any {
 	*g = old[0 : n-1]
 	return x
 }
+
+func (g *GameHeap) Peek() any {
+	return (*g)[0]
+}

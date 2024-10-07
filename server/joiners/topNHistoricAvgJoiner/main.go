@@ -46,16 +46,10 @@ type handler struct {
 func (h handler) Aggregate(partial []middleware.AvgPlaytimeGame) error {
 	for _, g := range partial {
 		if h.topNGames.Len() < h.topN {
-			heap.Push(&h.topNGames, middleware.AvgPlaytimeGame{
-				Name:                   g.Name,
-				AveragePlaytimeForever: g.AveragePlaytimeForever,
-			})
-		} else if g.AveragePlaytimeForever > h.topNGames[0].AveragePlaytimeForever {
+			heap.Push(&h.topNGames, g)
+		} else if g.AveragePlaytimeForever > h.topNGames.Peek().(middleware.AvgPlaytimeGame).AveragePlaytimeForever {
 			heap.Pop(&h.topNGames)
-			heap.Push(&h.topNGames, middleware.AvgPlaytimeGame{
-				Name:                   g.Name,
-				AveragePlaytimeForever: g.AveragePlaytimeForever,
-			})
+			heap.Push(&h.topNGames, g)
 		}
 	}
 
@@ -63,7 +57,8 @@ func (h handler) Aggregate(partial []middleware.AvgPlaytimeGame) error {
 }
 
 func (h handler) Conclude() (any, error) {
-	sortedGames := make([]middleware.AvgPlaytimeGame, 0, h.topN)
+	log.Infof("Heap length: %v", h.topNGames.Len())
+	sortedGames := make([]middleware.AvgPlaytimeGame, 0, h.topNGames.Len())
 	for h.topNGames.Len() > 0 {
 		sortedGames = append(sortedGames, heap.Pop(&h.topNGames).(middleware.AvgPlaytimeGame))
 	}

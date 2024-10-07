@@ -48,7 +48,7 @@ func (h handler) Aggregate(g middleware.Game) error {
 			Name:                   g.Name,
 			AveragePlaytimeForever: g.AveragePlaytimeForever,
 		})
-	} else if g.AveragePlaytimeForever > h.results[0].AveragePlaytimeForever {
+	} else if g.AveragePlaytimeForever > h.results.Peek().(middleware.AvgPlaytimeGame).AveragePlaytimeForever {
 		heap.Pop(&h.results)
 		heap.Push(&h.results, middleware.AvgPlaytimeGame{
 			Name:                   g.Name,
