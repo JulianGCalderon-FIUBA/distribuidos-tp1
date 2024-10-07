@@ -6,12 +6,10 @@ import (
 	"distribuidos/tp1/server/middleware"
 	"distribuidos/tp1/server/middleware/aggregator"
 	"distribuidos/tp1/utils"
+	"encoding/gob"
 
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
-
-var log = logging.MustGetLogger("log")
 
 type config struct {
 	RabbitIP string
@@ -67,6 +65,7 @@ func getConfig() (config, error) {
 func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
+	gob.Register(protocol.Q4Results{})
 
 	aggCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
