@@ -10,8 +10,6 @@ import (
 
 const MAX_RESULTS = 5
 
-const MAX_RESULTS = 5
-
 func (g *gateway) getActiveClients() int {
 	g.mu.Lock()
 	defer g.mu.Unlock()

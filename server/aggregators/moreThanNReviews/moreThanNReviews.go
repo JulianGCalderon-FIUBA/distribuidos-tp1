@@ -31,10 +31,6 @@ func newJoiner(cfg config) (*GameReviewJoiner, error) {
 		return nil, err
 	}
 
-	err = m.InitMoreThanNReviews(cfg.ID)
-	if err != nil {
-		return nil, err
-	}
 	gob.Register(protocol.Q4Results{})
 	games := map[uint64]Join{}
 	reviews := map[uint64]int{}
