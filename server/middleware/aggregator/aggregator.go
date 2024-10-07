@@ -18,7 +18,7 @@ type Handler[T any] interface {
 	Aggregate(record T) error
 	// Called when EOF is reached.
 	// Result is sent to Output queue
-	Conclude() (any, error)
+	Conclude() ([]any, error)
 }
 
 type Config struct {
@@ -135,31 +135,35 @@ loop:
 		}
 		if fakeEof && len(missingBatchIDs) == 0 {
 			log.Info("Received EOF from client")
-			result, err := f.handler.Conclude()
-			if err != nil {
-				nackErr := d.Nack(false, false)
-				return errors.Join(err, nackErr)
-			}
-			buf, err := middleware.Serialize(result)
-			if err != nil {
-				nackErr := d.Nack(false, false)
-				return errors.Join(err, nackErr)
-			}
+			results, err := f.handler.Conclude()
+			for _, result := range results {
+				if err != nil {
+					nackErr := d.Nack(false, false)
+					return errors.Join(err, nackErr)
+				}
+				buf, err := middleware.Serialize(result)
+				if err != nil {
+					nackErr := d.Nack(false, false)
+					return errors.Join(err, nackErr)
+				}
 
-			err = f.rabbitCh.Publish(
-				"",
-				f.cfg.Output,
-				false,
-				false,
-				amqp.Publishing{
-					ContentType: "text/plain",
-					Body:        buf,
-				},
-			)
-			if err != nil {
-				nackErr := d.Nack(false, false)
-				return errors.Join(err, nackErr)
+				err = f.rabbitCh.Publish(
+					"",
+					f.cfg.Output,
+					false,
+					false,
+					amqp.Publishing{
+						ContentType: "text/plain",
+						Body:        buf,
+					},
+				)
+				if err != nil {
+					nackErr := d.Nack(false, false)
+					return errors.Join(err, nackErr)
+				}
 			}
+			err = d.Ack(false)
+			return err
 		}
 
 		err = d.Ack(false)
