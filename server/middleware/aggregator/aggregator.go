@@ -96,6 +96,10 @@ func (f *Aggregator[T]) Run(ctx context.Context) error {
 		return err
 	}
 
+	var latestBatchID int
+	missingBatchIDs := make(map[int]struct{})
+	fakeEof := false
+
 loop:
 	for d := range dch {
 		batch, err := middleware.Deserialize[middleware.Batch[T]](d.Body)
@@ -121,8 +125,15 @@ loop:
 			}
 		}
 
-		// todo: handle disordered batches
+		delete(missingBatchIDs, batch.BatchID)
+		for i := latestBatchID + 1; i < batch.BatchID; i++ {
+			missingBatchIDs[i] = struct{}{}
+		}
+		latestBatchID = batch.BatchID
 		if batch.EOF {
+			fakeEof = true
+		}
+		if fakeEof && len(missingBatchIDs) == 0 {
 			log.Info("Received EOF from client")
 			result, err := f.handler.Conclude()
 			if err != nil {
