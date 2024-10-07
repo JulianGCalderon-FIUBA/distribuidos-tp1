@@ -161,6 +161,9 @@ func (f *Filter[T]) Run(ctx context.Context) error {
 		for _, record := range batch.Data {
 			rk := f.handler.Filter(record)
 
+			if rk == RoutingKey(middleware.EmptyKey) {
+				continue
+			}
 			entry := partitions[rk]
 			entry.Data = append(entry.Data, record)
 			partitions[rk] = entry

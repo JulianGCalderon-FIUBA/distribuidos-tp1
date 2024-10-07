@@ -19,6 +19,7 @@ const MoreThanNReviewsGamesQueue string = "games-more-than-n-reviews"
 const NinetyPercentileGamesQueue string = "games-90-percentile"
 const IndieGameKeys string = "indie"
 const ActionGameKeys string = "action"
+const EmptyKey string = ""
 
 // review filter
 const ReviewsScoreFilterExchange string = "reviews-filter-score"
@@ -65,19 +66,6 @@ var DataHandlerQueues = []queueConfig{
 	{GamesPerPlatformQueue, GamesExchange, ""},
 }
 
-var GenreFilterExchanges = map[string]string{
-	GamesExchange:  amqp.ExchangeFanout,
-	GenresExchange: amqp.ExchangeDirect,
-}
-
-var GenreFilterQueues = []queueConfig{
-	{GamesQueue, GamesExchange, ""},
-	{DecadeQueue, GenresExchange, IndieGameKeys},
-	{TopNAmountReviewsGamesQueue, GenresExchange, IndieGameKeys},
-	{MoreThanNReviewsGamesQueue, GenresExchange, ActionGameKeys},
-	{NinetyPercentileGamesQueue, GenresExchange, ActionGameKeys},
-}
-
 var DecadeFilterExchanges = map[string]string{
 	GenresExchange: amqp.ExchangeDirect,
 	DecadeExchange: amqp.ExchangeDirect,
@@ -86,12 +74,4 @@ var DecadeFilterExchanges = map[string]string{
 var DecadeFilterQueues = []queueConfig{
 	{DecadeQueue, GenresExchange, ""},
 	{TopNHistoricAvgPQueue, DecadeExchange, ""},
-}
-
-var TopNHistoricAvgExchanges = map[string]string{
-	TopNHistoricAvgExchange: amqp.ExchangeDirect,
-}
-
-var TopNHistoricAvgQueues = []queueConfig{
-	{TopNHistoricAvgJQueue, "", ""},
 }

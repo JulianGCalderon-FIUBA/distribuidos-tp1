@@ -89,19 +89,6 @@ func (m *Middleware) initQueues(queues []queueConfig) error {
 	return nil
 }
 
-func (m *Middleware) InitGenreFilter() error {
-	err := m.initExchanges(GenreFilterExchanges)
-	if err != nil {
-		return fmt.Errorf("failed to initialize exchanges %w", err)
-	}
-	err = m.initQueues(GenreFilterQueues)
-	if err != nil {
-		return fmt.Errorf("failed to initialize queues %w", err)
-	}
-
-	return nil
-}
-
 func (m *Middleware) InitDecadeFilter() error {
 	err := m.initExchanges(DecadeFilterExchanges)
 	if err != nil {
@@ -358,46 +345,6 @@ func (m *Middleware) InitPartitioner(input string, output string, partitionsNum 
 			return err
 		}
 
-	}
-
-	return nil
-}
-
-func (m *Middleware) InitTopNHistoricAvg(partition int) error {
-	err := m.initExchanges(TopNHistoricAvgExchanges)
-	if err != nil {
-		return fmt.Errorf("failed to initialize exchanges %w", err)
-	}
-
-	q, err := m.ch.QueueDeclare(fmt.Sprintf("%v-%v", TopNHistoricAvgQueue, partition),
-		false,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		return err
-	}
-
-	err = m.ch.QueueBind(q.Name,
-		strconv.Itoa(partition),
-		TopNHistoricAvgExchange,
-		false,
-		nil)
-	if err != nil {
-		return err
-	}
-
-	q, err = m.ch.QueueDeclare(TopNHistoricAvgJQueue,
-		false,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		return err
 	}
 
 	return nil
