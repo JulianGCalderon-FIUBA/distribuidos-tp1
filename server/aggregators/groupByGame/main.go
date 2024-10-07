@@ -6,6 +6,8 @@ import (
 	"distribuidos/tp1/server/middleware/aggregator"
 	"distribuidos/tp1/utils"
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/spf13/viper"
 )
@@ -36,23 +38,52 @@ func getConfig() (config, error) {
 	return c, err
 }
 
-type reviewHandler struct{}
+type reviewHandler struct {
+	games   map[uint64]middleware.ReviewsPerGame
+	reviews map[uint64]int
+	gameEof bool
+}
 
 type gameHandler struct {
 	h *reviewHandler
 }
 
 func (h gameHandler) Aggregate(g middleware.Game) error {
+	game := middleware.ReviewsPerGame{
+		AppID: g.AppID,
+		Name:  g.Name,
+	}
+	if count, ok := h.h.reviews[g.AppID]; ok {
+		game.Reviews = count
+		delete(h.h.reviews, g.AppID)
+	}
+
+	h.h.games[g.AppID] = game
+
 	return nil
 }
+
+func (h reviewHandler) Aggregate(r middleware.Review) error {
+	if game, ok := h.games[r.AppID]; ok {
+		game.Reviews += 1
+		h.games[r.AppID] = game
+		return nil
+	}
+	if !h.gameEof {
+		h.reviews[r.AppID] += 1
+	}
+
+	return nil
+}
+
 func (h gameHandler) Conclude() (any, error) {
-	return 5, nil
-}
-func (h reviewHandler) Aggregate(g middleware.Review) error {
-	return nil
+	h.h.gameEof = true
+	clear(h.h.reviews)
+	return nil, nil
 }
 func (h reviewHandler) Conclude() (any, error) {
-	return 5, nil
+	games := slices.Collect(maps.Values(h.games))
+	return games, nil
 }
 
 func main() {
@@ -63,7 +94,7 @@ func main() {
 	gameAggCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
 		Input:    qName,
-		Output:   "demo",
+		Output:   cfg.Output,
 	}
 
 	h := reviewHandler{}
@@ -79,7 +110,7 @@ func main() {
 	reviewCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
 		Input:    qName,
-		Output:   "demo",
+		Output:   cfg.Output,
 	}
 
 	reviewAgg, err := aggregator.NewAggregator(reviewCfg, h)
