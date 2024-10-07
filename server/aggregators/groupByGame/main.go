@@ -84,8 +84,13 @@ func (h gameHandler) Conclude() ([]any, error) {
 	return nil, nil
 }
 func (h reviewHandler) Conclude() ([]any, error) {
-	games := slices.Collect(maps.Values(h.games))
+	for k, v := range h.games {
+		if v.Reviews == 0 {
+			delete(h.games, k)
+		}
+	}
 
+	games := slices.Collect(maps.Values(h.games))
 	batchID := 0
 	clientID := 1
 	batches := make([]any, 0)
