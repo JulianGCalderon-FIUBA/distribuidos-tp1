@@ -194,11 +194,13 @@ func (c *client) waitResults() {
 			c.results += 1
 			writeResults(r, 3)
 		case protocol.Q4Results:
-			log.Infof("Received Q4 results: %#v", results)
 			if r.EOF {
+				log.Infof("Received Q4 EOF")
 				c.results += 1
+			} else {
+				log.Infof("Received Q4 results: %#v", results)
+				writeResults(r, 4)
 			}
-			writeResults(r, 4)
 		case protocol.Q5Results:
 			log.Infof("Received Q5 results: %#v", results)
 			c.results += 1
