@@ -40,20 +40,6 @@ services:
     depends_on:
       - gateway
 
-  partitioner:
-    container_name: partitioner
-    image: tp1:latest
-    entrypoint: /partitioner
-    environment:
-      - RABBIT_IP=rabbitmq
-      - INPUT=games-per-platform
-      - PARTITIONS=3
-      - TYPE=game
-    networks:
-      - net
-    depends_on:
-      - gateway
-
   genre-filter:
     container_name: genre-filter
     image: tp1:latest
@@ -94,6 +80,56 @@ services:
     entrypoint: /language-filter
     environment:
       - RABBIT_IP=rabbitmq
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  q1-partitioner:
+    container_name: q1-partitioner
+    image: tp1:latest
+    entrypoint: /partitioner
+    environment:
+      - RABBIT_IP=rabbitmq
+      - INPUT=games-per-platform
+      - PARTITIONS=2
+      - TYPE=game
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  q1-1:
+    container_name: q1-1
+    image: tp1:latest
+    entrypoint: /games-per-platform
+    environment:
+      - RABBIT_IP=rabbitmq
+      - PARTITION_ID=1
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  q1-2:
+    container_name: q1-2
+    image: tp1:latest
+    entrypoint: /games-per-platform
+    environment:
+      - RABBIT_IP=rabbitmq
+      - PARTITION_ID=2
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  q1-joiner:
+    container_name: q1-joiner
+    image: tp1:latest
+    entrypoint: /games-per-platform-joiner
+    environment:
+      - RABBIT_IP=rabbitmq
+      - PARTITIONS=2
     networks:
       - net
     depends_on:

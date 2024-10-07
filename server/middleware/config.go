@@ -37,6 +37,9 @@ const TopNHistoricAvgQueue string = "top-n-historic-avg"
 const ReviewsEnglishFilterExchange string = "reviews-filter-english"
 const NThousandEnglishReviewsQueue string = "reviews-english-n-thousand-partitioner"
 
+// games per platform
+const GamesPerPlatformJoin string = "games-per-platform-join"
+
 // Results
 const ResultsQueue string = "results"
 
