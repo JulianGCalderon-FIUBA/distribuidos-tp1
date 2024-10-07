@@ -146,5 +146,42 @@ services:
     depends_on:
       - gateway
 
+  top-n-amount-games-partitioner:
+    image: tp1:latest
+    entrypoint: /game-partitioner
+    environment:
+      - RABBIT_IP=rabbitmq
+      - INPUT_QUEUE=games-top-n-amount-reviews
+      - PARTITIONS_NUMBER=1
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  top-n-amount-reviews-partitioner:
+    image: tp1:latest
+    entrypoint: /game-partitioner
+    environment:
+      - RABBIT_IP=rabbitmq
+      - INPUT_QUEUE=reviews-top-n-partitioner
+      - PARTITIONS_NUMBER=1
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  top-n-amount-group-by-game:
+    image: tp1:latest
+    entrypoint: /group-by-game
+    environment:
+      - RABBIT_IP=rabbitmq
+      - GAME_INPUT=games-top-n-amount-reviews
+      - REVIEW_INPUT=reviews-top-n-partitioner
+      - PARTITION_ID=0
+    networks:
+      - net
+    depends_on:
+      - gateway
+
 networks:
   net:

@@ -15,6 +15,7 @@ build: deps
 	go build -o bin/language-filter ./server/filters/languageFilter
 	go build -o bin/games-per-platform ./server/aggregators/gamesPerPlatform
 	go build -o bin/games-per-platform-joiner ./server/joiners/gamesPerPlatformJoiner
+	go build -o bin/group-by-game ./server/aggregators/groupByGame
 .PHONY: build
 
 docker-build:
@@ -31,5 +32,5 @@ compose-down:
 .PHONY: compose-down
 
 compose-logs:
-	docker compose -f compose.yaml logs -f gateway client partitioner genre-filter review-filter decade-filter language-filter games-per-platform-1 games-per-platform-2 games-per-platform-3 games-per-platform-joiner
+	docker compose -f compose.yaml logs -f gateway client partitioner genre-filter review-filter decade-filter language-filter games-per-platform-1 games-per-platform-2 games-per-platform-3 games-per-platform-joiner top-n-amount-games-partitioner top-n-amount-reviews-partitioner
 .PHONY: compose-logs
