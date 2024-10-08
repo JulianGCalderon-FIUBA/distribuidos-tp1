@@ -35,6 +35,12 @@ type Review struct {
 	Text  string
 }
 
+type GameStat struct {
+	AppID uint64
+	Name  string
+	Stat  uint64
+}
+
 type ReviewsPerGame struct {
 	AppID   uint64
 	Name    string

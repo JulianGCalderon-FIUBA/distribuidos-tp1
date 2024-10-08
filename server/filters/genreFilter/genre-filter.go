@@ -27,7 +27,7 @@ func NewGenreFilter(config config) *GenreFilter {
 	}
 }
 
-func (gf *GenreFilter) start() error {
+func (gf *GenreFilter) run() error {
 	log.Infof("Genre filter started")
 	err := gf.receive()
 	if err != nil {
