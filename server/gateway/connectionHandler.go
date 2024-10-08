@@ -76,6 +76,7 @@ func (g *gateway) handleClient(netConn net.Conn) error {
 		log.Infof("Received review size: %v", hello.ReviewSize)
 
 		err = conn.Send(protocol.AcceptRequest{
+		err = conn.Send(protocol.AcceptRequest{
 			ClientID: uint64(clientId),
 		})
 		if err != nil {
@@ -99,8 +100,11 @@ func (g *gateway) receiveResults(conn *protocol.Conn) error {
 	for d := range deliveryCh {
 		recv, err := middleware.Deserialize[any](d.Body)
 		if err != nil {
-			nackErr := d.Nack(false, false)
-			return errors.Join(err, nackErr)
+			log.Errorf("Failed to deserialize: %v", err)
+			err = d.Nack(false, false)
+			if err != nil {
+				return err
+			}
 		}
 		switch r := recv.(type) {
 		case protocol.Q1Results:

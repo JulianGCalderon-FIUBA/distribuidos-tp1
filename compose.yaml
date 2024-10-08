@@ -135,6 +135,115 @@ services:
     depends_on:
       - gateway
 
+  q2-games-partitioner:
+    container_name: q2-games-partitioner
+    image: tp1:latest
+    entrypoint: /partitioner
+    environment:
+      - RABBIT_IP=rabbitmq
+      - INPUT=top-n-historic-avg-partitioner
+      - OUTPUT=top-n-historic-avg
+      - PARTITIONS=1
+      - TYPE=game
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  q2-1:
+    container_name: q2-1
+    image: tp1:latest
+    entrypoint: /top-n-historic-avg
+    environment:
+      - RABBIT_IP=rabbitmq
+      - PARTITION_ID=1
+      - TOP_N=10
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  q2-joiner:
+    container_name: q2-joiner
+    image: tp1:latest
+    entrypoint: /top-n-joiner
+    environment:
+      - RABBIT_IP=rabbitmq
+      - PARTITIONS=1
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  q4-games-partitioner:
+    container_name: q4-games-partitioner
+    image: tp1:latest
+    entrypoint: /partitioner
+    environment:
+      - RABBIT_IP=rabbitmq
+      - INPUT=games-more-than-n-reviews
+      - PARTITIONS=1
+      - TYPE=game
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  q4-reviews-partitioner:
+    container_name: q4-reviews-partitioner
+    image: tp1:latest
+    entrypoint: /partitioner
+    environment:
+      - RABBIT_IP=rabbitmq
+      - INPUT=reviews-english-n-thousand-partitioner
+      - PARTITIONS=1
+      - TYPE=review
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  q4-group-1:
+    container_name: q4-group-1
+    image: tp1:latest
+    entrypoint: /group-by-game
+    environment:
+      - RABBIT_IP=rabbitmq
+      - GAME_INPUT=games-more-than-n-reviews
+      - REVIEW_INPUT=reviews-english-n-thousand-partitioner
+      - OUTPUT=results-handler-q4
+      - PARTITION_ID=1
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  q4:
+    container_name: q4
+    image: tp1:latest
+    entrypoint: /more-than-n-reviews
+    environment:
+      - RABBIT_IP=rabbitmq
+      - N=5000
+      - INPUT=results-handler-q4
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  q5-games-partitioner:
+    container_name: q5-games-partitioner
+    image: tp1:latest
+    entrypoint: /partitioner
+    environment:
+      - RABBIT_IP=rabbitmq
+      - INPUT=games-90-percentile
+      - PARTITIONS=1
+      - TYPE=game
+    networks:
+      - net
+    depends_on:
+      - gateway
   q3-games-partitioner:
     container_name: q3-games-partitioner
     image: tp1:latest
@@ -149,13 +258,13 @@ services:
     depends_on:
       - gateway
 
-  q3-reviews-partitioner:
-    container_name: q3-reviews-partitioner
+  q5-reviews-partitioner:
+    container_name: q5-reviews-partitioner
     image: tp1:latest
     entrypoint: /partitioner
     environment:
       - RABBIT_IP=rabbitmq
-      - INPUT=reviews-top-n-partitioner
+      - INPUT=reviews-90-percentile
       - PARTITIONS=1
       - TYPE=review
     networks:
@@ -163,12 +272,15 @@ services:
     depends_on:
       - gateway
 
-  q3-group-1:
-    container_name: q3-group-1
+  q5-group-1:
+    container_name: q5-group-1
     image: tp1:latest
     entrypoint: /group-by-game
     environment:
       - RABBIT_IP=rabbitmq
+      - GAME_INPUT=games-90-percentile
+      - REVIEW_INPUT=reviews-90-percentile
+      - OUTPUT=results-handler-q5
       - GAME_INPUT=games-top-n-amount-reviews
       - REVIEW_INPUT=reviews-top-n-partitioner
       - OUTPUT=results-handler-q3

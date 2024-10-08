@@ -10,11 +10,8 @@ import (
 	"math"
 	"sort"
 
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
-
-var log = logging.MustGetLogger("log")
 
 const PERCENTILE float64 = 90.0
 
@@ -38,7 +35,7 @@ func (h *handler) Aggregate(r middleware.ReviewsPerGame) error {
 }
 
 func (h *handler) Conclude() ([]any, error) {
-	log.Infof("Total games: %v", len(h.sorted))
+
 	n := float64(len(h.sorted))
 	index := int(math.Ceil(PERCENTILE/100.0*n)) - 1
 	results := h.sorted[index:]
@@ -46,8 +43,6 @@ func (h *handler) Conclude() ([]any, error) {
 	for _, res := range results {
 		r = append(r, res.Name)
 	}
-
-	log.Infof("90 percentile value and index: %v %v", h.sorted[index], index)
 
 	var p any = protocol.Q5Results{
 		Percentile90: r,

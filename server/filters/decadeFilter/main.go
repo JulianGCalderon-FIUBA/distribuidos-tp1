@@ -34,7 +34,7 @@ func main() {
 
 	df := NewDecadeFilter(cfg)
 
-	err = df.start()
+	err = df.run()
 	if err != nil {
 		log.Fatalf("failed to filter games by decade: %v", err)
 	}
