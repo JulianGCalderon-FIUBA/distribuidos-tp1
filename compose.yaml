@@ -166,7 +166,7 @@ services:
   q2-joiner:
     container_name: q2-joiner
     image: tp1:latest
-    entrypoint: /top-n-joiner
+    entrypoint: /top-n-historic-avg-joiner
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITIONS=1
@@ -248,23 +248,10 @@ services:
     depends_on:
       - gateway
 
-  q3-2:
-    container_name: q3-2
-    image: tp1:latest
-    entrypoint: /top-n-reviews
-    environment:
-      - RABBIT_IP=rabbitmq
-      - INPUT=results-handler-q3
-      - OUTPUT=joiner-q3
-    networks:
-      - net
-    depends_on:
-      - gateway
-
   q3-joiner:
     container_name: q3-joiner
     image: tp1:latest
-    entrypoint: /top-n-joiner
+    entrypoint: /top-n-reviews-joiner
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITIONS=2
@@ -368,11 +355,23 @@ services:
       - GAME_INPUT=games-90-percentile
       - REVIEW_INPUT=reviews-90-percentile
       - OUTPUT=results-handler-q5
-      - GAME_INPUT=games-top-n-amount-reviews
-      - REVIEW_INPUT=reviews-top-n-partitioner
-      - OUTPUT=results-handler-q3
       - PARTITION_ID=1
     networks:
       - net
     depends_on:
       - gateway
+
+  q5:
+    container_name: q5
+    image: tp1:latest
+    entrypoint: /90-percentile
+    environment:
+      - RABBIT_IP=rabbitmq
+      - INPUT=results-handler-q5
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+networks:
+  net:
