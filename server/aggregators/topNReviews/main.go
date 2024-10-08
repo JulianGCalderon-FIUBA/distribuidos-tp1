@@ -10,11 +10,8 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
-
-var log = logging.MustGetLogger("log")
 
 type config struct {
 	RabbitIP string
@@ -42,10 +39,9 @@ func (h *handler) Conclude() ([]any, error) {
 	index := len(h.sorted) - h.N
 	top := h.sorted[index:]
 	slices.Reverse(top)
-	log.Infof("top names len: %v", len(top))
+
 	n := make([]string, h.N)
 	for i, r := range top {
-		log.Infof("len vec: %v", len(n))
 		n[i] = r.Name
 	}
 	var p any = protocol.Q3Results{
