@@ -58,7 +58,7 @@ func (h gameHandler) Aggregate(g middleware.Game) error {
 		Name:  g.Name,
 	}
 	if count, ok := h.h.reviews[g.AppID]; ok {
-		game.Reviews = count
+		game.Reviews = uint64(count)
 		delete(h.h.reviews, g.AppID)
 	}
 
