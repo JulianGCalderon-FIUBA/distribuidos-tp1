@@ -170,6 +170,8 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITIONS=1
+      - INPUT=top-n-historic-avg-joiner
+      - TOP_N=10
     networks:
       - net
     depends_on:
@@ -267,6 +269,7 @@ services:
       - RABBIT_IP=rabbitmq
       - PARTITIONS=2
       - INPUT=joiner-q3
+      - TOP_N=5
     networks:
       - net
     depends_on:
