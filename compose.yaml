@@ -191,5 +191,60 @@ services:
     depends_on:
       - gateway
 
+  q5-games-partitioner:
+    container_name: q5-games-partitioner
+    image: tp1:latest
+    entrypoint: /partitioner
+    environment:
+      - RABBIT_IP=rabbitmq
+      - INPUT=games-90-percentile
+      - PARTITIONS=1
+      - TYPE=game
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  q5-reviews-partitioner:
+    container_name: q5-reviews-partitioner
+    image: tp1:latest
+    entrypoint: /partitioner
+    environment:
+      - RABBIT_IP=rabbitmq
+      - INPUT=reviews-90-percentile
+      - PARTITIONS=1
+      - TYPE=review
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  q5-group-1:
+    container_name: q5-group-1
+    image: tp1:latest
+    entrypoint: /group-by-game
+    environment:
+      - RABBIT_IP=rabbitmq
+      - GAME_INPUT=games-90-percentile
+      - REVIEW_INPUT=reviews-90-percentile
+      - OUTPUT=results-handler-q5
+      - PARTITION_ID=1
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  q5:
+    container_name: q5
+    image: tp1:latest
+    entrypoint: /90-percentile
+    environment:
+      - RABBIT_IP=rabbitmq
+      - INPUT=results-handler-q5
+    networks:
+      - net
+    depends_on:
+      - gateway
+
 networks:
   net:
