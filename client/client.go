@@ -2,7 +2,6 @@ package main
 
 import (
 	"distribuidos/tp1/protocol"
-	"encoding/csv"
 	"fmt"
 	"io"
 	"net"
@@ -208,7 +207,7 @@ func (c *client) waitResults() {
 				c.results += 1
 			}
 		case protocol.Q5Results:
-			log.Infof("Received Q5 results: %#v", results)
+			log.Infof("Received Q5 results")
 			c.results += 1
 			writeResults(r, 5)
 		}
@@ -240,10 +239,10 @@ func writeResults(result protocol.Results, query int) {
 	}
 	defer f.Close()
 
-	w := csv.NewWriter(f)
-	err = w.Write(result.ToCSV())
-	if err != nil {
-		log.Errorf("Failed to write results from query %v: %v", query, err)
+	for _, s := range result.ToStringArray() {
+		n, err := f.WriteString(s)
+		if n != len([]byte(s)) || err != nil {
+			log.Errorf("Failed to write results from query %v: %v", query, err)
+		}
 	}
-	w.Flush()
 }
