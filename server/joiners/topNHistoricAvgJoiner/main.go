@@ -43,7 +43,7 @@ type handler struct {
 	topNGames utils.GameHeap
 }
 
-func (h handler) Aggregate(partial []middleware.AvgPlaytimeGame) error {
+func (h *handler) Aggregate(partial []middleware.AvgPlaytimeGame) error {
 	for _, g := range partial {
 		if h.topNGames.Len() < h.topN {
 			heap.Push(&h.topNGames, g)
@@ -56,8 +56,7 @@ func (h handler) Aggregate(partial []middleware.AvgPlaytimeGame) error {
 	return nil
 }
 
-func (h handler) Conclude() (any, error) {
-	log.Infof("Heap length: %v", h.topNGames.Len())
+func (h *handler) Conclude() (any, error) {
 	sortedGames := make([]middleware.AvgPlaytimeGame, 0, h.topNGames.Len())
 	for h.topNGames.Len() > 0 {
 		sortedGames = append(sortedGames, heap.Pop(&h.topNGames).(middleware.AvgPlaytimeGame))
@@ -94,7 +93,7 @@ func main() {
 		topNGames: make([]middleware.AvgPlaytimeGame, 0, cfg.TopN),
 	}
 
-	join, err := joiner.NewJoiner(joinCfg, h)
+	join, err := joiner.NewJoiner(joinCfg, &h)
 	utils.Expect(err, "Failed to create partitioner")
 
 	err = join.Run(context.Background())
