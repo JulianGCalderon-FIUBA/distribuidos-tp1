@@ -21,33 +21,32 @@ type config struct {
 }
 
 type handler struct {
-	sorted []middleware.ReviewsPerGame
+	sorted []middleware.GameStat
 	N      int
 }
 
 func (h *handler) Aggregate(r middleware.ReviewsPerGame) error {
-	i := sort.Search(len(h.sorted), func(i int) bool { return h.sorted[i].Reviews >= r.Reviews })
+	i := sort.Search(len(h.sorted), func(i int) bool { return h.sorted[i].Stat >= r.Reviews })
 
-	h.sorted = append(h.sorted, middleware.ReviewsPerGame{})
+	g := middleware.GameStat{
+		AppID: r.AppID,
+		Name:  r.Name,
+		Stat:  r.Reviews,
+	}
+
+	h.sorted = append(h.sorted, middleware.GameStat{})
 	copy(h.sorted[i+1:], h.sorted[i:])
-	h.sorted[i] = r
+	h.sorted[i] = g
 
 	return nil
 }
 
 func (h *handler) Conclude() ([]any, error) {
-	index := len(h.sorted) - h.N
+	index := max(0, len(h.sorted)-h.N)
 	top := h.sorted[index:]
 	slices.Reverse(top)
 
-	n := make([]string, h.N)
-	for i, r := range top {
-		n[i] = r.Name
-	}
-	var p any = protocol.Q3Results{
-		TopN: n,
-	}
-	return []any{&p}, nil
+	return []any{top}, nil
 }
 
 func getConfig() (config, error) {
@@ -78,7 +77,7 @@ func main() {
 	}
 
 	h := handler{
-		sorted: make([]middleware.ReviewsPerGame, 0),
+		sorted: make([]middleware.GameStat, 0),
 		N:      cfg.N,
 	}
 
