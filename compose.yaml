@@ -150,8 +150,8 @@ services:
     depends_on:
       - gateway
 
-  top-n-historic-avg-1:
-    container_name: top-n-historic-avg-1
+  q2-1:
+    container_name: q2-1
     image: tp1:latest
     entrypoint: /top-n-historic-avg
     environment:
@@ -166,7 +166,7 @@ services:
   q2-joiner:
     container_name: q2-joiner
     image: tp1:latest
-    entrypoint: /top-n-historic-avg-joiner
+    entrypoint: /top-n-joiner
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITIONS=1

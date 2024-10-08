@@ -43,11 +43,11 @@ type handler struct {
 	topNGames utils.GameHeap
 }
 
-func (h *handler) Aggregate(partial []middleware.AvgPlaytimeGame) error {
+func (h *handler) Aggregate(partial []middleware.GameStat) error {
 	for _, g := range partial {
 		if h.topNGames.Len() < h.topN {
 			heap.Push(&h.topNGames, g)
-		} else if g.AveragePlaytimeForever > h.topNGames.Peek().(middleware.AvgPlaytimeGame).AveragePlaytimeForever {
+		} else if g.Stat > h.topNGames.Peek().(middleware.GameStat).Stat {
 			heap.Pop(&h.topNGames)
 			heap.Push(&h.topNGames, g)
 		}
@@ -57,13 +57,13 @@ func (h *handler) Aggregate(partial []middleware.AvgPlaytimeGame) error {
 }
 
 func (h *handler) Conclude() (any, error) {
-	sortedGames := make([]middleware.AvgPlaytimeGame, 0, h.topNGames.Len())
+	sortedGames := make([]middleware.GameStat, 0, h.topNGames.Len())
 	for h.topNGames.Len() > 0 {
-		sortedGames = append(sortedGames, heap.Pop(&h.topNGames).(middleware.AvgPlaytimeGame))
+		sortedGames = append(sortedGames, heap.Pop(&h.topNGames).(middleware.GameStat))
 	}
 
 	sort.Slice(sortedGames, func(i, j int) bool {
-		return sortedGames[i].AveragePlaytimeForever > sortedGames[j].AveragePlaytimeForever
+		return sortedGames[i].Stat > sortedGames[j].Stat
 	})
 
 	topNNames := make([]string, 0, h.topN)
@@ -71,9 +71,10 @@ func (h *handler) Conclude() (any, error) {
 		topNNames = append(topNNames, g.Name)
 	}
 
-	log.Infof("Q2 Results: %v", topNNames)
+	log.Infof("Top N games in historic average playtime: %v", topNNames)
 
-	return &protocol.Q2Results{TopN: topNNames}, nil
+	var result any = protocol.Q2Results{TopN: topNNames}
+	return &result, nil
 }
 
 func main() {
@@ -90,7 +91,7 @@ func main() {
 
 	h := handler{
 		topN:      cfg.TopN,
-		topNGames: make([]middleware.AvgPlaytimeGame, 0, cfg.TopN),
+		topNGames: make([]middleware.GameStat, 0, cfg.TopN),
 	}
 
 	join, err := joiner.NewJoiner(joinCfg, &h)

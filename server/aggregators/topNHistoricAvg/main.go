@@ -44,32 +44,32 @@ type handler struct {
 
 func (h handler) Aggregate(g middleware.Game) error {
 	if h.results.Len() < h.topN {
-		heap.Push(&h.results, middleware.AvgPlaytimeGame{
-			Name:                   g.Name,
-			AveragePlaytimeForever: g.AveragePlaytimeForever,
+		heap.Push(&h.results, middleware.GameStat{
+			Name: g.Name,
+			Stat: g.AveragePlaytimeForever,
 		})
-	} else if g.AveragePlaytimeForever > h.results.Peek().(middleware.AvgPlaytimeGame).AveragePlaytimeForever {
+	} else if g.AveragePlaytimeForever > h.results.Peek().(middleware.GameStat).Stat {
 		heap.Pop(&h.results)
-		heap.Push(&h.results, middleware.AvgPlaytimeGame{
-			Name:                   g.Name,
-			AveragePlaytimeForever: g.AveragePlaytimeForever,
+		heap.Push(&h.results, middleware.GameStat{
+			Name: g.Name,
+			Stat: g.AveragePlaytimeForever,
 		})
 	}
 	return nil
 }
 
 func (h handler) Conclude() ([]any, error) {
-	sortedGames := make([]middleware.AvgPlaytimeGame, 0, h.results.Len())
+	sortedGames := make([]middleware.GameStat, 0, h.results.Len())
 	for h.results.Len() > 0 {
-		sortedGames = append(sortedGames, heap.Pop(&h.results).(middleware.AvgPlaytimeGame))
+		sortedGames = append(sortedGames, heap.Pop(&h.results).(middleware.GameStat))
 	}
 
 	sort.Slice(sortedGames, func(i, j int) bool {
-		return sortedGames[i].AveragePlaytimeForever > sortedGames[j].AveragePlaytimeForever
+		return sortedGames[i].Stat > sortedGames[j].Stat
 	})
 
 	for _, g := range sortedGames {
-		log.Infof("Game %v: %v", g.Name, g.AveragePlaytimeForever)
+		log.Infof("Game %v: %v", g.Name, g.Stat)
 	}
 
 	return []any{sortedGames}, nil

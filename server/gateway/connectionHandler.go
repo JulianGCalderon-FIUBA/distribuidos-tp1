@@ -97,8 +97,8 @@ func (g *gateway) receiveResults(conn *protocol.Conn) error {
 
 	for d := range deliveryCh {
 		recv, err := middleware.Deserialize[any](d.Body)
-		log.Infof("Received Q2 result")
 		if err != nil {
+			log.Errorf("Failed to deserialize result: %v", err)
 			err = d.Nack(false, false)
 			if err != nil {
 				return fmt.Errorf("failed to nack result: %v", err)

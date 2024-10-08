@@ -2,15 +2,15 @@ package utils
 
 import "distribuidos/tp1/server/middleware"
 
-type GameHeap []middleware.AvgPlaytimeGame
+type GameHeap []middleware.GameStat
 
 func (g GameHeap) Len() int { return len(g) }
 func (g GameHeap) Less(i, j int) bool {
-	return g[i].AveragePlaytimeForever < g[j].AveragePlaytimeForever
+	return g[i].Stat < g[j].Stat
 }
 func (g GameHeap) Swap(i, j int) { g[i], g[j] = g[j], g[i] }
 func (g *GameHeap) Push(x any) {
-	*g = append(*g, x.(middleware.AvgPlaytimeGame))
+	*g = append(*g, x.(middleware.GameStat))
 }
 
 func (g *GameHeap) Pop() any {

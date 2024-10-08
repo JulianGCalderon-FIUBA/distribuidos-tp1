@@ -12,8 +12,6 @@ import (
 
 const GAMES_PATH = ".data/games.csv"
 const REVIEWS_PATH = ".data/reviews.csv"
-// const GAMES_PATH = "client/.data/games.csv"
-// const REVIEWS_PATH = "client/.data/reviews.csv"
 const RESULTS_PATH = ".results"
 const MAX_RESULTS = 5
 
@@ -123,11 +121,11 @@ func (c *client) startDataConnection() error {
 		return fmt.Errorf("failed to send games: %w", err)
 	}
 	log.Info("Sent all games")
-	// err = c.sendFile(REVIEWS_PATH)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to send reviews: %w", err)
-	// }
-	// log.Info("Sent all reviews")
+	err = c.sendFile(REVIEWS_PATH)
+	if err != nil {
+		return fmt.Errorf("failed to send reviews: %w", err)
+	}
+	log.Info("Sent all reviews")
 	return nil
 }
 
