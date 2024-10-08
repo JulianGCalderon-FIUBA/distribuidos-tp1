@@ -3,7 +3,6 @@ package main
 import (
 	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/server/middleware"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -99,8 +98,11 @@ func (g *gateway) receiveResults(conn *protocol.Conn) error {
 	for d := range deliveryCh {
 		recv, err := middleware.Deserialize[any](d.Body)
 		if err != nil {
-			nackErr := d.Nack(false, false)
-			return errors.Join(err, nackErr)
+			log.Errorf("Failed to deserialize: %v", err)
+			err = d.Nack(false, false)
+			if err != nil {
+				return err
+			}
 		}
 		switch r := recv.(type) {
 		case protocol.Q1Results:

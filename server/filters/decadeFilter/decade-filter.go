@@ -28,7 +28,7 @@ func NewDecadeFilter(config config) *DecadeFilter {
 	}
 }
 
-func (df *DecadeFilter) start() error {
+func (df *DecadeFilter) run() error {
 	log.Infof("Decade filter started")
 	err := df.receive()
 	if err != nil {
