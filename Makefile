@@ -15,6 +15,8 @@ build: deps
 	go build -o bin/games-per-platform ./server/aggregators/gamesPerPlatform
 	go build -o bin/games-per-platform-joiner ./server/joiners/gamesPerPlatformJoiner
 	go build -o bin/group-by-game ./server/aggregators/groupByGame
+	go build -o bin/more-than-n-reviews ./server/aggregators/moreThanNReviews
+	go build -o bin/90-percentile ./server/aggregators/90Percentile
 	go build -o bin/top-n-historic-avg ./server/aggregators/topNHistoricAvg
 	go build -o bin/top-n-joiner ./server/joiners/topNJoiner
 .PHONY: build
@@ -37,5 +39,6 @@ compose-logs:
 		genre-filter review-filter decade-filter language-filter \
 		q1-partitioner q1-1 q1-2 q1-joiner \
 		q2-games-partitioner q2-1 q2-joiner \
-		q3-games-partitioner q3-reviews-partitioner q3-group-1
+		q4-games-partitioner q4-reviews-partitioner q4-group-1 q4 \
+		q5-games-partitioner q5-reviews-partitioner q5-group-1 q5
 .PHONY: compose-logs
