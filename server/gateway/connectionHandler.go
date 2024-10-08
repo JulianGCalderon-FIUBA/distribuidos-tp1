@@ -3,7 +3,6 @@ package main
 import (
 	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/server/middleware"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -75,7 +74,6 @@ func (g *gateway) handleClient(netConn net.Conn) error {
 		log.Infof("Received game size: %v", hello.GameSize)
 		log.Infof("Received review size: %v", hello.ReviewSize)
 
-		err = conn.Send(protocol.AcceptRequest{
 		err = conn.Send(protocol.AcceptRequest{
 			ClientID: uint64(clientId),
 		})
