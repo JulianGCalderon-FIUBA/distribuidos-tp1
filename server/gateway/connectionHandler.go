@@ -3,6 +3,7 @@ package main
 import (
 	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/server/middleware"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -74,7 +75,7 @@ func (g *gateway) handleClient(netConn net.Conn) error {
 		log.Infof("Received game size: %v", hello.GameSize)
 		log.Infof("Received review size: %v", hello.ReviewSize)
 
-		err = conn.Send(&protocol.AcceptRequest{
+		err = conn.Send(protocol.AcceptRequest{
 			ClientID: uint64(clientId),
 		})
 		if err != nil {
@@ -98,10 +99,8 @@ func (g *gateway) receiveResults(conn *protocol.Conn) error {
 	for d := range deliveryCh {
 		recv, err := middleware.Deserialize[any](d.Body)
 		if err != nil {
-			err = d.Nack(false, false)
-			if err != nil {
-				return fmt.Errorf("failed to nack result: %v", err)
-			}
+			nackErr := d.Nack(false, false)
+			return errors.Join(err, nackErr)
 		}
 		switch r := recv.(type) {
 		case protocol.Q1Results:
@@ -111,7 +110,6 @@ func (g *gateway) receiveResults(conn *protocol.Conn) error {
 		case protocol.Q3Results:
 			results += 1
 		case protocol.Q4Results:
-			// se puede perder algún resultado si se desordenan pero no se si handlearlo o ignorarlo
 			if r.EOF {
 				results += 1
 			}

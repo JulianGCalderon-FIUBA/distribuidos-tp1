@@ -29,6 +29,7 @@ const PositiveReviewKey string = "positive-review"
 const NegativeReviewKey string = "negative-review"
 
 // decade filter
+// decade filter
 const DecadeExchange string = "decades"
 const TopNHistoricAvgQueue string = "top-n-historic-avg"
 
