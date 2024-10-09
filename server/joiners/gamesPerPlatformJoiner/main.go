@@ -7,6 +7,8 @@ import (
 	"distribuidos/tp1/server/middleware/joiner"
 	"distribuidos/tp1/utils"
 	"encoding/gob"
+	"os/signal"
+	"syscall"
 
 	logging "github.com/op/go-logging"
 	"github.com/spf13/viper"
@@ -83,10 +85,10 @@ func main() {
 	h := handler{
 		count: make(map[Platform]int),
 	}
-
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 	join, err := joiner.NewJoiner(joinCfg, h)
 	utils.Expect(err, "Failed to create partitioner")
 
-	err = join.Run(context.Background())
+	err = join.Run(ctx)
 	utils.Expect(err, "Failed to run partitioner")
 }

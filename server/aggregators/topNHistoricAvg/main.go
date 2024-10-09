@@ -7,7 +7,9 @@ import (
 	"distribuidos/tp1/server/middleware/aggregator"
 	"distribuidos/tp1/utils"
 	"fmt"
+	"os/signal"
 	"sort"
+	"syscall"
 
 	logging "github.com/op/go-logging"
 	"github.com/spf13/viper"
@@ -99,10 +101,10 @@ func main() {
 		topN:    cfg.TopN,
 		results: make(utils.GameHeap, cfg.TopN),
 	}
-
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 	agg, err := aggregator.NewAggregator(aggCfg, h)
 	utils.Expect(err, "Failed to create partitioner")
 
-	err = agg.Run(context.Background())
+	err = agg.Run(ctx)
 	utils.Expect(err, "Failed to run partitioner")
 }
