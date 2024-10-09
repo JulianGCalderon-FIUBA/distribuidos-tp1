@@ -9,7 +9,7 @@ services:
     networks:
       - net
     healthcheck:
-      test: [ "CMD", "rabbitmqctl", "status" ]
+      test: ["CMD", "rabbitmqctl", "status"]
       interval: 5s
       timeout: 5s
       retries: 3
@@ -74,41 +74,6 @@ services:
     depends_on:
       - gateway
 
-  language-filter-1:
-    container_name: language-filter-1
-    image: tp1:latest
-    entrypoint: /language-filter
-    environment:
-      - RABBIT_IP=rabbitmq
-    networks:
-      - net
-    depends_on:
-      - gateway
-
-  language-filter-2:
-    container_name: language-filter-2
-    image: tp1:latest
-    entrypoint: /language-filter
-    environment:
-      - RABBIT_IP=rabbitmq
-    networks:
-      - net
-    depends_on:
-      - gateway
-
-  language-filter-3:
-    container_name: language-filter-3
-    image: tp1:latest
-    entrypoint: /language-filter
-    environment:
-      - RABBIT_IP=rabbitmq
-    networks:
-      - net
-    depends_on:
-      - gateway
-
-  language-filter-4:
-    container_name: language-filter-4
   language-filter-1:
     container_name: language-filter-1
     image: tp1:latest
