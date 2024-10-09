@@ -110,7 +110,7 @@ loop:
 			if err != nil {
 				return err
 			}
-
+			// va a agregar el paquete en missing en la proxima iteracion, aunque haya llegado, porque no se cambio la variable de latestBatchId
 			continue
 		}
 
@@ -129,7 +129,7 @@ loop:
 		for i := latestBatchID + 1; i < batch.BatchID; i++ {
 			missingBatchIDs[i] = struct{}{}
 		}
-		latestBatchID = batch.BatchID
+		latestBatchID = max(batch.BatchID, latestBatchID)
 		if batch.EOF {
 			fakeEof = true
 		}
