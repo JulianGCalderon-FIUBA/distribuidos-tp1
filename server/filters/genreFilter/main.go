@@ -34,16 +34,15 @@ func getConfig() (config, error) {
 
 type handler struct{}
 
-func (h handler) Filter(g middleware.Game) filter.RoutingKey {
+func (h handler) Filter(g middleware.Game) []filter.RoutingKey {
+	rk := []filter.RoutingKey{}
 	if slices.Contains(g.Genres, middleware.IndieGenre) {
-		return filter.RoutingKey(middleware.IndieGameKeys)
-	}
-
+		rk = append(rk, filter.RoutingKey(middleware.IndieGameKey))
+	} 
 	if slices.Contains(g.Genres, middleware.ActionGenre) {
-		return filter.RoutingKey(middleware.ActionGameKeys)
-	}
-
-	return filter.RoutingKey(middleware.EmptyKey)
+		rk = append(rk, filter.RoutingKey(middleware.ActionGameKey))
+	} 
+	return rk
 }
 
 func main() {
@@ -57,11 +56,11 @@ func main() {
 		Input:    middleware.GamesQueue,
 		Exchange: middleware.GenresExchange,
 		Output: map[filter.RoutingKey][]filter.QueueName{
-			filter.RoutingKey(middleware.IndieGameKeys): {
+			filter.RoutingKey(middleware.IndieGameKey): {
 				filter.QueueName(middleware.DecadeQueue),
 				filter.QueueName(middleware.TopNAmountReviewsGamesQueue),
 			},
-			filter.RoutingKey(middleware.ActionGameKeys): {
+			filter.RoutingKey(middleware.ActionGameKey): {
 				filter.QueueName(middleware.MoreThanNReviewsGamesQueue),
 				filter.QueueName(middleware.NinetyPercentileGamesQueue),
 			},
