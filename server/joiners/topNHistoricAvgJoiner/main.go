@@ -45,7 +45,7 @@ type handler struct {
 	topNGames utils.GameHeap
 }
 
-func (h *handler) Aggregate(partial []middleware.GameStat) error {
+func (h *handler) Aggregate(_ *middleware.Channel, partial []middleware.GameStat) error {
 	for _, g := range partial {
 		if h.topNGames.Len() < h.topN {
 			heap.Push(&h.topNGames, g)
@@ -58,7 +58,7 @@ func (h *handler) Aggregate(partial []middleware.GameStat) error {
 	return nil
 }
 
-func (h *handler) Conclude() (any, error) {
+func (h *handler) Conclude(ch *middleware.Channel) error {
 	sortedGames := make([]middleware.GameStat, 0, h.topNGames.Len())
 	for h.topNGames.Len() > 0 {
 		sortedGames = append(sortedGames, heap.Pop(&h.topNGames).(middleware.GameStat))
@@ -75,8 +75,8 @@ func (h *handler) Conclude() (any, error) {
 
 	log.Infof("Top N games in historic average playtime: %v", topNNames)
 
-	var result any = protocol.Q2Results{TopN: topNNames}
-	return &result, nil
+	result := protocol.Q2Results{TopN: topNNames}
+	return ch.SendAny(result, "", middleware.ResultsQueue)
 }
 
 func main() {
@@ -85,10 +85,10 @@ func main() {
 	gob.Register(protocol.Q2Results{})
 
 	joinCfg := joiner.Config{
-		RabbitIP:         cfg.RabbitIP,
-		Input:            cfg.Input,
-		Output:           middleware.ResultsQueue,
-		PartitionsNumber: cfg.Partitions,
+		RabbitIP:   cfg.RabbitIP,
+		Input:      cfg.Input,
+		Output:     middleware.ResultsQueue,
+		Partitions: cfg.Partitions,
 	}
 
 	h := handler{

@@ -3,8 +3,7 @@ package joiner
 import (
 	"context"
 	"distribuidos/tp1/server/middleware"
-	"errors"
-	"fmt"
+	"distribuidos/tp1/server/middleware/node"
 
 	logging "github.com/op/go-logging"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -14,11 +13,10 @@ var log = logging.MustGetLogger("log")
 
 // This interface contains business logic
 type Handler[T any] interface {
-	// Given a record T, process it.
-	Aggregate(record T) error
-	// Called when `PartitionsNumber` is reached.
-	// Result is sent to Output queue
-	Conclude() (any, error)
+	// Called with each message of type T
+	Aggregate(ch *middleware.Channel, data T) error
+	// Called when EOF is reached.
+	Conclude(ch *middleware.Channel) error
 }
 
 type Config struct {
@@ -28,138 +26,70 @@ type Config struct {
 	// Name of the queue to send result to
 	Output string
 	// Number of partitions to join
-	PartitionsNumber int
+	Partitions int
 }
 
 // Joiner structure, abstracting away queue system details
 // Receives an input queue, and process each partial result
 // received until `PartitionsNumber` is met
-type Joiner[T any] struct {
-	cfg        Config
-	rabbitConn *amqp.Connection
-	rabbitCh   *amqp.Channel
-	handler    Handler[T]
+type Joiner struct {
+	node *node.Node
 }
 
-func NewJoiner[T any](cfg Config, h Handler[T]) (*Joiner[T], error) {
-	addr := fmt.Sprintf("amqp://guest:guest@%v:5672/", cfg.RabbitIP)
-	r, err := amqp.Dial(addr)
-	if err != nil {
-		return nil, err
-	}
-
-	c, err := r.Channel()
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = c.QueueDeclare(
-		cfg.Input,
-		false,
-		false,
-		false,
-		false,
-		nil)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = c.QueueDeclare(
-		cfg.Output,
-		false,
-		false,
-		false,
-		false,
-		nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Joiner[T]{
-		cfg:        cfg,
-		rabbitConn: r,
-		rabbitCh:   c,
-		handler:    h,
-	}, nil
+type handler[T any] struct {
+	missing int
+	handler Handler[T]
 }
 
-func (f *Joiner[T]) Run(ctx context.Context) error {
-	dch, err := f.rabbitCh.Consume(
-		f.cfg.Input,
-		"",
-		false,
-		false,
-		false,
-		false,
-		nil,
-	)
+func (h *handler[T]) Apply(ch *middleware.Channel, data []byte) error {
+	msg, err := middleware.Deserialize[T](data)
 	if err != nil {
 		return err
 	}
 
-	var received int
+	log.Infof("Received partial result")
 
-loop:
-	for d := range dch {
-		log.Info("Received partial result")
-
-		result, err := middleware.Deserialize[T](d.Body)
-		if err != nil {
-			log.Errorf("Failed to deserialize batch %v", err)
-
-			err = d.Nack(false, false)
-			if err != nil {
-				return err
-			}
-
-			continue
-		}
-
-		err = f.handler.Aggregate(result)
-		if err != nil {
-			err = d.Nack(false, false)
-			if err != nil {
-				return err
-			}
-			continue loop
-		}
-
-		received += 1
-
-		if received == f.cfg.PartitionsNumber {
-			log.Info("Received all partial results")
-			result, err := f.handler.Conclude()
-			if err != nil {
-				nackErr := d.Nack(false, false)
-				return errors.Join(err, nackErr)
-			}
-			buf, err := middleware.Serialize(result)
-			if err != nil {
-				nackErr := d.Nack(false, false)
-				return errors.Join(err, nackErr)
-			}
-
-			err = f.rabbitCh.Publish(
-				"",
-				f.cfg.Output,
-				false,
-				false,
-				amqp.Publishing{
-					ContentType: "text/plain",
-					Body:        buf,
-				},
-			)
-			if err != nil {
-				nackErr := d.Nack(false, false)
-				return errors.Join(err, nackErr)
-			}
-		}
-
-		err = d.Ack(false)
-		if err != nil {
-			return err
-		}
+	err = h.handler.Aggregate(ch, msg)
+	if err != nil {
+		return err
 	}
 
+	h.missing -= 1
+	if h.missing == 0 {
+		log.Infof("Received all results")
+		return h.handler.Conclude(ch)
+	}
 	return nil
+}
+
+func NewJoiner[T any](cfg Config, h Handler[T]) (*Joiner, error) {
+	nodeCfg := node.Config{
+		RabbitIP: cfg.RabbitIP,
+		Exchanges: []node.ExchangeConfig{{
+			Name: "",
+			Type: amqp.ExchangeDirect,
+			QueuesByKey: map[string][]string{
+				cfg.Output: {cfg.Output},
+			},
+		}},
+		Input: cfg.Input,
+	}
+
+	nodeH := &handler[T]{
+		handler: h,
+		missing: cfg.Partitions,
+	}
+
+	node, err := node.NewNode(nodeCfg, nodeH)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Joiner{
+		node: node,
+	}, nil
+}
+
+func (f *Joiner) Run(ctx context.Context) error {
+	return f.node.Run(ctx)
 }

@@ -46,7 +46,7 @@ type handler struct {
 	count map[Platform]int
 }
 
-func (h handler) Aggregate(c map[Platform]int) error {
+func (h handler) Aggregate(_ *middleware.Channel, c map[Platform]int) error {
 	for k, v := range c {
 		h.count[k] += v
 	}
@@ -54,16 +54,18 @@ func (h handler) Aggregate(c map[Platform]int) error {
 	return nil
 }
 
-func (h handler) Conclude() (any, error) {
+func (h handler) Conclude(ch *middleware.Channel) error {
 	for k, v := range h.count {
 		log.Infof("Found %v games with %v support", v, string(k))
 	}
-	var result any = protocol.Q1Results{
+
+	result := protocol.Q1Results{
 		Windows: h.count[Windows],
 		Linux:   h.count[Linux],
 		Mac:     h.count[Mac],
 	}
-	return &result, nil
+
+	return ch.SendAny(result, "", middleware.ResultsQueue)
 }
 
 func main() {
@@ -72,10 +74,10 @@ func main() {
 	gob.Register(protocol.Q1Results{})
 
 	joinCfg := joiner.Config{
-		RabbitIP:         cfg.RabbitIP,
-		Input:            middleware.GamesPerPlatformJoin,
-		Output:           middleware.ResultsQueue,
-		PartitionsNumber: cfg.Partitions,
+		RabbitIP:   cfg.RabbitIP,
+		Input:      middleware.GamesPerPlatformJoin,
+		Output:     middleware.ResultsQueue,
+		Partitions: cfg.Partitions,
 	}
 
 	h := handler{

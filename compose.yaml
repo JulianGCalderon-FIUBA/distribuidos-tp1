@@ -13,7 +13,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 3
-
+    logging:
+      driver: none
   gateway:
     container_name: gateway
     image: tp1:latest
@@ -25,7 +26,6 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-
   client:
     container_name: client
     image: tp1:latest
@@ -39,7 +39,6 @@ services:
       - net
     depends_on:
       - gateway
-
   genre-filter:
     container_name: genre-filter
     image: tp1:latest
@@ -50,7 +49,6 @@ services:
       - net
     depends_on:
       - gateway
-
   decade-filter:
     container_name: decade-filter
     image: tp1:latest
@@ -62,7 +60,6 @@ services:
       - net
     depends_on:
       - gateway
-
   review-filter:
     container_name: review-filter
     image: tp1:latest
@@ -73,9 +70,8 @@ services:
       - net
     depends_on:
       - gateway
-
-  language-filter-1:
-    container_name: language-filter-1
+  language-filter:
+    container_name: language-filter
     image: tp1:latest
     entrypoint: /language-filter
     environment:
@@ -84,40 +80,6 @@ services:
       - net
     depends_on:
       - gateway
-
-  language-filter-2:
-    container_name: language-filter-2
-    image: tp1:latest
-    entrypoint: /language-filter
-    environment:
-      - RABBIT_IP=rabbitmq
-    networks:
-      - net
-    depends_on:
-      - gateway
-
-  language-filter-3:
-    container_name: language-filter-3
-    image: tp1:latest
-    entrypoint: /language-filter
-    environment:
-      - RABBIT_IP=rabbitmq
-    networks:
-      - net
-    depends_on:
-      - gateway
-
-  language-filter-4:
-    container_name: language-filter-4
-    image: tp1:latest
-    entrypoint: /language-filter
-    environment:
-      - RABBIT_IP=rabbitmq
-    networks:
-      - net
-    depends_on:
-      - gateway
-
   q1-partitioner:
     container_name: q1-partitioner
     image: tp1:latest
@@ -125,13 +87,12 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - INPUT=games-per-platform
-      - PARTITIONS=2
+      - PARTITIONS=3
       - TYPE=game
     networks:
       - net
     depends_on:
       - gateway
-
   q1-1:
     container_name: q1-1
     image: tp1:latest
@@ -143,7 +104,6 @@ services:
       - net
     depends_on:
       - gateway
-
   q1-2:
     container_name: q1-2
     image: tp1:latest
@@ -155,33 +115,41 @@ services:
       - net
     depends_on:
       - gateway
-
+  q1-3:
+    container_name: q1-3
+    image: tp1:latest
+    entrypoint: /games-per-platform
+    environment:
+      - RABBIT_IP=rabbitmq
+      - PARTITION_ID=3
+    networks:
+      - net
+    depends_on:
+      - gateway
   q1-joiner:
     container_name: q1-joiner
     image: tp1:latest
     entrypoint: /games-per-platform-joiner
     environment:
       - RABBIT_IP=rabbitmq
-      - PARTITIONS=2
+      - PARTITIONS=3
     networks:
       - net
     depends_on:
       - gateway
-
-  q2-games-partitioner:
-    container_name: q2-games-partitioner
+  q2-partitioner:
+    container_name: q2-partitioner
     image: tp1:latest
     entrypoint: /partitioner
     environment:
       - RABBIT_IP=rabbitmq
       - INPUT=top-n-historic-avg-partitioner
-      - PARTITIONS=2
+      - PARTITIONS=3
       - TYPE=game
     networks:
       - net
     depends_on:
       - gateway
-
   q2-1:
     container_name: q2-1
     image: tp1:latest
@@ -190,13 +158,11 @@ services:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=1
       - INPUT=top-n-historic-avg-partitioner
-      - OUTPUT=top-n-historic-avg-joiner
       - TOP_N=10
     networks:
       - net
     depends_on:
       - gateway
-
   q2-2:
     container_name: q2-2
     image: tp1:latest
@@ -205,27 +171,37 @@ services:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=2
       - INPUT=top-n-historic-avg-partitioner
-      - OUTPUT=top-n-historic-avg-joiner
       - TOP_N=10
     networks:
       - net
     depends_on:
       - gateway
-
+  q2-3:
+    container_name: q2-3
+    image: tp1:latest
+    entrypoint: /top-n-historic-avg
+    environment:
+      - RABBIT_IP=rabbitmq
+      - PARTITION_ID=3
+      - INPUT=top-n-historic-avg-partitioner
+      - TOP_N=10
+    networks:
+      - net
+    depends_on:
+      - gateway
   q2-joiner:
     container_name: q2-joiner
     image: tp1:latest
     entrypoint: /top-n-historic-avg-joiner
     environment:
       - RABBIT_IP=rabbitmq
-      - PARTITIONS=2
+      - PARTITIONS=3
       - INPUT=top-n-historic-avg-joiner
       - TOP_N=10
     networks:
       - net
     depends_on:
       - gateway
-
   q3-games-partitioner:
     container_name: q3-games-partitioner
     image: tp1:latest
@@ -233,13 +209,12 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - INPUT=games-top-n-amount-reviews
-      - PARTITIONS=2
+      - PARTITIONS=3
       - TYPE=game
     networks:
       - net
     depends_on:
       - gateway
-
   q3-reviews-partitioner:
     container_name: q3-reviews-partitioner
     image: tp1:latest
@@ -247,83 +222,106 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - INPUT=reviews-top-n-partitioner
-      - PARTITIONS=2
+      - PARTITIONS=3
       - TYPE=review
     networks:
       - net
     depends_on:
       - gateway
-
   q3-group-1:
     container_name: q3-group-1
     image: tp1:latest
     entrypoint: /group-by-game
     environment:
       - RABBIT_IP=rabbitmq
+      - PARTITION_ID=1
       - GAME_INPUT=games-top-n-amount-reviews
       - REVIEW_INPUT=reviews-top-n-partitioner
       - OUTPUT=results-handler-q3-1
-      - PARTITION_ID=1
     networks:
       - net
     depends_on:
       - gateway
-
-  q3-group-2:
-    container_name: q3-group-2
-    image: tp1:latest
-    entrypoint: /group-by-game
-    environment:
-      - RABBIT_IP=rabbitmq
-      - GAME_INPUT=games-top-n-amount-reviews
-      - REVIEW_INPUT=reviews-top-n-partitioner
-      - OUTPUT=results-handler-q3-2
-      - PARTITION_ID=2
-    networks:
-      - net
-    depends_on:
-      - gateway
-
   q3-1:
     container_name: q3-1
     image: tp1:latest
     entrypoint: /top-n-reviews
     environment:
       - RABBIT_IP=rabbitmq
+      - PARTITION_ID=1
       - INPUT=results-handler-q3-1
       - OUTPUT=joiner-q3
     networks:
       - net
     depends_on:
       - gateway
-
+  q3-group-2:
+    container_name: q3-group-2
+    image: tp1:latest
+    entrypoint: /group-by-game
+    environment:
+      - RABBIT_IP=rabbitmq
+      - PARTITION_ID=2
+      - GAME_INPUT=games-top-n-amount-reviews
+      - REVIEW_INPUT=reviews-top-n-partitioner
+      - OUTPUT=results-handler-q3-2
+    networks:
+      - net
+    depends_on:
+      - gateway
   q3-2:
     container_name: q3-2
     image: tp1:latest
     entrypoint: /top-n-reviews
     environment:
       - RABBIT_IP=rabbitmq
+      - PARTITION_ID=2
       - INPUT=results-handler-q3-2
       - OUTPUT=joiner-q3
     networks:
       - net
     depends_on:
       - gateway
-
+  q3-group-3:
+    container_name: q3-group-3
+    image: tp1:latest
+    entrypoint: /group-by-game
+    environment:
+      - RABBIT_IP=rabbitmq
+      - PARTITION_ID=3
+      - GAME_INPUT=games-top-n-amount-reviews
+      - REVIEW_INPUT=reviews-top-n-partitioner
+      - OUTPUT=results-handler-q3-3
+    networks:
+      - net
+    depends_on:
+      - gateway
+  q3-3:
+    container_name: q3-3
+    image: tp1:latest
+    entrypoint: /top-n-reviews
+    environment:
+      - RABBIT_IP=rabbitmq
+      - PARTITION_ID=3
+      - INPUT=results-handler-q3-3
+      - OUTPUT=joiner-q3
+    networks:
+      - net
+    depends_on:
+      - gateway
   q3-joiner:
     container_name: q3-joiner
     image: tp1:latest
     entrypoint: /top-n-reviews-joiner
     environment:
       - RABBIT_IP=rabbitmq
-      - PARTITIONS=2
-      - INPUT=joiner-q3
       - TOP_N=5
+      - PARTITIONS=3
+      - INPUT=joiner-q3
     networks:
       - net
     depends_on:
       - gateway
-
   q4-games-partitioner:
     container_name: q4-games-partitioner
     image: tp1:latest
@@ -337,7 +335,6 @@ services:
       - net
     depends_on:
       - gateway
-
   q4-reviews-partitioner:
     container_name: q4-reviews-partitioner
     image: tp1:latest
@@ -351,22 +348,20 @@ services:
       - net
     depends_on:
       - gateway
-
   q4-group-1:
     container_name: q4-group-1
     image: tp1:latest
     entrypoint: /group-by-game
     environment:
       - RABBIT_IP=rabbitmq
+      - PARTITION_ID=1
       - GAME_INPUT=games-more-than-n-reviews
       - REVIEW_INPUT=reviews-english-n-thousand-partitioner
       - OUTPUT=results-handler-q4
-      - PARTITION_ID=1
     networks:
       - net
     depends_on:
       - gateway
-
   q4:
     container_name: q4
     image: tp1:latest
@@ -379,7 +374,6 @@ services:
       - net
     depends_on:
       - gateway
-
   q5-games-partitioner:
     container_name: q5-games-partitioner
     image: tp1:latest
@@ -393,7 +387,6 @@ services:
       - net
     depends_on:
       - gateway
-
   q5-reviews-partitioner:
     container_name: q5-reviews-partitioner
     image: tp1:latest
@@ -407,22 +400,20 @@ services:
       - net
     depends_on:
       - gateway
-
   q5-group-1:
     container_name: q5-group-1
     image: tp1:latest
     entrypoint: /group-by-game
     environment:
       - RABBIT_IP=rabbitmq
+      - PARTITION_ID=1
       - GAME_INPUT=games-90-percentile
       - REVIEW_INPUT=reviews-90-percentile
       - OUTPUT=results-handler-q5
-      - PARTITION_ID=1
     networks:
       - net
     depends_on:
       - gateway
-
   q5:
     container_name: q5
     image: tp1:latest
@@ -434,6 +425,5 @@ services:
       - net
     depends_on:
       - gateway
-
 networks:
   net:

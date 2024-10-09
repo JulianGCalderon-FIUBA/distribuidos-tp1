@@ -48,53 +48,60 @@ type reviewHandler struct {
 	gameEof   bool
 	batchSize int
 	m         *sync.Mutex
+	output    string
 }
 
 type gameHandler struct {
 	h *reviewHandler
 }
 
-func (h gameHandler) Aggregate(g middleware.Game) error {
+func (h *gameHandler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middleware.Game]) error {
 	h.h.m.Lock()
 	defer h.h.m.Unlock()
-	game := middleware.ReviewsPerGame{
-		AppID: g.AppID,
-		Name:  g.Name,
-	}
-	if count, ok := h.h.reviews[g.AppID]; ok {
-		game.Reviews = uint64(count)
-		delete(h.h.reviews, g.AppID)
-	}
 
-	h.h.games[g.AppID] = game
+	for _, g := range batch.Data {
+		game := middleware.ReviewsPerGame{
+			AppID:   g.AppID,
+			Name:    g.Name,
+			Reviews: 0,
+		}
+		if count, ok := h.h.reviews[g.AppID]; ok {
+			game.Reviews = uint64(count)
+			delete(h.h.reviews, g.AppID)
+		}
+
+		h.h.games[g.AppID] = game
+	}
 
 	return nil
 }
 
-func (h *reviewHandler) Aggregate(r middleware.Review) error {
+func (h *reviewHandler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middleware.Review]) error {
 	h.m.Lock()
 	defer h.m.Unlock()
-	if game, ok := h.games[r.AppID]; ok {
-		game.Reviews += 1
-		h.games[r.AppID] = game
-		return nil
-	}
-	if !h.gameEof {
-		h.reviews[r.AppID] += 1
+
+	for _, r := range batch.Data {
+		if game, ok := h.games[r.AppID]; ok {
+			game.Reviews += 1
+			h.games[r.AppID] = game
+		} else if !h.gameEof {
+			h.reviews[r.AppID] += 1
+		}
 	}
 
 	return nil
 }
 
-func (h gameHandler) Conclude() ([]any, error) {
+func (h *gameHandler) Conclude(_ *middleware.Channel) error {
 	h.h.m.Lock()
 	defer h.h.m.Unlock()
 
 	h.h.gameEof = true
 	clear(h.h.reviews)
-	return nil, nil
+	return nil
 }
-func (h *reviewHandler) Conclude() ([]any, error) {
+
+func (h *reviewHandler) Conclude(ch *middleware.Channel) error {
 	h.m.Lock()
 	defer h.m.Unlock()
 
@@ -104,27 +111,32 @@ func (h *reviewHandler) Conclude() ([]any, error) {
 		}
 	}
 
+	batch := middleware.Batch[middleware.ReviewsPerGame]{
+		Data:     []middleware.ReviewsPerGame{},
+		ClientID: 1,
+		BatchID:  0,
+		EOF:      false,
+	}
+
 	games := slices.Collect(maps.Values(h.games))
-	batchID := 0
-	clientID := 1
-	batches := make([]any, 0)
 
 	for len(games) > 0 {
 		currBatchSize := min(h.batchSize, len(games))
 		var batchData []middleware.ReviewsPerGame
 		games, batchData = games[currBatchSize:], games[:currBatchSize]
 
-		batch := middleware.Batch[middleware.ReviewsPerGame]{
-			Data:     batchData,
-			ClientID: clientID,
-			BatchID:  batchID,
-			EOF:      len(games) == 0,
-		}
-		batches = append(batches, batch)
+		batch.EOF = len(games) == 0
+		batch.Data = batchData
 
-		batchID += 1
+		err := ch.Send(batch, "", h.output)
+		if err != nil {
+			return err
+		}
+
+		batch.BatchID += 1
 	}
-	return batches, nil
+
+	return nil
 }
 
 func main() {
@@ -144,17 +156,18 @@ func main() {
 		gameEof:   false,
 		batchSize: cfg.BatchSize,
 		m:         &sync.Mutex{},
+		output:    cfg.Output,
 	}
 	gh := gameHandler{
 		h: &h,
 	}
 
-	wg := sync.WaitGroup{}
+	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
 	go func() {
 		defer wg.Done()
-		gameAgg, err := aggregator.NewAggregator(gameAggCfg, gh)
+		gameAgg, err := aggregator.NewAggregator(gameAggCfg, &gh)
 		utils.Expect(err, "Failed to create game aggregator")
 		err = gameAgg.Run(context.Background())
 		utils.Expect(err, "Failed to run game aggregator")
