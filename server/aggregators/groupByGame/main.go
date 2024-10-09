@@ -55,7 +55,7 @@ type gameHandler struct {
 	h *reviewHandler
 }
 
-func (h gameHandler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middleware.Game]) error {
+func (h *gameHandler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middleware.Game]) error {
 	h.h.m.Lock()
 	defer h.h.m.Unlock()
 
@@ -76,7 +76,7 @@ func (h gameHandler) Aggregate(_ *middleware.Channel, batch middleware.Batch[mid
 	return nil
 }
 
-func (h reviewHandler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middleware.Review]) error {
+func (h *reviewHandler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middleware.Review]) error {
 	h.m.Lock()
 	defer h.m.Unlock()
 
@@ -84,9 +84,7 @@ func (h reviewHandler) Aggregate(_ *middleware.Channel, batch middleware.Batch[m
 		if game, ok := h.games[r.AppID]; ok {
 			game.Reviews += 1
 			h.games[r.AppID] = game
-			return nil
-		}
-		if !h.gameEof {
+		} else if !h.gameEof {
 			h.reviews[r.AppID] += 1
 		}
 	}
@@ -94,7 +92,7 @@ func (h reviewHandler) Aggregate(_ *middleware.Channel, batch middleware.Batch[m
 	return nil
 }
 
-func (h gameHandler) Conclude(_ *middleware.Channel) error {
+func (h *gameHandler) Conclude(_ *middleware.Channel) error {
 	h.h.m.Lock()
 	defer h.h.m.Unlock()
 
@@ -169,7 +167,7 @@ func main() {
 
 	go func() {
 		defer wg.Done()
-		gameAgg, err := aggregator.NewAggregator(gameAggCfg, gh)
+		gameAgg, err := aggregator.NewAggregator(gameAggCfg, &gh)
 		utils.Expect(err, "Failed to create game aggregator")
 		err = gameAgg.Run(context.Background())
 		utils.Expect(err, "Failed to run game aggregator")

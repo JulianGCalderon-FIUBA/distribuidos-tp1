@@ -24,7 +24,7 @@ type handler struct {
 	results map[uint64]middleware.ReviewsPerGame
 }
 
-func (h handler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middleware.ReviewsPerGame]) error {
+func (h *handler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middleware.ReviewsPerGame]) error {
 	for _, r := range batch.Data {
 		if int(r.Reviews) > h.N {
 			h.results[r.AppID] = r
@@ -33,7 +33,7 @@ func (h handler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middlew
 	return nil
 }
 
-func (h handler) Conclude(ch *middleware.Channel) error {
+func (h *handler) Conclude(ch *middleware.Channel) error {
 	results := slices.Collect(maps.Values(h.results))
 	for i, res := range results {
 		p := protocol.Q4Results{
@@ -41,7 +41,7 @@ func (h handler) Conclude(ch *middleware.Channel) error {
 			EOF:  i == len(results)-1,
 		}
 
-		err := ch.Send(p, "", middleware.ResultsQueue)
+		err := ch.SendAny(p, "", middleware.ResultsQueue)
 		if err != nil {
 			return err
 		}
@@ -80,7 +80,7 @@ func main() {
 		results: make(map[uint64]middleware.ReviewsPerGame),
 	}
 
-	agg, err := aggregator.NewAggregator(aggCfg, h)
+	agg, err := aggregator.NewAggregator(aggCfg, &h)
 	utils.Expect(err, "Failed to create more than n reviews node")
 
 	err = agg.Run(context.Background())
