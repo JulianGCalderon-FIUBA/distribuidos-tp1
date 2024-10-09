@@ -32,9 +32,6 @@ func getConfig() (config, error) {
 
 	v.SetDefault("RabbitIP", "localhost")
 	v.SetDefault("Partitions", "1")
-	// v.SetDefault("Input", middleware.TopNHistoricAvgPQueue)
-	// v.SetDefault("Output", middleware.TopNHistoricAvgQueue)
-	// v.SetDefault("Type", GameDataType)
 
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")
 	_ = v.BindEnv("Partitions", "PARTITIONS")
@@ -62,16 +59,16 @@ type gameHandler struct {
 	partitionsNumber int
 }
 
-func (h gameHandler) Filter(g middleware.Game) filter.RoutingKey {
-	return filter.RoutingKey(strconv.Itoa(int(g.AppID)%h.partitionsNumber + 1))
+func (h gameHandler) Filter(g middleware.Game) []filter.RoutingKey {
+	return []filter.RoutingKey{filter.RoutingKey(strconv.Itoa(int(g.AppID)%h.partitionsNumber + 1))}
 }
 
 type reviewHandler struct {
 	partitionsNumber int
 }
 
-func (h reviewHandler) Filter(r middleware.Review) filter.RoutingKey {
-	return filter.RoutingKey(strconv.Itoa(int(r.AppID)%h.partitionsNumber + 1))
+func (h reviewHandler) Filter(r middleware.Review) []filter.RoutingKey {
+	return []filter.RoutingKey{filter.RoutingKey(strconv.Itoa(int(r.AppID)%h.partitionsNumber + 1))}
 }
 
 func main() {

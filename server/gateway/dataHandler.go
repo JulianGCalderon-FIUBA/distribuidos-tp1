@@ -171,6 +171,7 @@ func (g *gateway) queueGames(r io.Reader) error {
 
 func (g *gateway) queueReviews(r io.Reader) error {
 	csvReader := csv.NewReader(r)
+	csvReader.FieldsPerRecord = -1
 
 	var sentReviews int
 	batch := middleware.Batch[middleware.Review]{
