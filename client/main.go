@@ -1,6 +1,10 @@
 package main
 
 import (
+	"context"
+	"os/signal"
+	"syscall"
+
 	logging "github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
@@ -38,7 +42,10 @@ func main() {
 	}
 
 	client := newClient(config)
-	err = client.start()
+
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
+
+	err = client.start(ctx)
 	if err != nil {
 		log.Fatalf("Failed to run client: %v", err)
 	}
