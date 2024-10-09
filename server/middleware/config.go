@@ -31,17 +31,16 @@ const NegativeReviewKey string = "negative-review"
 
 // decade filter
 const DecadeExchange string = "decades"
-const TopNHistoricAvgPQueue string = "top-n-historic-avg-partitioner"
 const DecadeKey string = "decade"
 
 // language filter
 const ReviewsEnglishFilterExchange string = "reviews-filter-english"
 const NThousandEnglishReviewsQueue string = "reviews-english-n-thousand-partitioner"
+const ReviewsEnglishKey string = "english"
 
 // topNHistoricAvg aggregator
-const TopNHistoricAvgQueue string = "top-n-historic-avg"
+const TopNHistoricAvgPQueue string = "top-n-historic-avg-partitioner"
 const TopNHistoricAvgJQueue string = "top-n-historic-avg-joiner"
-const TopNHistoricAvgExchange string = "top-n-historic-avg"
 
 // results
 const ResultsQueue string = "results"
