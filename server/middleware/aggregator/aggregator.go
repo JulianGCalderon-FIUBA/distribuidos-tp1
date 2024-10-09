@@ -98,11 +98,13 @@ func (f *Aggregator[T]) Run(ctx context.Context) error {
 
 	var latestBatchID int
 	missingBatchIDs := make(map[int]struct{})
+	seen := make(map[int]struct{})
 	fakeEof := false
 
 loop:
 	for d := range dch {
 		batch, err := middleware.Deserialize[middleware.Batch[T]](d.Body)
+		seen[batch.BatchID] = struct{}{}
 		if err != nil {
 			log.Errorf("Failed to deserialize batch %v", err)
 
@@ -129,18 +131,23 @@ loop:
 		for i := latestBatchID + 1; i < batch.BatchID; i++ {
 			missingBatchIDs[i] = struct{}{}
 		}
+
 		latestBatchID = max(batch.BatchID, latestBatchID)
 		if batch.EOF {
 			fakeEof = true
 		}
+		if fakeEof {
+			log.Infof("missing: %v", len(missingBatchIDs))
+			log.Infof("seen: %v", len(seen))
+		}
 		if fakeEof && len(missingBatchIDs) == 0 {
 			log.Info("Received EOF from client")
 			results, err := f.handler.Conclude()
+			if err != nil {
+				nackErr := d.Nack(false, false)
+				return errors.Join(err, nackErr)
+			}
 			for _, result := range results {
-				if err != nil {
-					nackErr := d.Nack(false, false)
-					return errors.Join(err, nackErr)
-				}
 				buf, err := middleware.Serialize(result)
 				if err != nil {
 					nackErr := d.Nack(false, false)
