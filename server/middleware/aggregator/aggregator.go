@@ -129,7 +129,8 @@ loop:
 		for i := latestBatchID + 1; i < batch.BatchID; i++ {
 			missingBatchIDs[i] = struct{}{}
 		}
-		latestBatchID = batch.BatchID
+
+		latestBatchID = max(batch.BatchID, latestBatchID)
 		if batch.EOF {
 			fakeEof = true
 		}
