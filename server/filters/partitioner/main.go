@@ -59,16 +59,16 @@ type gameHandler struct {
 	partitionsNumber int
 }
 
-func (h gameHandler) Filter(g middleware.Game) filter.RoutingKey {
-	return filter.RoutingKey(strconv.Itoa(int(g.AppID)%h.partitionsNumber + 1))
+func (h gameHandler) Filter(g middleware.Game) []filter.RoutingKey {
+	return []filter.RoutingKey{filter.RoutingKey(strconv.Itoa(int(g.AppID)%h.partitionsNumber + 1))}
 }
 
 type reviewHandler struct {
 	partitionsNumber int
 }
 
-func (h reviewHandler) Filter(r middleware.Review) filter.RoutingKey {
-	return filter.RoutingKey(strconv.Itoa(int(r.AppID)%h.partitionsNumber + 1))
+func (h reviewHandler) Filter(r middleware.Review) []filter.RoutingKey {
+	return []filter.RoutingKey{filter.RoutingKey(strconv.Itoa(int(r.AppID)%h.partitionsNumber + 1))}
 }
 
 func main() {

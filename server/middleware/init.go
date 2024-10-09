@@ -89,18 +89,6 @@ func (m *Middleware) initQueues(queues []queueConfig) error {
 	return nil
 }
 
-func (m *Middleware) InitDecadeFilter() error {
-	err := m.initExchanges(DecadeFilterExchanges)
-	if err != nil {
-		return fmt.Errorf("failed to initialize exchanges %w", err)
-	}
-	err = m.initQueues(DecadeFilterQueues)
-	if err != nil {
-		return fmt.Errorf("failed to initialize queues %w", err)
-	}
-	return nil
-}
-
 func (m *Middleware) InitReviewFilter() error {
 	err := m.ch.ExchangeDeclare(
 		ReviewExchange,
