@@ -77,23 +77,26 @@ func (n *Node) Run(ctx context.Context) error {
 		return applyErr
 	}
 
-	for d := range dch {
-		applyErr = n.handler.Apply(d.Body)
-		switch applyErr {
-		case EOF:
-			return d.Ack(false)
-		case nil:
-			continue
-		default:
-			err := d.Nack(false, false)
-			if err != nil {
-				return err
+	for {
+		select {
+		case d := <-dch:
+			applyErr = n.handler.Apply(d.Body)
+			switch applyErr {
+			case EOF:
+				return d.Ack(false)
+			case nil:
+				continue
+			default:
+				err := d.Nack(false, false)
+				if err != nil {
+					return err
+				}
 			}
+		case <-ctx.Done():
+			return nil
 		}
 
 	}
-
-	return nil
 }
 
 func declare(ch *amqp.Channel, exchanges []ExchangeConfig) error {
