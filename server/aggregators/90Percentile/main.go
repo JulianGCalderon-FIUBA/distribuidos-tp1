@@ -49,7 +49,7 @@ func (h *handler) Conclude(ch *middleware.Channel) error {
 		Percentile90: r,
 	}
 
-	return ch.Send(p, "", middleware.ResultsQueue)
+	return ch.SendAny(p, "", middleware.ResultsQueue)
 }
 
 func getConfig() (config, error) {
