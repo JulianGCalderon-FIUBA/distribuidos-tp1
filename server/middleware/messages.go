@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"bytes"
-	"encoding/gob"
+	"encoding/json"
 )
 
 type Score int8
@@ -55,7 +55,7 @@ type Batch[T any] struct {
 
 func Serialize(v any) ([]byte, error) {
 	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
+	enc := json.NewEncoder(&buf)
 	err := enc.Encode(v)
 	return buf.Bytes(), err
 }
@@ -68,6 +68,6 @@ func Deserialize[T any](buf []byte) (T, error) {
 
 func DeserializeInto(buf []byte, v any) error {
 	r := bytes.NewBuffer(buf)
-	enc := gob.NewDecoder(r)
+	enc := json.NewDecoder(r)
 	return enc.Decode(v)
 }
