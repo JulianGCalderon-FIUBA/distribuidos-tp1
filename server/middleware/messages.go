@@ -60,6 +60,13 @@ func Serialize(v any) ([]byte, error) {
 	return buf.Bytes(), err
 }
 
+func SerializeAny(v any) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(&v)
+	return buf.Bytes(), err
+}
+
 func Deserialize[T any](buf []byte) (T, error) {
 	var v T
 	err := DeserializeInto(buf, &v)

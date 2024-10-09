@@ -3,8 +3,7 @@ package aggregator
 import (
 	"context"
 	"distribuidos/tp1/server/middleware"
-	"errors"
-	"fmt"
+	"distribuidos/tp1/server/middleware/node"
 
 	logging "github.com/op/go-logging"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -14,161 +13,88 @@ var log = logging.MustGetLogger("log")
 
 // This interface contains business logic
 type Handler[T any] interface {
-	// Given a record T, process it.
-	Aggregate(record T) error
+	// Called with each batch of type T
+	Aggregate(ch *middleware.Channel, batch middleware.Batch[T]) error
 	// Called when EOF is reached.
-	// Result is sent to Output queue
-	Conclude() ([]any, error)
+	Conclude(ch *middleware.Channel) error
 }
 
 type Config struct {
 	RabbitIP string
-	// Name of the queue to read from
+	// Input to read from
 	Input string
-	// Name of the queue to send result to
+	// Output queue to declare
 	Output string
 }
 
-// Aggregator structure, abstracting away queue system details
-// Receives an input queue, and proceses each row received fro mthe queue
-//
-// Processes each row of type T until EOF arrives
-type Aggregator[T any] struct {
-	cfg        Config
-	rabbitConn *amqp.Connection
-	rabbitCh   *amqp.Channel
-	handler    Handler[T]
+type Aggregator struct {
+	node *node.Node
 }
 
-func NewAggregator[T any](cfg Config, h Handler[T]) (*Aggregator[T], error) {
-	addr := fmt.Sprintf("amqp://guest:guest@%v:5672/", cfg.RabbitIP)
-	r, err := amqp.Dial(addr)
-	if err != nil {
-		return nil, err
-	}
-
-	c, err := r.Channel()
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = c.QueueDeclare(
-		cfg.Input,
-		false,
-		false,
-		false,
-		false,
-		nil)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = c.QueueDeclare(
-		cfg.Output,
-		false,
-		false,
-		false,
-		false,
-		nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Aggregator[T]{
-		cfg:        cfg,
-		rabbitConn: r,
-		rabbitCh:   c,
-		handler:    h,
-	}, nil
+type handler[T any] struct {
+	missingBatchIDs map[int]struct{}
+	latestBatchID   int
+	receivedEof     bool
+	handler         Handler[T]
 }
 
-func (f *Aggregator[T]) Run(ctx context.Context) error {
-	dch, err := f.rabbitCh.Consume(
-		f.cfg.Input,
-		"",
-		false,
-		false,
-		false,
-		false,
-		nil,
-	)
+func (h *handler[T]) Apply(ch *middleware.Channel, data []byte) error {
+	batch, err := middleware.Deserialize[middleware.Batch[T]](data)
+	if err != nil {
+		return err
+	}
+	delete(h.missingBatchIDs, batch.BatchID)
+	for i := h.latestBatchID + 1; i < batch.BatchID; i++ {
+		h.missingBatchIDs[i] = struct{}{}
+	}
+	h.latestBatchID = max(batch.BatchID, h.latestBatchID)
+	if batch.EOF {
+		h.receivedEof = true
+	}
+
+	err = h.handler.Aggregate(ch, batch)
 	if err != nil {
 		return err
 	}
 
-	var latestBatchID int
-	missingBatchIDs := make(map[int]struct{})
-	fakeEof := false
+	if h.receivedEof && len(h.missingBatchIDs) == 0 {
+		log.Info("Received EOF from client")
+		return h.handler.Conclude(ch)
+	}
+	return nil
+}
 
-loop:
-	for d := range dch {
-		batch, err := middleware.Deserialize[middleware.Batch[T]](d.Body)
+func NewAggregator[T any](cfg Config, h Handler[T]) (*Aggregator, error) {
 
-		if err != nil {
-			log.Errorf("Failed to deserialize batch %v", err)
-
-			err = d.Nack(false, false)
-			if err != nil {
-				return err
-			}
-			continue
-		}
-
-		for _, record := range batch.Data {
-			err := f.handler.Aggregate(record)
-			if err != nil {
-				err = d.Nack(false, false)
-				if err != nil {
-					return err
-				}
-				continue loop
-			}
-		}
-
-		delete(missingBatchIDs, batch.BatchID)
-		for i := latestBatchID + 1; i < batch.BatchID; i++ {
-			missingBatchIDs[i] = struct{}{}
-		}
-
-		latestBatchID = max(batch.BatchID, latestBatchID)
-		if batch.EOF {
-			fakeEof = true
-		}
-		if fakeEof && len(missingBatchIDs) == 0 {
-			results, err := f.handler.Conclude()
-			if err != nil {
-				nackErr := d.Nack(false, false)
-				return errors.Join(err, nackErr)
-			}
-			for _, result := range results {
-				buf, err := middleware.Serialize(result)
-				if err != nil {
-					nackErr := d.Nack(false, false)
-					return errors.Join(err, nackErr)
-				}
-
-				err = f.rabbitCh.Publish(
-					"",
-					f.cfg.Output,
-					false,
-					false,
-					amqp.Publishing{
-						ContentType: "text/plain",
-						Body:        buf,
-					},
-				)
-				if err != nil {
-					nackErr := d.Nack(false, false)
-					return errors.Join(err, nackErr)
-				}
-			}
-		}
-
-		err = d.Ack(false)
-		if err != nil {
-			return err
-		}
+	nodeCfg := node.Config{
+		RabbitIP: cfg.RabbitIP,
+		Exchanges: []node.ExchangeConfig{{
+			Name: "",
+			Type: amqp.ExchangeDirect,
+			QueuesByKey: map[string][]string{
+				cfg.Output: {cfg.Output},
+			},
+		}},
+		Input: cfg.Input,
 	}
 
-	return nil
+	nodeH := &handler[T]{
+		missingBatchIDs: make(map[int]struct{}),
+		latestBatchID:   0,
+		receivedEof:     false,
+		handler:         h,
+	}
+
+	node, err := node.NewNode(nodeCfg, nodeH)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Aggregator{
+		node: node,
+	}, nil
+}
+
+func (a *Aggregator) Run(ctx context.Context) error {
+	return a.node.Run(ctx)
 }

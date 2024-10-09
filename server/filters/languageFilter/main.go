@@ -4,9 +4,11 @@ import (
 	"context"
 	"distribuidos/tp1/server/middleware"
 	"distribuidos/tp1/server/middleware/filter"
+	"distribuidos/tp1/server/middleware/node"
 	"distribuidos/tp1/utils"
 
 	"github.com/op/go-logging"
+	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/rylans/getlang"
 	"github.com/spf13/viper"
 )
@@ -33,12 +35,12 @@ func getConfig() (config, error) {
 
 type handler struct{}
 
-func (h handler) Filter(r middleware.Review) []filter.RoutingKey {
+func (h handler) Filter(r middleware.Review) []string {
 	if h.isEnglish(r.Text) {
-		return []filter.RoutingKey{filter.RoutingKey(middleware.ReviewsEnglishKey)}
+		return []string{middleware.ReviewsEnglishKey}
 	}
 
-	return []filter.RoutingKey{}
+	return nil
 }
 
 // Detects if received text is English or not
@@ -55,11 +57,14 @@ func main() {
 
 	filterCfg := filter.Config{
 		RabbitIP: cfg.RabbitIP,
-		Input:    middleware.LanguageReviewsFilterQueue,
-		Exchange: middleware.ReviewsEnglishFilterExchange,
-		Output: map[filter.RoutingKey][]filter.QueueName{
-			filter.RoutingKey(middleware.ReviewsEnglishKey): {
-				filter.QueueName(middleware.NThousandEnglishReviewsQueue),
+		Queue:    middleware.LanguageReviewsFilterQueue,
+		Exchange: node.ExchangeConfig{
+			Name: middleware.ReviewsEnglishFilterExchange,
+			Type: amqp.ExchangeDirect,
+			QueuesByKey: map[string][]string{
+				middleware.ReviewsEnglishKey: {
+					middleware.NThousandEnglishReviewsQueue,
+				},
 			},
 		},
 	}
