@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"distribuidos/tp1/server/middleware"
 	"errors"
 	"fmt"
 
@@ -16,7 +17,7 @@ type Handler interface {
 	// If returns EOF, then the node will finish.
 	// On any other error, the message is nacked.
 	// If no errors, the message is acked.
-	Apply(ch *amqp.Channel, data []byte) error
+	Apply(ch *middleware.Channel, data []byte) error
 }
 
 type ExchangeConfig struct {
@@ -64,7 +65,7 @@ func NewNode(cfg Config, h Handler) (*Node, error) {
 }
 
 func (n *Node) Run(ctx context.Context) error {
-	dch, applyErr := n.ch.Consume(
+	dch, err := n.ch.Consume(
 		n.cfg.Queue,
 		"",
 		false,
@@ -73,14 +74,19 @@ func (n *Node) Run(ctx context.Context) error {
 		false,
 		nil,
 	)
-	if applyErr != nil {
-		return applyErr
+	if err != nil {
+		return err
+	}
+	defer n.ch.Close()
+
+	ch := middleware.Channel{
+		Ch: n.ch,
 	}
 
 	for {
 		select {
 		case d := <-dch:
-			applyErr = n.handler.Apply(n.ch, d.Body)
+			applyErr := n.handler.Apply(&ch, d.Body)
 			switch applyErr {
 			case EOF:
 				return d.Ack(false)
