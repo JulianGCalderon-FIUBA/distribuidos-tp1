@@ -48,7 +48,6 @@ const ResultsQueue string = "results"
 // games per platform
 const GamesPerPlatformJoin string = "games-per-platform-join"
 
-
 type queueConfig struct {
 	name       string
 	exchange   string
