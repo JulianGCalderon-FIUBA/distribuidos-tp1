@@ -22,7 +22,7 @@ type (
 type Handler[T any] interface {
 	// Given a record T, returns which routing key
 	// to send it to.
-	Filter(record T) RoutingKey
+	Filter(record T) []RoutingKey
 }
 
 type Config struct {
@@ -161,12 +161,15 @@ func (f *Filter[T]) Run(ctx context.Context) error {
 		for _, record := range batch.Data {
 			rk := f.handler.Filter(record)
 
-			if rk == RoutingKey(middleware.EmptyKey) {
+			if len(rk) == 0 {
 				continue
 			}
-			entry := partitions[rk]
-			entry.Data = append(entry.Data, record)
-			partitions[rk] = entry
+
+			for _, rk := range rk {
+				entry := partitions[rk]
+				entry.Data = append(entry.Data, record)
+				partitions[rk] = entry
+			}
 		}
 
 		for rk, partition := range partitions {
