@@ -5,6 +5,9 @@ import (
 	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/server/middleware"
 	"distribuidos/tp1/server/middleware/aggregator"
+	"os/signal"
+	"syscall"
+
 	"distribuidos/tp1/utils"
 	"encoding/gob"
 	"math"
@@ -24,18 +27,18 @@ type handler struct {
 	sorted []middleware.ReviewsPerGame
 }
 
-func (h *handler) Aggregate(r middleware.ReviewsPerGame) error {
-	i := sort.Search(len(h.sorted), func(i int) bool { return h.sorted[i].Reviews >= r.Reviews })
-
-	h.sorted = append(h.sorted, middleware.ReviewsPerGame{})
-	copy(h.sorted[i+1:], h.sorted[i:])
-	h.sorted[i] = r
+func (h *handler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middleware.ReviewsPerGame]) error {
+	for _, r := range batch.Data {
+		i := sort.Search(len(h.sorted), func(i int) bool { return h.sorted[i].Reviews >= r.Reviews })
+		h.sorted = append(h.sorted, middleware.ReviewsPerGame{})
+		copy(h.sorted[i+1:], h.sorted[i:])
+		h.sorted[i] = r
+	}
 
 	return nil
 }
 
-func (h *handler) Conclude() ([]any, error) {
-
+func (h *handler) Conclude(ch *middleware.Channel) error {
 	n := float64(len(h.sorted))
 	index := int(math.Ceil(PERCENTILE/100.0*n)) - 1
 	results := h.sorted[index:]
@@ -44,11 +47,11 @@ func (h *handler) Conclude() ([]any, error) {
 		r = append(r, res.Name)
 	}
 
-	var p any = protocol.Q5Results{
+	p := protocol.Q5Results{
 		Percentile90: r,
 	}
 
-	return []any{&p}, nil
+	return ch.SendAny(p, "", middleware.ResultsQueue)
 }
 
 func getConfig() (config, error) {
@@ -78,10 +81,11 @@ func main() {
 	h := handler{
 		sorted: make([]middleware.ReviewsPerGame, 0),
 	}
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 
 	agg, err := aggregator.NewAggregator(aggCfg, &h)
 	utils.Expect(err, "Failed to create 90 percentile node")
 
-	err = agg.Run(context.Background())
+	err = agg.Run(ctx)
 	utils.Expect(err, "Failed to run 90 percentile node")
 }

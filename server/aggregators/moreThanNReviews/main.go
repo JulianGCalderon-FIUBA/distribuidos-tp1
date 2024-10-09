@@ -8,7 +8,9 @@ import (
 	"distribuidos/tp1/utils"
 	"encoding/gob"
 	"maps"
+	"os/signal"
 	"slices"
+	"syscall"
 
 	"github.com/spf13/viper"
 )
@@ -24,24 +26,29 @@ type handler struct {
 	results map[uint64]middleware.ReviewsPerGame
 }
 
-func (h handler) Aggregate(r middleware.ReviewsPerGame) error {
-	if int(r.Reviews) > h.N {
-		h.results[r.AppID] = r
+func (h *handler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middleware.ReviewsPerGame]) error {
+	for _, r := range batch.Data {
+		if int(r.Reviews) > h.N {
+			h.results[r.AppID] = r
+		}
 	}
 	return nil
 }
 
-func (h handler) Conclude() ([]any, error) {
+func (h *handler) Conclude(ch *middleware.Channel) error {
 	results := slices.Collect(maps.Values(h.results))
-	r := make([]any, 0)
 	for i, res := range results {
-		var p any = protocol.Q4Results{
+		p := protocol.Q4Results{
 			Name: res.Name,
 			EOF:  i == len(results)-1,
 		}
-		r = append(r, &p)
+
+		err := ch.SendAny(p, "", middleware.ResultsQueue)
+		if err != nil {
+			return err
+		}
 	}
-	return r, nil
+	return nil
 }
 
 func getConfig() (config, error) {
@@ -75,9 +82,11 @@ func main() {
 		results: make(map[uint64]middleware.ReviewsPerGame),
 	}
 
-	agg, err := aggregator.NewAggregator(aggCfg, h)
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
+
+	agg, err := aggregator.NewAggregator(aggCfg, &h)
 	utils.Expect(err, "Failed to create more than n reviews node")
 
-	err = agg.Run(context.Background())
+	err = agg.Run(ctx)
 	utils.Expect(err, "Failed to run more than n reviews node")
 }

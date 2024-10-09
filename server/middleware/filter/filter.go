@@ -3,37 +3,26 @@ package filter
 import (
 	"context"
 	"distribuidos/tp1/server/middleware"
-	"errors"
-	"fmt"
+	"distribuidos/tp1/server/middleware/node"
 
 	logging "github.com/op/go-logging"
-	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 var log = logging.MustGetLogger("log")
 
-type (
-	RoutingKey string
-	QueueName  string
-	ClientID   uint64
-)
-
 // This interface contains business logic
 type Handler[T any] interface {
-	// Given a record T, returns which routing key
-	// to send it to.
-	Filter(record T) []RoutingKey
+	// Given a record T, returns which routing key it
+	// corresponds to it, when sending it to the exchange
+	Filter(record T) []string
 }
 
 type Config struct {
 	RabbitIP string
-	// Exchange to send records to
-	Exchange string
 	// Name of the queue to read from
-	Input string
-	// Output configuration: contains routing keys
-	// and queues binded to them
-	Output map[RoutingKey][]QueueName
+	Queue string
+	// Exchange to declare, and queues binded to them
+	Exchange node.ExchangeConfig
 }
 
 // Filter structure, abstracting away queue system details
@@ -47,188 +36,87 @@ type Config struct {
 //
 // Dispatches every row from Q to exchange X with routing key
 // according to Filter function from Handler.
-type Filter[T any] struct {
-	cfg        Config
-	rabbitConn *amqp.Connection
-	rabbitCh   *amqp.Channel
+type Filter struct {
+	node *node.Node
+}
+
+type handler[T any] struct {
+	exchange   string
+	partitions map[string]middleware.Batch[T]
+	statistics map[string]int
 	handler    Handler[T]
 }
 
-func NewFilter[T any](cfg Config, h Handler[T]) (*Filter[T], error) {
-	addr := fmt.Sprintf("amqp://guest:guest@%v:5672/", cfg.RabbitIP)
-	r, err := amqp.Dial(addr)
-	if err != nil {
-		return nil, err
-	}
-
-	c, err := r.Channel()
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = c.QueueDeclare(
-		cfg.Input,
-		false,
-		false,
-		false,
-		false,
-		nil)
-	if err != nil {
-		return nil, err
-	}
-
-	err = c.ExchangeDeclare(
-		cfg.Exchange,
-		amqp.ExchangeDirect,
-		false,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	for q, ks := range transpose(cfg.Output) {
-		_, err = c.QueueDeclare(
-			string(q),
-			false,
-			false,
-			false,
-			false,
-			nil)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, k := range ks {
-			err = c.QueueBind(
-				string(q),
-				string(k),
-				cfg.Exchange,
-				false,
-				nil,
-			)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	return &Filter[T]{
-		cfg:        cfg,
-		rabbitConn: r,
-		rabbitCh:   c,
-		handler:    h,
-	}, nil
-}
-
-func (f *Filter[T]) Run(ctx context.Context) error {
-	dch, err := f.rabbitCh.Consume(
-		f.cfg.Input,
-		"",
-		false,
-		false,
-		false,
-		false,
-		nil,
-	)
+func (h *handler[T]) Apply(ch *middleware.Channel, data []byte) error {
+	batch, err := middleware.Deserialize[middleware.Batch[T]](data)
 	if err != nil {
 		return err
 	}
 
-	partitions := make(map[RoutingKey]middleware.Batch[T])
-	for rk := range f.cfg.Output {
-		partitions[rk] = middleware.Batch[T]{}
+	for _, record := range batch.Data {
+		keys := h.handler.Filter(record)
+		for _, key := range keys {
+			entry := h.partitions[key]
+			entry.Data = append(entry.Data, record)
+			h.partitions[key] = entry
+		}
 	}
 
-	statistics := make(map[RoutingKey]int)
+	for key, partition := range h.partitions {
+		partition.BatchID = batch.BatchID
+		partition.ClientID = batch.ClientID
+		partition.EOF = batch.EOF
 
-	for d := range dch {
-		batch, err := middleware.Deserialize[middleware.Batch[T]](d.Body)
-		if err != nil {
-			log.Errorf("Failed to deserialize batch %v", err)
+		h.statistics[key] += len(partition.Data)
 
-			err = d.Nack(false, false)
-			if err != nil {
-				return err
-			}
-
-			continue
-		}
-
-		for _, record := range batch.Data {
-			rk := f.handler.Filter(record)
-
-			if len(rk) == 0 {
-				continue
-			}
-
-			for _, rk := range rk {
-				entry := partitions[rk]
-				entry.Data = append(entry.Data, record)
-				partitions[rk] = entry
-			}
-		}
-
-		for rk, partition := range partitions {
-			partition.BatchID = batch.BatchID
-			partition.ClientID = batch.ClientID
-			partition.EOF = batch.EOF
-
-			statistics[rk] += len(partition.Data)
-
-			buf, err := middleware.Serialize(partition)
-			if err != nil {
-				nackErr := d.Nack(false, false)
-				return errors.Join(err, nackErr)
-			}
-
-			err = f.rabbitCh.Publish(
-				f.cfg.Exchange,
-				string(rk),
-				false,
-				false,
-				amqp.Publishing{
-					ContentType: "text/plain",
-					Body:        buf,
-				},
-			)
-			if err != nil {
-				nackErr := d.Nack(false, false)
-				return errors.Join(err, nackErr)
-			}
-
-			partition.Data = partition.Data[:0]
-			partitions[rk] = partition
-		}
-
-		err = d.Ack(false)
+		err := ch.Send(partition, h.exchange, key)
 		if err != nil {
 			return err
 		}
 
-		// todo: handle disordered batches
-		if batch.EOF {
-			log.Info("Received EOF from client")
-			for rk, stats := range statistics {
-				log.Infof("Sent %v records to key %v", stats, rk)
-			}
+		partition.Data = partition.Data[:0]
+		h.partitions[key] = partition
+	}
+
+	if batch.EOF {
+		log.Info("Received EOF from client")
+		for rk, stats := range h.statistics {
+			log.Infof("Sent %v records to key %v", stats, rk)
 		}
 	}
 
 	return nil
 }
 
-func transpose(m map[RoutingKey][]QueueName) map[QueueName][]RoutingKey {
-	t := make(map[QueueName][]RoutingKey)
-
-	for k, qs := range m {
-		for _, q := range qs {
-			t[q] = append(t[q], k)
-		}
+func NewFilter[T any](cfg Config, h Handler[T]) (*Filter, error) {
+	nodeCfg := node.Config{
+		RabbitIP:  cfg.RabbitIP,
+		Input:     cfg.Queue,
+		Exchanges: []node.ExchangeConfig{cfg.Exchange},
 	}
 
-	return t
+	partitions := make(map[string]middleware.Batch[T])
+	for key := range cfg.Exchange.QueuesByKey {
+		partitions[key] = middleware.Batch[T]{}
+	}
+
+	nodeH := &handler[T]{
+		exchange:   cfg.Exchange.Name,
+		partitions: partitions,
+		statistics: map[string]int{},
+		handler:    h,
+	}
+
+	node, err := node.NewNode(nodeCfg, nodeH)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Filter{
+		node: node,
+	}, nil
+}
+
+func (f *Filter) Run(ctx context.Context) error {
+	return f.node.Run(ctx)
 }

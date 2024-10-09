@@ -6,6 +6,8 @@ import (
 	"distribuidos/tp1/server/middleware/aggregator"
 	"distribuidos/tp1/utils"
 	"fmt"
+	"os/signal"
+	"syscall"
 
 	logging "github.com/op/go-logging"
 	"github.com/spf13/viper"
@@ -42,27 +44,31 @@ const (
 )
 
 type handler struct {
-	count map[Platform]int
+	output string
+	count  map[Platform]int
 }
 
-func (h handler) Aggregate(g middleware.Game) error {
-	if g.Windows {
-		h.count[Windows] += 1
-	}
-	if g.Linux {
-		h.count[Linux] += 1
-	}
-	if g.Mac {
-		h.count[Mac] += 1
+func (h handler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middleware.Game]) error {
+	for _, g := range batch.Data {
+		if g.Windows {
+			h.count[Windows] += 1
+		}
+		if g.Linux {
+			h.count[Linux] += 1
+		}
+		if g.Mac {
+			h.count[Mac] += 1
+		}
 	}
 	return nil
 }
 
-func (h handler) Conclude() ([]any, error) {
+func (h handler) Conclude(ch *middleware.Channel) error {
 	for k, v := range h.count {
 		log.Infof("Found %v games with %v support", v, string(k))
 	}
-	return []any{h.count}, nil
+
+	return ch.Send(h.count, "", h.output)
 }
 
 func main() {
@@ -72,17 +78,18 @@ func main() {
 	qName := fmt.Sprintf("%v-x-%v", middleware.GamesPerPlatformQueue, cfg.PartitionID)
 	aggCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
-		Input:    qName,
 		Output:   middleware.GamesPerPlatformJoin,
+		Input:    qName,
 	}
-
 	h := handler{
-		count: make(map[Platform]int),
+		count:  make(map[Platform]int),
+		output: middleware.GamesPerPlatformJoin,
 	}
 
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 	agg, err := aggregator.NewAggregator(aggCfg, h)
 	utils.Expect(err, "Failed to create partitioner")
 
-	err = agg.Run(context.Background())
+	err = agg.Run(ctx)
 	utils.Expect(err, "Failed to run partitioner")
 }

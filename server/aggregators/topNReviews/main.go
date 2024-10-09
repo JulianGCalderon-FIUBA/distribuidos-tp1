@@ -7,8 +7,10 @@ import (
 	"distribuidos/tp1/server/middleware/aggregator"
 	"distribuidos/tp1/utils"
 	"encoding/gob"
+	"os/signal"
 	"slices"
 	"sort"
+	"syscall"
 
 	"github.com/spf13/viper"
 )
@@ -21,32 +23,35 @@ type config struct {
 }
 
 type handler struct {
+	output string
 	sorted []middleware.GameStat
 	N      int
 }
 
-func (h *handler) Aggregate(r middleware.ReviewsPerGame) error {
-	i := sort.Search(len(h.sorted), func(i int) bool { return h.sorted[i].Stat >= r.Reviews })
+func (h *handler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middleware.ReviewsPerGame]) error {
+	for _, r := range batch.Data {
+		i := sort.Search(len(h.sorted), func(i int) bool { return h.sorted[i].Stat >= r.Reviews })
 
-	g := middleware.GameStat{
-		AppID: r.AppID,
-		Name:  r.Name,
-		Stat:  r.Reviews,
+		g := middleware.GameStat{
+			AppID: r.AppID,
+			Name:  r.Name,
+			Stat:  r.Reviews,
+		}
+
+		h.sorted = append(h.sorted, middleware.GameStat{})
+		copy(h.sorted[i+1:], h.sorted[i:])
+		h.sorted[i] = g
 	}
-
-	h.sorted = append(h.sorted, middleware.GameStat{})
-	copy(h.sorted[i+1:], h.sorted[i:])
-	h.sorted[i] = g
 
 	return nil
 }
 
-func (h *handler) Conclude() ([]any, error) {
+func (h *handler) Conclude(ch *middleware.Channel) error {
 	index := max(0, len(h.sorted)-h.N)
 	top := h.sorted[index:]
 	slices.Reverse(top)
 
-	return []any{top}, nil
+	return ch.Send(top, "", h.output)
 }
 
 func getConfig() (config, error) {
@@ -77,13 +82,15 @@ func main() {
 	}
 
 	h := handler{
+		output: cfg.Output,
 		sorted: make([]middleware.GameStat, 0),
 		N:      cfg.N,
 	}
 
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 	agg, err := aggregator.NewAggregator(aggCfg, &h)
 	utils.Expect(err, "Failed to create top n reviews node")
 
-	err = agg.Run(context.Background())
+	err = agg.Run(ctx)
 	utils.Expect(err, "Failed to run top n reviews node")
 }

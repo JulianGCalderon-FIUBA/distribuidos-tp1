@@ -7,10 +7,15 @@ import (
 	"distribuidos/tp1/server/middleware/aggregator"
 	"distribuidos/tp1/utils"
 	"fmt"
+	"os/signal"
 	"sort"
+	"syscall"
 
+	logging "github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
+
+var log = logging.MustGetLogger("log")
 
 type config struct {
 	RabbitIP    string
@@ -31,7 +36,6 @@ func getConfig() (config, error) {
 	_ = v.BindEnv("TopN", "TOP_N")
 	_ = v.BindEnv("PartitionId", "PARTITION_ID")
 	_ = v.BindEnv("Input", "INPUT")
-	_ = v.BindEnv("Output", "OUTPUT")
 
 	var c config
 	err := v.Unmarshal(&c)
@@ -43,23 +47,25 @@ type handler struct {
 	results utils.GameHeap
 }
 
-func (h handler) Aggregate(g middleware.Game) error {
-	if h.results.Len() < h.topN {
-		heap.Push(&h.results, middleware.GameStat{
-			Name: g.Name,
-			Stat: g.AveragePlaytimeForever,
-		})
-	} else if g.AveragePlaytimeForever > h.results.Peek().(middleware.GameStat).Stat {
-		heap.Pop(&h.results)
-		heap.Push(&h.results, middleware.GameStat{
-			Name: g.Name,
-			Stat: g.AveragePlaytimeForever,
-		})
+func (h handler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middleware.Game]) error {
+	for _, g := range batch.Data {
+		if h.results.Len() < h.topN {
+			heap.Push(&h.results, middleware.GameStat{
+				Name: g.Name,
+				Stat: g.AveragePlaytimeForever,
+			})
+		} else if g.AveragePlaytimeForever > h.results.Peek().(middleware.GameStat).Stat {
+			heap.Pop(&h.results)
+			heap.Push(&h.results, middleware.GameStat{
+				Name: g.Name,
+				Stat: g.AveragePlaytimeForever,
+			})
+		}
 	}
 	return nil
 }
 
-func (h handler) Conclude() ([]any, error) {
+func (h handler) Conclude(ch *middleware.Channel) error {
 	sortedGames := make([]middleware.GameStat, 0, h.results.Len())
 	for h.results.Len() > 0 {
 		sortedGames = append(sortedGames, heap.Pop(&h.results).(middleware.GameStat))
@@ -69,7 +75,16 @@ func (h handler) Conclude() ([]any, error) {
 		return sortedGames[i].Stat > sortedGames[j].Stat
 	})
 
-	return []any{sortedGames}, nil
+	for _, g := range sortedGames {
+		log.Infof("Game %v: %v", g.Name, g.Stat)
+	}
+
+	err := ch.Send(sortedGames, "", middleware.TopNHistoricAvgJQueue)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func main() {
@@ -80,17 +95,16 @@ func main() {
 	aggCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
 		Input:    qName,
-		Output:   cfg.Output,
 	}
 
 	h := handler{
 		topN:    cfg.TopN,
 		results: make(utils.GameHeap, cfg.TopN),
 	}
-
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 	agg, err := aggregator.NewAggregator(aggCfg, h)
 	utils.Expect(err, "Failed to create partitioner")
 
-	err = agg.Run(context.Background())
+	err = agg.Run(ctx)
 	utils.Expect(err, "Failed to run partitioner")
 }

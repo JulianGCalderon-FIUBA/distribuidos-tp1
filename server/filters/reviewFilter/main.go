@@ -4,9 +4,13 @@ import (
 	"context"
 	"distribuidos/tp1/server/middleware"
 	"distribuidos/tp1/server/middleware/filter"
+	"distribuidos/tp1/server/middleware/node"
 	"distribuidos/tp1/utils"
+	"os/signal"
+	"syscall"
 
 	"github.com/op/go-logging"
+	"github.com/rabbitmq/amqp091-go"
 	"github.com/spf13/viper"
 )
 
@@ -18,11 +22,11 @@ type config struct {
 
 type handler struct{}
 
-func (h handler) Filter(r middleware.Review) []filter.RoutingKey {
+func (h handler) Filter(r middleware.Review) []string {
 	if r.Score == middleware.PositiveScore {
-		return []filter.RoutingKey{filter.RoutingKey(middleware.PositiveReviewKey)}
+		return []string{middleware.PositiveReviewKey}
 	} else {
-		return []filter.RoutingKey{filter.RoutingKey(middleware.NegativeReviewKey)}
+		return []string{middleware.NegativeReviewKey}
 	}
 }
 
@@ -46,22 +50,25 @@ func main() {
 
 	filterCfg := filter.Config{
 		RabbitIP: cfg.RabbitIP,
-		Input:    middleware.ReviewsQueue,
-		Exchange: middleware.ReviewsScoreFilterExchange,
-		Output: map[filter.RoutingKey][]filter.QueueName{
-			filter.RoutingKey(middleware.PositiveReviewKey): {
-				filter.QueueName(middleware.TopNAmountReviewsQueue),
-			},
-			filter.RoutingKey(middleware.NegativeReviewKey): {
-				filter.QueueName(middleware.NinetyPercentileReviewsQueue),
-				filter.QueueName(middleware.LanguageReviewsFilterQueue),
+		Queue:    middleware.ReviewsQueue,
+		Exchange: node.ExchangeConfig{
+			Name: middleware.ReviewsScoreFilterExchange,
+			Type: amqp091.ExchangeDirect,
+			QueuesByKey: map[string][]string{
+				middleware.PositiveReviewKey: {
+					middleware.TopNAmountReviewsQueue,
+				},
+				middleware.NegativeReviewKey: {
+					middleware.NinetyPercentileReviewsQueue,
+					middleware.LanguageReviewsFilterQueue,
+				},
 			},
 		},
 	}
-
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 	h := handler{}
 	p, err := filter.NewFilter(filterCfg, h)
 	utils.Expect(err, "Failed to create filter")
-	err = p.Run(context.Background())
+	err = p.Run(ctx)
 	utils.Expect(err, "Failed to run filter")
 }
