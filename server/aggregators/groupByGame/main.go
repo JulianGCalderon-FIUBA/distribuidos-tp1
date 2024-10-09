@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"sync"
 
 	"github.com/spf13/viper"
 )
@@ -46,6 +47,7 @@ type reviewHandler struct {
 	reviews   map[uint64]int
 	gameEof   bool
 	batchSize int
+	m         *sync.Mutex
 }
 
 type gameHandler struct {
@@ -53,6 +55,8 @@ type gameHandler struct {
 }
 
 func (h gameHandler) Aggregate(g middleware.Game) error {
+	h.h.m.Lock()
+	defer h.h.m.Unlock()
 	game := middleware.ReviewsPerGame{
 		AppID: g.AppID,
 		Name:  g.Name,
@@ -67,7 +71,9 @@ func (h gameHandler) Aggregate(g middleware.Game) error {
 	return nil
 }
 
-func (h reviewHandler) Aggregate(r middleware.Review) error {
+func (h *reviewHandler) Aggregate(r middleware.Review) error {
+	h.m.Lock()
+	defer h.m.Unlock()
 	if game, ok := h.games[r.AppID]; ok {
 		game.Reviews += 1
 		h.games[r.AppID] = game
@@ -81,11 +87,17 @@ func (h reviewHandler) Aggregate(r middleware.Review) error {
 }
 
 func (h gameHandler) Conclude() ([]any, error) {
+	h.h.m.Lock()
+	defer h.h.m.Unlock()
+
 	h.h.gameEof = true
 	clear(h.h.reviews)
 	return nil, nil
 }
-func (h reviewHandler) Conclude() ([]any, error) {
+func (h *reviewHandler) Conclude() ([]any, error) {
+	h.m.Lock()
+	defer h.m.Unlock()
+
 	for k, v := range h.games {
 		if v.Reviews == 0 {
 			delete(h.games, k)
@@ -112,7 +124,6 @@ func (h reviewHandler) Conclude() ([]any, error) {
 
 		batchID += 1
 	}
-
 	return batches, nil
 }
 
@@ -132,15 +143,22 @@ func main() {
 		reviews:   make(map[uint64]int),
 		gameEof:   false,
 		batchSize: cfg.BatchSize,
+		m:         &sync.Mutex{},
 	}
 	gh := gameHandler{
 		h: &h,
 	}
 
-	gameAgg, err := aggregator.NewAggregator(gameAggCfg, gh)
-	utils.Expect(err, "Failed to create game aggregator")
-	err = gameAgg.Run(context.Background())
-	utils.Expect(err, "Failed to run game aggregator")
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		gameAgg, err := aggregator.NewAggregator(gameAggCfg, gh)
+		utils.Expect(err, "Failed to create game aggregator")
+		err = gameAgg.Run(context.Background())
+		utils.Expect(err, "Failed to run game aggregator")
+	}()
 
 	qName = fmt.Sprintf("%v-x-%v", cfg.ReviewInput, cfg.PartitionID)
 	reviewCfg := aggregator.Config{
@@ -149,8 +167,10 @@ func main() {
 		Output:   cfg.Output,
 	}
 
-	reviewAgg, err := aggregator.NewAggregator(reviewCfg, h)
+	reviewAgg, err := aggregator.NewAggregator(reviewCfg, &h)
 	utils.Expect(err, "Failed to create review aggregator")
 	err = reviewAgg.Run(context.Background())
 	utils.Expect(err, "Failed to run review aggregator")
+
+	wg.Wait()
 }
