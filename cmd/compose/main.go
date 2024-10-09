@@ -8,6 +8,7 @@ import (
 const Q1 = 3
 const Q2 = 3
 const Q3 = 3
+const Q4 = 1
 const Q5 = 1
 
 func main() {
@@ -22,6 +23,7 @@ func main() {
 	generateQ1()
 	generateQ2()
 	generateQ3()
+	generateQ4()
 	generateQ5()
 	generateNet()
 }
@@ -285,6 +287,65 @@ func generateQ3() {
 	fmt.Println("      - TOP_N=5")
 	fmt.Printf("      - PARTITIONS=%v\n", Q3)
 	fmt.Printf("      - INPUT=%v\n", "joiner-q3")
+	fmt.Println("    networks:")
+	fmt.Println("      - net")
+	fmt.Println("    depends_on:")
+	fmt.Println("      - gateway")
+}
+
+func generateQ4() {
+	fmt.Println("  q4-games-partitioner:")
+	fmt.Println("    container_name: q4-games-partitioner")
+	fmt.Println("    image: tp1:latest")
+	fmt.Println("    entrypoint: /partitioner")
+	fmt.Println("    environment:")
+	fmt.Println("      - RABBIT_IP=rabbitmq")
+	fmt.Printf("      - INPUT=%v\n", middleware.MoreThanNReviewsGamesQueue)
+	fmt.Printf("      - PARTITIONS=%v\n", Q4)
+	fmt.Println("      - TYPE=game")
+	fmt.Println("    networks:")
+	fmt.Println("      - net")
+	fmt.Println("    depends_on:")
+	fmt.Println("      - gateway")
+
+	fmt.Println("  q4-reviews-partitioner:")
+	fmt.Println("    container_name: q4-reviews-partitioner")
+	fmt.Println("    image: tp1:latest")
+	fmt.Println("    entrypoint: /partitioner")
+	fmt.Println("    environment:")
+	fmt.Println("      - RABBIT_IP=rabbitmq")
+	fmt.Printf("      - INPUT=%v\n", middleware.NThousandEnglishReviewsQueue)
+	fmt.Printf("      - PARTITIONS=%v\n", Q4)
+	fmt.Println("      - TYPE=review")
+	fmt.Println("    networks:")
+	fmt.Println("      - net")
+	fmt.Println("    depends_on:")
+	fmt.Println("      - gateway")
+
+	for i := 1; i <= Q4; i++ {
+		fmt.Printf("  q4-group-%v:\n", i)
+		fmt.Printf("    container_name: q4-group-%v\n", i)
+		fmt.Println("    image: tp1:latest")
+		fmt.Println("    entrypoint: /group-by-game")
+		fmt.Println("    environment:")
+		fmt.Println("      - RABBIT_IP=rabbitmq")
+		fmt.Printf("      - PARTITION_ID=%v\n", i)
+		fmt.Printf("      - GAME_INPUT=%v\n", middleware.MoreThanNReviewsGamesQueue)
+		fmt.Printf("      - REVIEW_INPUT=%v\n", middleware.NThousandEnglishReviewsQueue)
+		fmt.Printf("      - OUTPUT=%v\n", "results-handler-q4")
+		fmt.Println("    networks:")
+		fmt.Println("      - net")
+		fmt.Println("    depends_on:")
+		fmt.Println("      - gateway")
+	}
+	fmt.Println("  q4:")
+	fmt.Println("    container_name: q4")
+	fmt.Println("    image: tp1:latest")
+	fmt.Println("    entrypoint: /more-than-n-reviews")
+	fmt.Println("    environment:")
+	fmt.Println("      - RABBIT_IP=rabbitmq")
+	fmt.Println("      - N=5000")
+	fmt.Printf("      - INPUT=%v\n", "results-handler-q4")
 	fmt.Println("    networks:")
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
