@@ -104,7 +104,13 @@ func (f *Aggregator[T]) Run(ctx context.Context) error {
 loop:
 	for d := range dch {
 		batch, err := middleware.Deserialize[middleware.Batch[T]](d.Body)
-		seen[batch.BatchID] = struct{}{}
+
+		if _, ok := seen[batch.BatchID]; ok {
+			log.Infof("Already received %v", batch.BatchID)
+		} else {
+			seen[batch.BatchID] = struct{}{}
+		}
+
 		if err != nil {
 			log.Errorf("Failed to deserialize batch %v", err)
 
@@ -169,8 +175,6 @@ loop:
 					return errors.Join(err, nackErr)
 				}
 			}
-			err = d.Ack(false)
-			return err
 		}
 
 		err = d.Ack(false)
