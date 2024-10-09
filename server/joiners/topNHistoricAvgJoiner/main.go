@@ -20,6 +20,7 @@ type config struct {
 	RabbitIP   string
 	TopN       int
 	Partitions int
+	Input      string
 }
 
 func getConfig() (config, error) {
@@ -32,6 +33,7 @@ func getConfig() (config, error) {
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")
 	_ = v.BindEnv("TopN", "TOP_N")
 	_ = v.BindEnv("Partitions", "PARTITIONS")
+	_ = v.BindEnv("Input", "INPUT")
 
 	var c config
 	err := v.Unmarshal(&c)
@@ -84,7 +86,7 @@ func main() {
 
 	joinCfg := joiner.Config{
 		RabbitIP:         cfg.RabbitIP,
-		Input:            middleware.TopNHistoricAvgJQueue,
+		Input:            cfg.Input,
 		Output:           middleware.ResultsQueue,
 		PartitionsNumber: cfg.Partitions,
 	}

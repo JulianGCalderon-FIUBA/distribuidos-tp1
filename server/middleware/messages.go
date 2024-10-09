@@ -44,7 +44,7 @@ type GameStat struct {
 type ReviewsPerGame struct {
 	AppID   uint64
 	Name    string
-	Reviews int
+	Reviews uint64
 }
 
 type Batch[T any] struct {
