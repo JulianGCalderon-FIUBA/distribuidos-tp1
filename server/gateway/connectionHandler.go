@@ -104,6 +104,7 @@ func (g *gateway) receiveResults(conn *protocol.Conn) error {
 				return err
 			}
 		}
+		log.Infof("Received results: %#v", recv)
 		switch r := recv.(type) {
 		case protocol.Q1Results:
 			results += 1
@@ -123,10 +124,10 @@ func (g *gateway) receiveResults(conn *protocol.Conn) error {
 		if err != nil {
 			return fmt.Errorf("failed to ack result: %v", err)
 		}
-		err = conn.SendAny(recv)
+		/* err = conn.SendAny(recv)
 		if err != nil {
 			return fmt.Errorf("failed to send result: %v", err)
-		}
+		} */
 
 		if results == MAX_RESULTS {
 			log.Infof("Sent all results to client")
