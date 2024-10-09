@@ -8,7 +8,9 @@ import (
 	"distribuidos/tp1/utils"
 	"errors"
 	"fmt"
+	"os/signal"
 	"strconv"
+	"syscall"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/spf13/viper"
@@ -94,7 +96,7 @@ func main() {
 		qNames = append(qNames, qName)
 		filterCfg.Exchange.QueuesByKey[qKey] = qNames
 	}
-
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 	var f *filter.Filter
 
 	switch cfg.Type {
@@ -111,7 +113,7 @@ func main() {
 	}
 
 	utils.Expect(err, "Failed to create partitioner")
-	err = f.Run(context.Background())
+	err = f.Run(ctx)
 	utils.Expect(err, "Failed to run partitioner")
 
 }

@@ -7,8 +7,10 @@ import (
 	"distribuidos/tp1/utils"
 	"fmt"
 	"maps"
+	"os/signal"
 	"slices"
 	"sync"
+	"syscall"
 
 	"github.com/spf13/viper"
 )
@@ -167,11 +169,13 @@ func main() {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
+
 	go func() {
 		defer wg.Done()
 		gameAgg, err := aggregator.NewAggregator(gameAggCfg, gh)
 		utils.Expect(err, "Failed to create game aggregator")
-		err = gameAgg.Run(context.Background())
+		err = gameAgg.Run(ctx)
 		utils.Expect(err, "Failed to run game aggregator")
 	}()
 
@@ -184,7 +188,7 @@ func main() {
 
 	reviewAgg, err := aggregator.NewAggregator(reviewCfg, &h)
 	utils.Expect(err, "Failed to create review aggregator")
-	err = reviewAgg.Run(context.Background())
+	err = reviewAgg.Run(ctx)
 	utils.Expect(err, "Failed to run review aggregator")
 
 	wg.Wait()
