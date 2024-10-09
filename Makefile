@@ -20,6 +20,8 @@ build: deps
 	go build -o bin/top-n-historic-avg ./server/aggregators/topNHistoricAvg
 	go build -o bin/top-n-reviews-joiner ./server/joiners/topNReviewsJoiner
 	go build -o bin/top-n-historic-avg-joiner ./server/joiners/topNHistoricAvgJoiner
+	go build -o bin/top-n-reviews-joiner ./server/joiners/topNReviewsJoiner
+	go build -o bin/top-n-historic-avg-joiner ./server/joiners/topNHistoricAvgJoiner
 .PHONY: build
 
 docker-build:
@@ -37,6 +39,7 @@ compose-down:
 
 compose-logs:
 	docker compose -f compose.yaml logs -f gateway client \
+		genre-filter review-filter decade-filter language-filter-1 \
 		genre-filter review-filter decade-filter language-filter-1 \
 		q1-partitioner q1-1 q1-2 q1-joiner \
 		q2-games-partitioner q2-1 q2-joiner \

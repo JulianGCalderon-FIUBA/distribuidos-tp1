@@ -18,11 +18,11 @@ type config struct {
 
 type handler struct{}
 
-func (h handler) Filter(r middleware.Review) filter.RoutingKey {
+func (h handler) Filter(r middleware.Review) []filter.RoutingKey {
 	if r.Score == middleware.PositiveScore {
-		return filter.RoutingKey(middleware.PositiveReviewKey)
+		return []filter.RoutingKey{filter.RoutingKey(middleware.PositiveReviewKey)}
 	} else {
-		return filter.RoutingKey(middleware.NegativeReviewKey)
+		return []filter.RoutingKey{filter.RoutingKey(middleware.NegativeReviewKey)}
 	}
 }
 
