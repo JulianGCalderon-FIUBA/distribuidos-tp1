@@ -175,8 +175,7 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - INPUT=top-n-historic-avg-partitioner
-      - OUTPUT=top-n-historic-avg
-      - PARTITIONS=1
+      - PARTITIONS=2
       - TYPE=game
     networks:
       - net
@@ -190,6 +189,23 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=1
+      - INPUT=top-n-historic-avg-partitioner
+      - OUTPUT=top-n-historic-avg-joiner
+      - TOP_N=10
+    networks:
+      - net
+    depends_on:
+      - gateway
+
+  q2-2:
+    container_name: q2-2
+    image: tp1:latest
+    entrypoint: /top-n-historic-avg
+    environment:
+      - RABBIT_IP=rabbitmq
+      - PARTITION_ID=2
+      - INPUT=top-n-historic-avg-partitioner
+      - OUTPUT=top-n-historic-avg-joiner
       - TOP_N=10
     networks:
       - net
@@ -202,7 +218,7 @@ services:
     entrypoint: /top-n-historic-avg-joiner
     environment:
       - RABBIT_IP=rabbitmq
-      - PARTITIONS=1
+      - PARTITIONS=2
       - INPUT=top-n-historic-avg-joiner
       - TOP_N=10
     networks:
