@@ -118,7 +118,6 @@ loop:
 			if err != nil {
 				return err
 			}
-			// va a agregar el paquete en missing en la proxima iteracion, aunque haya llegado, porque no se cambio la variable de latestBatchId
 			continue
 		}
 
@@ -142,12 +141,7 @@ loop:
 		if batch.EOF {
 			fakeEof = true
 		}
-		if fakeEof {
-			log.Infof("missing: %v", len(missingBatchIDs))
-			log.Infof("seen: %v", len(seen))
-		}
 		if fakeEof && len(missingBatchIDs) == 0 {
-			log.Info("Received EOF from client")
 			results, err := f.handler.Conclude()
 			if err != nil {
 				nackErr := d.Nack(false, false)
