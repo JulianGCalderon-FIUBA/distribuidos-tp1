@@ -93,7 +93,7 @@ func main() {
 	qName := fmt.Sprintf("%v-x-%v", cfg.Input, cfg.PartitionId)
 	aggCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
-		Queue:    qName,
+		Input:    qName,
 		Output:   cfg.Output,
 	}
 

@@ -75,7 +75,7 @@ func main() {
 
 	aggCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
-		Queue:    cfg.Input,
+		Input:    cfg.Input,
 		Output:   cfg.Output,
 	}
 

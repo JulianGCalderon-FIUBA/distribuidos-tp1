@@ -148,7 +148,7 @@ func main() {
 	qName := fmt.Sprintf("%v-x-%v", cfg.GameInput, cfg.PartitionID)
 	gameAggCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
-		Queue:    qName,
+		Input:    qName,
 		Output:   cfg.Output,
 	}
 
@@ -178,7 +178,7 @@ func main() {
 	qName = fmt.Sprintf("%v-x-%v", cfg.ReviewInput, cfg.PartitionID)
 	reviewCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
-		Queue:    qName,
+		Input:    qName,
 		Output:   cfg.Output,
 	}
 

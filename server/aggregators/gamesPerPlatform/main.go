@@ -77,7 +77,7 @@ func main() {
 	aggCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
 		Output:   middleware.GamesPerPlatformJoin,
-		Queue:    qName,
+		Input:    qName,
 	}
 	h := handler{
 		count:  make(map[Platform]int),

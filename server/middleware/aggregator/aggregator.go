@@ -21,8 +21,8 @@ type Handler[T any] interface {
 
 type Config struct {
 	RabbitIP string
-	// Queue to read from
-	Queue string
+	// Input to read from
+	Input string
 	// Output queue to declare
 	Output string
 }
@@ -75,7 +75,7 @@ func NewAggregator[T any](cfg Config, h Handler[T]) (*Aggregator, error) {
 				cfg.Output: {cfg.Output},
 			},
 		}},
-		Input: cfg.Queue,
+		Input: cfg.Input,
 	}
 
 	nodeH := &handler[T]{
