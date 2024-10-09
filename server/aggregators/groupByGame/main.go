@@ -123,14 +123,10 @@ func (h *reviewHandler) Conclude() ([]any, error) {
 			BatchID:  batchID,
 			EOF:      len(games) == 0,
 		}
-		if batch.EOF {
-			log.Infof("last batch: %v", batch)
-		}
 		batches = append(batches, batch)
 
 		batchID += 1
 	}
-	log.Infof("sending %v batches", len(batches))
 	return batches, nil
 }
 

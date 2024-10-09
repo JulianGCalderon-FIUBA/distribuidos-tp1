@@ -39,7 +39,7 @@ func (c *client) start() error {
 	c.wg.Add(2)
 	go func() {
 		if err := c.startDataConnection(); err != nil {
-			log.Infof("Failed to start data connection: %v", err)
+			log.Errorf("Failed to start data connection: %v", err)
 		}
 	}()
 	go c.waitResults()

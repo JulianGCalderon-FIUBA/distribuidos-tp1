@@ -98,18 +98,11 @@ func (f *Aggregator[T]) Run(ctx context.Context) error {
 
 	var latestBatchID int
 	missingBatchIDs := make(map[int]struct{})
-	seen := make(map[int]struct{})
 	fakeEof := false
 
 loop:
 	for d := range dch {
 		batch, err := middleware.Deserialize[middleware.Batch[T]](d.Body)
-
-		if _, ok := seen[batch.BatchID]; ok {
-			log.Infof("Already received %v", batch.BatchID)
-		} else {
-			seen[batch.BatchID] = struct{}{}
-		}
 
 		if err != nil {
 			log.Errorf("Failed to deserialize batch %v", err)
