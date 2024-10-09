@@ -24,24 +24,29 @@ type handler struct {
 	results map[uint64]middleware.ReviewsPerGame
 }
 
-func (h handler) Aggregate(r middleware.ReviewsPerGame) error {
-	if int(r.Reviews) > h.N {
-		h.results[r.AppID] = r
+func (h handler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middleware.ReviewsPerGame]) error {
+	for _, r := range batch.Data {
+		if int(r.Reviews) > h.N {
+			h.results[r.AppID] = r
+		}
 	}
 	return nil
 }
 
-func (h handler) Conclude() ([]any, error) {
+func (h handler) Conclude(ch *middleware.Channel) error {
 	results := slices.Collect(maps.Values(h.results))
-	r := make([]any, 0)
 	for i, res := range results {
-		var p any = protocol.Q4Results{
+		p := protocol.Q4Results{
 			Name: res.Name,
 			EOF:  i == len(results)-1,
 		}
-		r = append(r, &p)
+
+		err := ch.Send(p, "", middleware.ResultsQueue)
+		if err != nil {
+			return err
+		}
 	}
-	return r, nil
+	return nil
 }
 
 func getConfig() (config, error) {
@@ -66,7 +71,7 @@ func main() {
 
 	aggCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
-		Input:    cfg.Input,
+		Queue:    cfg.Input,
 		Output:   middleware.ResultsQueue,
 	}
 

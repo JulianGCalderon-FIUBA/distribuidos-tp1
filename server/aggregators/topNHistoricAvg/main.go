@@ -9,8 +9,11 @@ import (
 	"fmt"
 	"sort"
 
+	logging "github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
+
+var log = logging.MustGetLogger("log")
 
 type config struct {
 	RabbitIP    string
@@ -43,23 +46,25 @@ type handler struct {
 	results utils.GameHeap
 }
 
-func (h handler) Aggregate(g middleware.Game) error {
-	if h.results.Len() < h.topN {
-		heap.Push(&h.results, middleware.GameStat{
-			Name: g.Name,
-			Stat: g.AveragePlaytimeForever,
-		})
-	} else if g.AveragePlaytimeForever > h.results.Peek().(middleware.GameStat).Stat {
-		heap.Pop(&h.results)
-		heap.Push(&h.results, middleware.GameStat{
-			Name: g.Name,
-			Stat: g.AveragePlaytimeForever,
-		})
+func (h handler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middleware.Game]) error {
+	for _, g := range batch.Data {
+		if h.results.Len() < h.topN {
+			heap.Push(&h.results, middleware.GameStat{
+				Name: g.Name,
+				Stat: g.AveragePlaytimeForever,
+			})
+		} else if g.AveragePlaytimeForever > h.results.Peek().(middleware.GameStat).Stat {
+			heap.Pop(&h.results)
+			heap.Push(&h.results, middleware.GameStat{
+				Name: g.Name,
+				Stat: g.AveragePlaytimeForever,
+			})
+		}
 	}
 	return nil
 }
 
-func (h handler) Conclude() ([]any, error) {
+func (h handler) Conclude(ch *middleware.Channel) error {
 	sortedGames := make([]middleware.GameStat, 0, h.results.Len())
 	for h.results.Len() > 0 {
 		sortedGames = append(sortedGames, heap.Pop(&h.results).(middleware.GameStat))
@@ -69,7 +74,16 @@ func (h handler) Conclude() ([]any, error) {
 		return sortedGames[i].Stat > sortedGames[j].Stat
 	})
 
-	return []any{sortedGames}, nil
+	for _, g := range sortedGames {
+		log.Infof("Game %v: %v", g.Name, g.Stat)
+	}
+
+	err := ch.Send(sortedGames, "", middleware.ResultsQueue)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func main() {
@@ -79,7 +93,7 @@ func main() {
 	qName := fmt.Sprintf("%v-x-%v", cfg.Input, cfg.PartitionId)
 	aggCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
-		Input:    qName,
+		Queue:    qName,
 		Output:   cfg.Output,
 	}
 
