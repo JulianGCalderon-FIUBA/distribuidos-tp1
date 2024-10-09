@@ -68,10 +68,6 @@ func (h handler) Conclude() ([]any, error) {
 		return sortedGames[i].Stat > sortedGames[j].Stat
 	})
 
-	for _, g := range sortedGames {
-		log.Infof("Game %v: %v", g.Name, g.Stat)
-	}
-
 	return []any{sortedGames}, nil
 }
 
