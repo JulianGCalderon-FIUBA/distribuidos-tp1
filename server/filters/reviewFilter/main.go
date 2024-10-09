@@ -50,7 +50,7 @@ func main() {
 		RabbitIP: cfg.RabbitIP,
 		Queue:    middleware.ReviewsQueue,
 		Exchange: node.ExchangeConfig{
-			Name: middleware.ReviewExchange,
+			Name: middleware.ReviewsScoreFilterExchange,
 			Type: amqp091.ExchangeDirect,
 			QueuesByKey: map[string][]string{
 				middleware.PositiveReviewKey: {

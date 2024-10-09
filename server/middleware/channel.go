@@ -26,3 +26,7 @@ func (c *Channel) Send(msg any, exchange, key string) error {
 
 	return nil
 }
+
+func (c *Channel) SendAny(msg any, exchange, key string) error {
+	return c.Send(&msg, exchange, key)
+}

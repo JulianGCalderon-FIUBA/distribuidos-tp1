@@ -52,6 +52,17 @@ func NewNode(cfg Config, h Handler) (*Node, error) {
 		return nil, err
 	}
 
+	_, err = ch.QueueDeclare(
+		cfg.Input,
+		false,
+		false,
+		false,
+		false,
+		nil)
+	if err != nil {
+		return nil, err
+	}
+
 	err = declare(ch, cfg.Exchanges)
 	if err != nil {
 		return nil, err
@@ -91,6 +102,10 @@ func (n *Node) Run(ctx context.Context) error {
 			case EOF:
 				return d.Ack(false)
 			case nil:
+				err := d.Ack(false)
+				if err != nil {
+					return err
+				}
 				continue
 			default:
 				err := d.Nack(false, false)
