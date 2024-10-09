@@ -75,7 +75,7 @@ func NewAggregator[T any](cfg Config, h Handler[T]) (*Aggregator, error) {
 				cfg.Output: {cfg.Output},
 			},
 		}},
-		Queue: cfg.Queue,
+		Input: cfg.Queue,
 	}
 
 	nodeH := &handler[T]{

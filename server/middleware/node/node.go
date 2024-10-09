@@ -31,7 +31,7 @@ type Config struct {
 	// Exchanges to declare, and queues binded to them
 	Exchanges []ExchangeConfig
 	// Queue to read from
-	Queue string
+	Input string
 }
 
 type Node struct {
@@ -66,7 +66,7 @@ func NewNode(cfg Config, h Handler) (*Node, error) {
 
 func (n *Node) Run(ctx context.Context) error {
 	dch, err := n.ch.Consume(
-		n.cfg.Queue,
+		n.cfg.Input,
 		"",
 		false,
 		false,
@@ -107,21 +107,23 @@ func (n *Node) Run(ctx context.Context) error {
 
 func declare(ch *amqp.Channel, exchanges []ExchangeConfig) error {
 	for _, exchange := range exchanges {
-		err := ch.ExchangeDeclare(
-			exchange.Name,
-			exchange.Type,
-			false,
-			false,
-			false,
-			false,
-			nil,
-		)
-		if err != nil {
-			return err
+		if exchange.Name != "" {
+			err := ch.ExchangeDeclare(
+				exchange.Name,
+				exchange.Type,
+				false,
+				false,
+				false,
+				false,
+				nil,
+			)
+			if err != nil {
+				return err
+			}
 		}
 
 		for queue, keys := range transpose(exchange.QueuesByKey) {
-			_, err = ch.QueueDeclare(
+			_, err := ch.QueueDeclare(
 				queue,
 				false,
 				false,
@@ -132,16 +134,18 @@ func declare(ch *amqp.Channel, exchanges []ExchangeConfig) error {
 				return err
 			}
 
-			for _, key := range keys {
-				err = ch.QueueBind(
-					queue,
-					key,
-					exchange.Name,
-					false,
-					nil,
-				)
-				if err != nil {
-					return err
+			if exchange.Name != "" {
+				for _, key := range keys {
+					err = ch.QueueBind(
+						queue,
+						key,
+						exchange.Name,
+						false,
+						nil,
+					)
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}

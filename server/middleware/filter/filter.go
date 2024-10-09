@@ -91,7 +91,7 @@ func (h *handler[T]) Apply(ch *middleware.Channel, data []byte) error {
 func NewFilter[T any](cfg Config, h Handler[T]) (*Filter, error) {
 	nodeCfg := node.Config{
 		RabbitIP:  cfg.RabbitIP,
-		Queue:     cfg.Queue,
+		Input:     cfg.Queue,
 		Exchanges: []node.ExchangeConfig{cfg.Exchange},
 	}
 
