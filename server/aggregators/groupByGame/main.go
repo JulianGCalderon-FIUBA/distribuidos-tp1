@@ -10,11 +10,8 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
-
-var log = logging.MustGetLogger("log")
 
 type config struct {
 	RabbitIP    string
