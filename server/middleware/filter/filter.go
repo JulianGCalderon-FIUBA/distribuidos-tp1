@@ -14,7 +14,7 @@ var log = logging.MustGetLogger("log")
 type Handler[T any] interface {
 	// Given a record T, returns which routing key it
 	// corresponds to it, when sending it to the exchange
-	Filter(record T) string
+	Filter(record T) []string
 }
 
 type Config struct {
@@ -54,10 +54,12 @@ func (h *handler[T]) Apply(ch *middleware.Channel, data []byte) error {
 	}
 
 	for _, record := range batch.Data {
-		key := h.handler.Filter(record)
-		entry := h.partitions[key]
-		entry.Data = append(entry.Data, record)
-		h.partitions[key] = entry
+		keys := h.handler.Filter(record)
+		for _, key := range keys {
+			entry := h.partitions[key]
+			entry.Data = append(entry.Data, record)
+			h.partitions[key] = entry
+		}
 	}
 
 	for key, partition := range h.partitions {

@@ -80,7 +80,9 @@ type Q4Results struct {
 }
 
 func (q4 Q4Results) ToStringArray() []string {
-	return []string{q4.Name}
+	res := make([]string, 0)
+	res = append(res, fmt.Sprintf("%v\n", q4.Name))
+	return res
 }
 
 type Q5Results struct {

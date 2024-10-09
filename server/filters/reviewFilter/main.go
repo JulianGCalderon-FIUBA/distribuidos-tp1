@@ -20,11 +20,11 @@ type config struct {
 
 type handler struct{}
 
-func (h handler) Filter(r middleware.Review) string {
+func (h handler) Filter(r middleware.Review) []string {
 	if r.Score == middleware.PositiveScore {
-		return middleware.PositiveReviewKey
+		return []string{middleware.PositiveReviewKey}
 	} else {
-		return middleware.NegativeReviewKey
+		return []string{middleware.NegativeReviewKey}
 	}
 }
 

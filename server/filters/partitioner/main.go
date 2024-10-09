@@ -61,16 +61,16 @@ type gameHandler struct {
 	partitionsNumber int
 }
 
-func (h gameHandler) Filter(g middleware.Game) string {
-	return strconv.Itoa(int(g.AppID)%h.partitionsNumber + 1)
+func (h gameHandler) Filter(g middleware.Game) []string {
+	return []string{strconv.Itoa(int(g.AppID)%h.partitionsNumber + 1)}
 }
 
 type reviewHandler struct {
 	partitionsNumber int
 }
 
-func (h reviewHandler) Filter(r middleware.Review) string {
-	return strconv.Itoa(int(r.AppID)%h.partitionsNumber + 1)
+func (h reviewHandler) Filter(r middleware.Review) []string {
+	return []string{strconv.Itoa(int(r.AppID)%h.partitionsNumber + 1)}
 }
 
 func main() {
