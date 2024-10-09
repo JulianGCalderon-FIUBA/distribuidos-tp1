@@ -103,6 +103,7 @@ func (f *Aggregator[T]) Run(ctx context.Context) error {
 loop:
 	for d := range dch {
 		batch, err := middleware.Deserialize[middleware.Batch[T]](d.Body)
+
 		if err != nil {
 			log.Errorf("Failed to deserialize batch %v", err)
 
@@ -110,7 +111,6 @@ loop:
 			if err != nil {
 				return err
 			}
-
 			continue
 		}
 
@@ -135,13 +135,12 @@ loop:
 			fakeEof = true
 		}
 		if fakeEof && len(missingBatchIDs) == 0 {
-			log.Info("Received EOF from client")
 			results, err := f.handler.Conclude()
+			if err != nil {
+				nackErr := d.Nack(false, false)
+				return errors.Join(err, nackErr)
+			}
 			for _, result := range results {
-				if err != nil {
-					nackErr := d.Nack(false, false)
-					return errors.Join(err, nackErr)
-				}
 				buf, err := middleware.Serialize(result)
 				if err != nil {
 					nackErr := d.Nack(false, false)
@@ -163,8 +162,6 @@ loop:
 					return errors.Join(err, nackErr)
 				}
 			}
-			err = d.Ack(false)
-			return err
 		}
 
 		err = d.Ack(false)

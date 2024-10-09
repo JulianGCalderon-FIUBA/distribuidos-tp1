@@ -104,6 +104,7 @@ func (g *gateway) receiveResults(conn *protocol.Conn) error {
 				return err
 			}
 		}
+		log.Infof("Received results")
 		switch r := recv.(type) {
 		case protocol.Q1Results:
 			results += 1
