@@ -26,7 +26,7 @@ type handler struct {
 	N      int
 }
 
-func (h handler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middleware.ReviewsPerGame]) error {
+func (h *handler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middleware.ReviewsPerGame]) error {
 	for _, r := range batch.Data {
 		i := sort.Search(len(h.sorted), func(i int) bool { return h.sorted[i].Stat >= r.Reviews })
 
