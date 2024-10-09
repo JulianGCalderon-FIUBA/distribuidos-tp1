@@ -8,6 +8,7 @@ import (
 const Q1 = 3
 const Q2 = 3
 const Q3 = 3
+const Q5 = 1
 
 func main() {
 	generateInit()
@@ -21,6 +22,7 @@ func main() {
 	generateQ1()
 	generateQ2()
 	generateQ3()
+	generateQ5()
 	generateNet()
 }
 
@@ -283,6 +285,64 @@ func generateQ3() {
 	fmt.Println("      - TOP_N=5")
 	fmt.Printf("      - PARTITIONS=%v\n", Q3)
 	fmt.Printf("      - INPUT=%v\n", "joiner-q3")
+	fmt.Println("    networks:")
+	fmt.Println("      - net")
+	fmt.Println("    depends_on:")
+	fmt.Println("      - gateway")
+}
+
+func generateQ5() {
+	fmt.Println("  q5-games-partitioner:")
+	fmt.Println("    container_name: q5-games-partitioner")
+	fmt.Println("    image: tp1:latest")
+	fmt.Println("    entrypoint: /partitioner")
+	fmt.Println("    environment:")
+	fmt.Println("      - RABBIT_IP=rabbitmq")
+	fmt.Printf("      - INPUT=%v\n", middleware.NinetyPercentileGamesQueue)
+	fmt.Printf("      - PARTITIONS=%v\n", Q5)
+	fmt.Println("      - TYPE=game")
+	fmt.Println("    networks:")
+	fmt.Println("      - net")
+	fmt.Println("    depends_on:")
+	fmt.Println("      - gateway")
+
+	fmt.Println("  q5-reviews-partitioner:")
+	fmt.Println("    container_name: q5-reviews-partitioner")
+	fmt.Println("    image: tp1:latest")
+	fmt.Println("    entrypoint: /partitioner")
+	fmt.Println("    environment:")
+	fmt.Println("      - RABBIT_IP=rabbitmq")
+	fmt.Printf("      - INPUT=%v\n", middleware.NinetyPercentileReviewsQueue)
+	fmt.Printf("      - PARTITIONS=%v\n", Q5)
+	fmt.Println("      - TYPE=review")
+	fmt.Println("    networks:")
+	fmt.Println("      - net")
+	fmt.Println("    depends_on:")
+	fmt.Println("      - gateway")
+
+	for i := 1; i <= Q5; i++ {
+		fmt.Printf("  q5-group-%v:\n", i)
+		fmt.Printf("    container_name: q5-group-%v\n", i)
+		fmt.Println("    image: tp1:latest")
+		fmt.Println("    entrypoint: /group-by-game")
+		fmt.Println("    environment:")
+		fmt.Println("      - RABBIT_IP=rabbitmq")
+		fmt.Printf("      - PARTITION_ID=%v\n", i)
+		fmt.Printf("      - GAME_INPUT=%v\n", middleware.NinetyPercentileGamesQueue)
+		fmt.Printf("      - REVIEW_INPUT=%v\n", middleware.NinetyPercentileReviewsQueue)
+		fmt.Printf("      - OUTPUT=%v\n", "results-handler-q5")
+		fmt.Println("    networks:")
+		fmt.Println("      - net")
+		fmt.Println("    depends_on:")
+		fmt.Println("      - gateway")
+	}
+	fmt.Println("  q5:")
+	fmt.Println("    container_name: q5")
+	fmt.Println("    image: tp1:latest")
+	fmt.Println("    entrypoint: /90-percentile")
+	fmt.Println("    environment:")
+	fmt.Println("      - RABBIT_IP=rabbitmq")
+	fmt.Printf("      - INPUT=%v\n", "results-handler-q5")
 	fmt.Println("    networks:")
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
