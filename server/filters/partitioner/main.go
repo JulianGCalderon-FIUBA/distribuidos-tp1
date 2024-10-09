@@ -32,9 +32,6 @@ func getConfig() (config, error) {
 
 	v.SetDefault("RabbitIP", "localhost")
 	v.SetDefault("Partitions", "1")
-	// v.SetDefault("Input", middleware.TopNHistoricAvgPQueue)
-	// v.SetDefault("Output", middleware.TopNHistoricAvgQueue)
-	// v.SetDefault("Type", GameDataType)
 
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")
 	_ = v.BindEnv("Partitions", "PARTITIONS")

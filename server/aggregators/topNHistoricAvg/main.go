@@ -19,6 +19,8 @@ type config struct {
 	RabbitIP    string
 	TopN        int
 	PartitionId int
+	Input       string
+	Output      string
 }
 
 func getConfig() (config, error) {
@@ -31,6 +33,8 @@ func getConfig() (config, error) {
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")
 	_ = v.BindEnv("TopN", "TOP_N")
 	_ = v.BindEnv("PartitionId", "PARTITION_ID")
+	_ = v.BindEnv("Input", "INPUT")
+	_ = v.BindEnv("Output", "OUTPUT")
 
 	var c config
 	err := v.Unmarshal(&c)
@@ -75,11 +79,11 @@ func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
 
-	qName := fmt.Sprintf("%v-%v", middleware.TopNHistoricAvgQueue, cfg.PartitionId)
+	qName := fmt.Sprintf("%v-x-%v", cfg.Input, cfg.PartitionId)
 	aggCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
 		Input:    qName,
-		Output:   middleware.TopNHistoricAvgJQueue,
+		Output:   cfg.Output,
 	}
 
 	h := handler{
