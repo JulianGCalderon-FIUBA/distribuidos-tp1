@@ -1,6 +1,12 @@
 package main
 
 import (
+	"context"
+	"distribuidos/tp1/server/middleware"
+	"distribuidos/tp1/server/middleware/filter"
+	"distribuidos/tp1/utils"
+	"slices"
+
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
@@ -26,16 +32,44 @@ func getConfig() (config, error) {
 	return c, err
 }
 
+type handler struct{}
+
+func (h handler) Filter(g middleware.Game) []filter.RoutingKey {
+	rk := []filter.RoutingKey{}
+	if slices.Contains(g.Genres, middleware.IndieGenre) {
+		rk = append(rk, filter.RoutingKey(middleware.IndieGameKey))
+	}
+	if slices.Contains(g.Genres, middleware.ActionGenre) {
+		rk = append(rk, filter.RoutingKey(middleware.ActionGameKey))
+	}
+	return rk
+}
+
 func main() {
 	cfg, err := getConfig()
 	if err != nil {
 		log.Fatalf("failed to read config: %v", err)
 	}
 
-	gf := NewGenreFilter(cfg)
-
-	err = gf.run()
-	if err != nil {
-		log.Fatalf("failed to filter games: %v", err)
+	filterCfg := filter.Config{
+		RabbitIP: cfg.RabbitIP,
+		Input:    middleware.GamesQueue,
+		Exchange: middleware.GenresExchange,
+		Output: map[filter.RoutingKey][]filter.QueueName{
+			filter.RoutingKey(middleware.IndieGameKey): {
+				filter.QueueName(middleware.DecadeQueue),
+				filter.QueueName(middleware.TopNAmountReviewsGamesQueue),
+			},
+			filter.RoutingKey(middleware.ActionGameKey): {
+				filter.QueueName(middleware.MoreThanNReviewsGamesQueue),
+				filter.QueueName(middleware.NinetyPercentileGamesQueue),
+			},
+		},
 	}
+
+	h := handler{}
+	p, err := filter.NewFilter(filterCfg, h)
+	utils.Expect(err, "Failed to create filter")
+	err = p.Run(context.Background())
+	utils.Expect(err, "Failed to run filter")
 }
