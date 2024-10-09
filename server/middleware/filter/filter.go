@@ -6,7 +6,6 @@ import (
 	"distribuidos/tp1/server/middleware/node"
 
 	logging "github.com/op/go-logging"
-	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 var log = logging.MustGetLogger("log")
@@ -48,7 +47,7 @@ type handler[T any] struct {
 	handler    Handler[T]
 }
 
-func (h *handler[T]) Apply(ch *amqp.Channel, data []byte) error {
+func (h *handler[T]) Apply(ch *middleware.Channel, data []byte) error {
 	batch, err := middleware.Deserialize[middleware.Batch[T]](data)
 	if err != nil {
 		return err
@@ -68,21 +67,7 @@ func (h *handler[T]) Apply(ch *amqp.Channel, data []byte) error {
 
 		h.statistics[key] += len(partition.Data)
 
-		buf, err := middleware.Serialize(partition)
-		if err != nil {
-			log.Fatalf("Failed to serialize partition: %v", err)
-		}
-
-		err = ch.Publish(
-			h.exchange,
-			key,
-			false,
-			false,
-			amqp.Publishing{
-				ContentType: "text/plain",
-				Body:        buf,
-			},
-		)
+		err := ch.Send(partition, h.exchange, key)
 		if err != nil {
 			return err
 		}
