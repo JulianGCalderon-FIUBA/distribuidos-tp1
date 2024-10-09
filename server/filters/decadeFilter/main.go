@@ -1,6 +1,14 @@
 package main
 
 import (
+	"context"
+	"distribuidos/tp1/server/middleware"
+	"distribuidos/tp1/server/middleware/filter"
+	"distribuidos/tp1/utils"
+	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
@@ -26,16 +34,43 @@ func getConfig() (config, error) {
 	return c, err
 }
 
+type handler struct {
+	decade int
+}
+
+func (h handler) Filter(g middleware.Game) []filter.RoutingKey {
+	mask := strconv.Itoa(h.decade)[0:3]
+	releaseYear := strconv.Itoa(int(g.ReleaseYear))
+
+	if strings.Contains(releaseYear, mask) {
+		return []filter.RoutingKey{filter.RoutingKey(fmt.Sprintf("%v-%v", middleware.DecadeKey, h.decade))}
+	}
+
+	return []filter.RoutingKey{}
+}
+
 func main() {
 	cfg, err := getConfig()
 	if err != nil {
 		log.Fatalf("failed to read config: %v", err)
 	}
 
-	df := NewDecadeFilter(cfg)
-
-	err = df.run()
-	if err != nil {
-		log.Fatalf("failed to filter games by decade: %v", err)
+	filterCfg := filter.Config{
+		RabbitIP: cfg.RabbitIP,
+		Input:    middleware.DecadeQueue,
+		Exchange: middleware.DecadeExchange,
+		Output: map[filter.RoutingKey][]filter.QueueName{
+			filter.RoutingKey(fmt.Sprintf("%v-%v", middleware.DecadeKey, cfg.Decade)): {
+				filter.QueueName(middleware.TopNHistoricAvgPQueue),
+			},
+		},
 	}
+
+	h := handler{
+		decade: cfg.Decade,
+	}
+	p, err := filter.NewFilter(filterCfg, h)
+	utils.Expect(err, "Failed to create filter")
+	err = p.Run(context.Background())
+	utils.Expect(err, "Failed to run filter")
 }

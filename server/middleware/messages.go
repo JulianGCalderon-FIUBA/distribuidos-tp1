@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"bytes"
-	"distribuidos/tp1/protocol"
 	"encoding/gob"
 )
 
@@ -44,7 +43,7 @@ type GameStat struct {
 type ReviewsPerGame struct {
 	AppID   uint64
 	Name    string
-	Reviews int
+	Reviews uint64
 }
 
 type Batch[T any] struct {
@@ -71,15 +70,4 @@ func DeserializeInto(buf []byte, v any) error {
 	r := bytes.NewBuffer(buf)
 	enc := gob.NewDecoder(r)
 	return enc.Decode(v)
-}
-
-func DeserializeResults(buf []byte, msg any) error {
-	r := bytes.NewBuffer(buf)
-	enc := gob.NewDecoder(r)
-	gob.Register(protocol.Q1Results{})
-	gob.Register(protocol.Q2Results{})
-	gob.Register(protocol.Q3Results{})
-	gob.Register(protocol.Q4Results{})
-	gob.Register(protocol.Q5Results{})
-	return enc.Decode(msg)
 }
