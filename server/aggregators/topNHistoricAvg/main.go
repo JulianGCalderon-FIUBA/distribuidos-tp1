@@ -26,7 +26,7 @@ func getConfig() (config, error) {
 
 	v.SetDefault("RabbitIP", "localhost")
 	v.SetDefault("TopN", "10")
-	v.SetDefault("PartitionId", "0")
+	v.SetDefault("PartitionId", "1")
 
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")
 	_ = v.BindEnv("TopN", "TOP_N")
@@ -37,58 +37,39 @@ func getConfig() (config, error) {
 	return c, err
 }
 
-type GameHeap []middleware.AvgPlaytimeGame
-
-func (g GameHeap) Len() int { return len(g) }
-func (g GameHeap) Less(i, j int) bool {
-	return g[i].AveragePlaytimeForever < g[j].AveragePlaytimeForever
-}
-func (g GameHeap) Swap(i, j int) { g[i], g[j] = g[j], g[i] }
-func (g *GameHeap) Push(x any) {
-	*g = append(*g, x.(middleware.AvgPlaytimeGame))
-}
-
-func (g *GameHeap) Pop() any {
-	old := *g
-	n := len(old)
-	x := old[n-1]
-	*g = old[0 : n-1]
-	return x
-}
-
 type handler struct {
 	topN    int
-	results GameHeap
+	results utils.GameHeap
 }
 
 func (h handler) Aggregate(g middleware.Game) error {
 	if h.results.Len() < h.topN {
-		heap.Push(&h.results, middleware.AvgPlaytimeGame{
-			Name:                   g.Name,
-			AveragePlaytimeForever: g.AveragePlaytimeForever,
+		heap.Push(&h.results, middleware.GameStat{
+			Name: g.Name,
+			Stat: g.AveragePlaytimeForever,
 		})
-	} else if g.AveragePlaytimeForever > h.results[0].AveragePlaytimeForever {
+	} else if g.AveragePlaytimeForever > h.results.Peek().(middleware.GameStat).Stat {
 		heap.Pop(&h.results)
-		heap.Push(&h.results, middleware.AvgPlaytimeGame{
-			Name:                   g.Name,
-			AveragePlaytimeForever: g.AveragePlaytimeForever,
+		heap.Push(&h.results, middleware.GameStat{
+			Name: g.Name,
+			Stat: g.AveragePlaytimeForever,
 		})
 	}
 	return nil
 }
 
 func (h handler) Conclude() ([]any, error) {
-	sortedGames := make([]middleware.AvgPlaytimeGame, 0, h.results.Len())
+	sortedGames := make([]middleware.GameStat, 0, h.results.Len())
 	for h.results.Len() > 0 {
-		sortedGames = append(sortedGames, heap.Pop(&h.results).(middleware.AvgPlaytimeGame))
+		sortedGames = append(sortedGames, heap.Pop(&h.results).(middleware.GameStat))
 	}
 
 	sort.Slice(sortedGames, func(i, j int) bool {
-		return sortedGames[i].AveragePlaytimeForever > sortedGames[j].AveragePlaytimeForever
+		return sortedGames[i].Stat > sortedGames[j].Stat
 	})
 
 	for _, g := range sortedGames {
-		log.Infof("Game %v: %v", g.Name, g.AveragePlaytimeForever)
+		log.Infof("Game %v: %v", g.Name, g.Stat)
 	}
 
 	return []any{sortedGames}, nil
@@ -107,7 +88,7 @@ func main() {
 
 	h := handler{
 		topN:    cfg.TopN,
-		results: make(GameHeap, cfg.TopN),
+		results: make(utils.GameHeap, cfg.TopN),
 	}
 
 	agg, err := aggregator.NewAggregator(aggCfg, h)

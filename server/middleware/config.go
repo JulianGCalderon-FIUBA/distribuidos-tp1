@@ -30,7 +30,7 @@ const PositiveReviewKey string = "positive-review"
 const NegativeReviewKey string = "negative-review"
 
 // decade filter
-const DecadeExchange string = "decade"
+const DecadeExchange string = "decades"
 const TopNHistoricAvgPQueue string = "top-n-historic-avg-partitioner"
 const DecadeKey string = "decade"
 

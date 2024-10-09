@@ -96,6 +96,11 @@ func (lf *LanguageFilter) filterBatch(batch Batch) (Batch, error) {
 		EOF:      batch.EOF,
 	}
 	for _, review := range batch.Data {
+		// use rand to test
+		/* if rand.Intn(10000) < 9748 {
+			new := middleware.Review{AppID: review.AppID}
+			english.Data = append(english.Data, new)
+		} */
 		if lf.isEnglish(review.Text) {
 			new := middleware.Review{AppID: review.AppID}
 			english.Data = append(english.Data, new)

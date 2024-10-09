@@ -2,7 +2,6 @@ package main
 
 import (
 	"distribuidos/tp1/protocol"
-	"encoding/csv"
 	"fmt"
 	"io"
 	"net"
@@ -21,6 +20,7 @@ type client struct {
 	reqConn  *protocol.Conn
 	dataConn *protocol.Conn
 	results  int
+	wg       sync.WaitGroup
 }
 
 func newClient(config config) *client {
@@ -35,15 +35,15 @@ func (c *client) start() error {
 	if err := c.startConnection(); err != nil {
 		return err
 	}
-	var wg sync.WaitGroup
-	wg.Add(2)
+	c.wg = sync.WaitGroup{}
+	c.wg.Add(2)
 	go func() {
 		if err := c.startDataConnection(); err != nil {
 			log.Infof("Failed to start data connection: %v", err)
 		}
 	}()
 	go c.waitResults()
-	wg.Wait()
+	c.wg.Wait()
 	return nil
 }
 
@@ -102,6 +102,7 @@ func (c *client) receiveID() error {
 
 // Starts connection with data endpoint and sends games and reviews files. When done closes connection
 func (c *client) startDataConnection() error {
+	defer c.wg.Done()
 	dataConn, err := net.Dial("tcp", c.config.DataEndpointAddress)
 	if err != nil {
 		return err
@@ -173,12 +174,17 @@ func (c *client) sendFile(filePath string) error {
 func (c *client) waitResults() {
 	log.Infof("Waiting for results")
 	defer c.reqConn.Close()
+	defer c.wg.Done()
 
 	for {
-		var results protocol.Results
+		var results any
 		err := c.reqConn.Recv(&results)
 		if err != nil {
-			log.Error("Failed to receive results message: %v", err)
+			if err == io.EOF {
+				log.Errorf("Connection closed: %v", err)
+				break
+			}
+			log.Errorf("Failed to receive results message: %v", err)
 		}
 		switch r := results.(type) {
 		case protocol.Q1Results:
@@ -195,12 +201,13 @@ func (c *client) waitResults() {
 			writeResults(r, 3)
 		case protocol.Q4Results:
 			log.Infof("Received Q4 results: %#v", results)
+			writeResults(r, 4)
 			if r.EOF {
+				log.Infof("Received Q4 EOF")
 				c.results += 1
 			}
-			writeResults(r, 4)
 		case protocol.Q5Results:
-			log.Infof("Received Q5 results: %#v", results)
+			log.Infof("Received Q5 results")
 			c.results += 1
 			writeResults(r, 5)
 		}
@@ -232,10 +239,10 @@ func writeResults(result protocol.Results, query int) {
 	}
 	defer f.Close()
 
-	w := csv.NewWriter(f)
-	err = w.Write(result.ToCSV())
-	if err != nil {
-		log.Errorf("Failed to write results from query %v: %v", query, err)
+	for _, s := range result.ToStringArray() {
+		n, err := f.WriteString(s)
+		if n != len([]byte(s)) || err != nil {
+			log.Errorf("Failed to write results from query %v: %v", query, err)
+		}
 	}
-	w.Flush()
 }

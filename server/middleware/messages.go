@@ -35,9 +35,10 @@ type Review struct {
 	Text  string
 }
 
-type AvgPlaytimeGame struct {
-	Name                   string
-	AveragePlaytimeForever uint64
+type GameStat struct {
+	AppID uint64
+	Name  string
+	Stat  uint64
 }
 
 type ReviewsPerGame struct {
