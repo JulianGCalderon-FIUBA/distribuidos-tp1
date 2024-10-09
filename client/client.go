@@ -1,7 +1,10 @@
 package main
 
 import (
+	"context"
 	"distribuidos/tp1/protocol"
+	"distribuidos/tp1/utils"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -17,10 +20,9 @@ const MAX_RESULTS = 5
 type client struct {
 	config   config
 	id       uint64
-	reqConn  *protocol.Conn
+	conn     *protocol.Conn
 	dataConn *protocol.Conn
 	results  int
-	wg       sync.WaitGroup
 }
 
 func newClient(config config) *client {
@@ -31,37 +33,55 @@ func newClient(config config) *client {
 }
 
 // Connects client to connection endpoint and data endpoint
-func (c *client) start() error {
-	if err := c.startConnection(); err != nil {
-		return err
+func (c *client) start(ctx context.Context) (err error) {
+	err = c.startConnection()
+	if err != nil {
+		return
 	}
-	c.wg = sync.WaitGroup{}
-	c.wg.Add(2)
+	closer := utils.SpawnCloser(ctx, c.conn)
+	defer func() {
+		closeErr := closer.Close()
+		err = errors.Join(err, closeErr)
+	}()
+
+	if err = c.sendRequest(); err != nil {
+		return fmt.Errorf("failed to send request: %w", err)
+	}
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
-		if err := c.startDataConnection(); err != nil {
-			log.Errorf("Failed to start data connection: %v", err)
+		defer wg.Done()
+		if err := c.sendData(ctx); err != nil {
+			log.Errorf("Failed to send data: %v", err)
 		}
 	}()
-	go c.waitResults()
-	c.wg.Wait()
+	defer wg.Wait()
+
+	if err = c.waitResults(); err != nil {
+		return fmt.Errorf("failed to wait results: %w", err)
+	}
+
 	return nil
 }
 
-// Starts connection with connection endpoint, sending request hello and waiting for id
 func (c *client) startConnection() error {
 	conn, err := net.Dial("tcp", c.config.ConnectionEndpointAddress)
 	if err != nil {
 		return err
 	}
-	c.reqConn = protocol.NewConn(conn)
-
+	c.conn = protocol.NewConn(conn)
 	log.Info("Connected to connection gateway")
+	return nil
+}
 
-	err = c.sendRequestHello()
+// Starts connection with connection endpoint, sending request hello and waiting for id
+func (c *client) sendRequest() error {
+	err := c.sendRequestHello()
 	if err != nil {
 		return fmt.Errorf("failed to send hello: %w", err)
 	}
-	err = c.receiveID()
+	err = c.waitID()
 	if err != nil {
 		return fmt.Errorf("failed to receive id: %w", err)
 	}
@@ -70,7 +90,6 @@ func (c *client) startConnection() error {
 }
 
 func (c *client) sendRequestHello() error {
-
 	gameSize, err := getFileSize(GAMES_PATH)
 	if err != nil {
 		return err
@@ -85,12 +104,12 @@ func (c *client) sendRequestHello() error {
 		ReviewSize: reviewsSize,
 	}
 
-	return c.reqConn.Send(&request)
+	return c.conn.Send(&request)
 }
 
-func (c *client) receiveID() error {
+func (c *client) waitID() error {
 	var msg protocol.AcceptRequest
-	err := c.reqConn.Recv(&msg)
+	err := c.conn.Recv(&msg)
 	if err != nil {
 		return fmt.Errorf("could not receive id from gateway: %w", err)
 	}
@@ -101,17 +120,17 @@ func (c *client) receiveID() error {
 }
 
 // Starts connection with data endpoint and sends games and reviews files. When done closes connection
-func (c *client) startDataConnection() error {
-	defer c.wg.Done()
-	dataConn, err := net.Dial("tcp", c.config.DataEndpointAddress)
+func (c *client) sendData(ctx context.Context) (err error) {
+	err = c.startDataConnection()
 	if err != nil {
-		return err
+		return
 	}
 
-	log.Info("Connected to data gateway")
-
-	c.dataConn = protocol.NewConn(dataConn)
-	defer c.dataConn.Close()
+	closer := utils.SpawnCloser(ctx, c.dataConn)
+	defer func() {
+		closeErr := closer.Close()
+		err = errors.Join(err, closeErr)
+	}()
 
 	err = c.sendDataHello()
 	if err != nil {
@@ -127,6 +146,17 @@ func (c *client) startDataConnection() error {
 		return fmt.Errorf("failed to send reviews: %w", err)
 	}
 	log.Info("Sent all reviews")
+
+	return nil
+}
+
+func (c *client) startDataConnection() error {
+	dataConn, err := net.Dial("tcp", c.config.DataEndpointAddress)
+	if err != nil {
+		return err
+	}
+	log.Info("Connected to data gateway")
+	c.dataConn = protocol.NewConn(dataConn)
 	return nil
 }
 
@@ -171,20 +201,12 @@ func (c *client) sendFile(filePath string) error {
 	return c.dataConn.SendAny(&protocol.Finish{})
 }
 
-func (c *client) waitResults() {
-	log.Infof("Waiting for results")
-	defer c.reqConn.Close()
-	defer c.wg.Done()
-
+func (c *client) waitResults() error {
 	for {
 		var results any
-		err := c.reqConn.Recv(&results)
+		err := c.conn.Recv(&results)
 		if err != nil {
-			if err == io.EOF {
-				log.Errorf("Connection closed: %v", err)
-				break
-			}
-			log.Errorf("Failed to receive results message: %v", err)
+			return err
 		}
 		switch r := results.(type) {
 		case protocol.Q1Results:
@@ -217,6 +239,8 @@ func (c *client) waitResults() {
 			break
 		}
 	}
+
+	return nil
 }
 
 func getFileSize(filePath string) (uint64, error) {
