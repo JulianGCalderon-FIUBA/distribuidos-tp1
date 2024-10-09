@@ -4,11 +4,13 @@ import (
 	"context"
 	"distribuidos/tp1/server/middleware"
 	"distribuidos/tp1/server/middleware/filter"
+	"distribuidos/tp1/server/middleware/node"
 	"distribuidos/tp1/utils"
 	"errors"
 	"fmt"
 	"strconv"
 
+	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/spf13/viper"
 )
 
@@ -32,9 +34,6 @@ func getConfig() (config, error) {
 
 	v.SetDefault("RabbitIP", "localhost")
 	v.SetDefault("Partitions", "1")
-	// v.SetDefault("Input", middleware.TopNHistoricAvgPQueue)
-	// v.SetDefault("Output", middleware.TopNHistoricAvgQueue)
-	// v.SetDefault("Type", GameDataType)
 
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")
 	_ = v.BindEnv("Partitions", "PARTITIONS")
@@ -62,16 +61,16 @@ type gameHandler struct {
 	partitionsNumber int
 }
 
-func (h gameHandler) Filter(g middleware.Game) filter.RoutingKey {
-	return filter.RoutingKey(strconv.Itoa(int(g.AppID)%h.partitionsNumber + 1))
+func (h gameHandler) Filter(g middleware.Game) string {
+	return strconv.Itoa(int(g.AppID)%h.partitionsNumber + 1)
 }
 
 type reviewHandler struct {
 	partitionsNumber int
 }
 
-func (h reviewHandler) Filter(r middleware.Review) filter.RoutingKey {
-	return filter.RoutingKey(strconv.Itoa(int(r.AppID)%h.partitionsNumber + 1))
+func (h reviewHandler) Filter(r middleware.Review) string {
+	return strconv.Itoa(int(r.AppID)%h.partitionsNumber + 1)
 }
 
 func main() {
@@ -80,36 +79,39 @@ func main() {
 
 	filterCfg := filter.Config{
 		RabbitIP: cfg.RabbitIP,
-		Exchange: cfg.Output,
-		Input:    cfg.Input,
-		Output:   map[filter.RoutingKey][]filter.QueueName{},
+		Queue:    cfg.Input,
+		Exchange: node.ExchangeConfig{
+			Name:        cfg.Output,
+			Type:        amqp.ExchangeDirect,
+			QueuesByKey: map[string][]string{},
+		},
 	}
 
 	for i := 1; i <= cfg.Partitions; i++ {
 		qName := fmt.Sprintf("%v-%v", cfg.Output, i)
 		qKey := strconv.Itoa(i)
-		qNames := filterCfg.Output[filter.RoutingKey(qKey)]
-		qNames = append(qNames, filter.QueueName(qName))
-		filterCfg.Output[filter.RoutingKey(qKey)] = qNames
+		qNames := filterCfg.Exchange.QueuesByKey[qKey]
+		qNames = append(qNames, qName)
+		filterCfg.Exchange.QueuesByKey[qKey] = qNames
 	}
+
+	var f *filter.Filter
 
 	switch cfg.Type {
 	case GameDataType:
 		h := gameHandler{
 			partitionsNumber: cfg.Partitions,
 		}
-		p, err := filter.NewFilter(filterCfg, h)
-		utils.Expect(err, "Failed to create partitioner")
-		err = p.Run(context.Background())
-		utils.Expect(err, "Failed to run partitioner")
+		f, err = filter.NewFilter(filterCfg, h)
 	case ReviewDataType:
 		h := reviewHandler{
 			partitionsNumber: cfg.Partitions,
 		}
-		p, err := filter.NewFilter(filterCfg, h)
-		utils.Expect(err, "Failed to create partitioner")
-		err = p.Run(context.Background())
-		utils.Expect(err, "Failed to run partitioner")
+		f, err = filter.NewFilter(filterCfg, h)
 	}
+
+	utils.Expect(err, "Failed to create partitioner")
+	err = f.Run(context.Background())
+	utils.Expect(err, "Failed to run partitioner")
 
 }

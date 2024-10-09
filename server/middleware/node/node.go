@@ -16,13 +16,13 @@ type Handler interface {
 	// If returns EOF, then the node will finish.
 	// On any other error, the message is nacked.
 	// If no errors, the message is acked.
-	Apply(data []byte) error
+	Apply(ch *amqp.Channel, data []byte) error
 }
 
 type ExchangeConfig struct {
 	Name        string
 	Type        string
-	queuesByKey map[string][]string
+	QueuesByKey map[string][]string
 }
 
 type Config struct {
@@ -80,7 +80,7 @@ func (n *Node) Run(ctx context.Context) error {
 	for {
 		select {
 		case d := <-dch:
-			applyErr = n.handler.Apply(d.Body)
+			applyErr = n.handler.Apply(n.ch, d.Body)
 			switch applyErr {
 			case EOF:
 				return d.Ack(false)
@@ -114,7 +114,7 @@ func declare(ch *amqp.Channel, exchanges []ExchangeConfig) error {
 			return err
 		}
 
-		for queue, keys := range transpose(exchange.queuesByKey) {
+		for queue, keys := range transpose(exchange.QueuesByKey) {
 			_, err = ch.QueueDeclare(
 				queue,
 				false,
