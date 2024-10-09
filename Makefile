@@ -20,8 +20,7 @@ build: deps
 	go build -o bin/top-n-historic-avg ./server/aggregators/topNHistoricAvg
 	go build -o bin/top-n-reviews-joiner ./server/joiners/topNReviewsJoiner
 	go build -o bin/top-n-historic-avg-joiner ./server/joiners/topNHistoricAvgJoiner
-	go build -o bin/top-n-reviews-joiner ./server/joiners/topNReviewsJoiner
-	go build -o bin/top-n-historic-avg-joiner ./server/joiners/topNHistoricAvgJoiner
+
 .PHONY: build
 
 docker-build:
