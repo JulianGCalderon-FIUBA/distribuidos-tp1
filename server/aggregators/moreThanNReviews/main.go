@@ -25,7 +25,7 @@ type handler struct {
 }
 
 func (h handler) Aggregate(r middleware.ReviewsPerGame) error {
-	if r.Reviews > h.N {
+	if int(r.Reviews) > h.N {
 		h.results[r.AppID] = r
 	}
 	return nil
