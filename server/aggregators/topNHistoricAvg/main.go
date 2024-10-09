@@ -34,7 +34,6 @@ func getConfig() (config, error) {
 	_ = v.BindEnv("TopN", "TOP_N")
 	_ = v.BindEnv("PartitionId", "PARTITION_ID")
 	_ = v.BindEnv("Input", "INPUT")
-	_ = v.BindEnv("Output", "OUTPUT")
 
 	var c config
 	err := v.Unmarshal(&c)
@@ -78,7 +77,7 @@ func (h handler) Conclude(ch *middleware.Channel) error {
 		log.Infof("Game %v: %v", g.Name, g.Stat)
 	}
 
-	err := ch.Send(sortedGames, "", middleware.ResultsQueue)
+	err := ch.Send(sortedGames, "", middleware.TopNHistoricAvgJQueue)
 	if err != nil {
 		return err
 	}
@@ -94,7 +93,6 @@ func main() {
 	aggCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
 		Input:    qName,
-		Output:   cfg.Output,
 	}
 
 	h := handler{

@@ -6,6 +6,7 @@ import (
 )
 
 const Q1 = 3
+const Q2 = 3
 
 func main() {
 	generateInit()
@@ -17,6 +18,7 @@ func main() {
 	generateScoreFilter()
 	generateLanguageFilter()
 	generateQ1()
+	generateQ2()
 	generateNet()
 }
 
@@ -160,6 +162,50 @@ func generateQ1() {
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Printf("      - PARTITIONS=%v\n", Q1)
+	fmt.Println("    networks:")
+	fmt.Println("      - net")
+	fmt.Println("    depends_on:")
+	fmt.Println("      - gateway")
+}
+
+func generateQ2() {
+	fmt.Println("  q2-partitioner:")
+	fmt.Println("    container_name: q2-partitioner")
+	fmt.Println("    image: tp1:latest")
+	fmt.Println("    entrypoint: /partitioner")
+	fmt.Println("    environment:")
+	fmt.Println("      - RABBIT_IP=rabbitmq")
+	fmt.Printf("      - INPUT=%v\n", middleware.TopNHistoricAvgPQueue)
+	fmt.Printf("      - PARTITIONS=%v\n", Q2)
+	fmt.Println("      - TYPE=game")
+	fmt.Println("    networks:")
+	fmt.Println("      - net")
+	fmt.Println("    depends_on:")
+	fmt.Println("      - gateway")
+	for i := 1; i <= Q2; i++ {
+		fmt.Printf("  q2-%v:\n", i)
+		fmt.Printf("    container_name: q2-%v\n", i)
+		fmt.Println("    image: tp1:latest")
+		fmt.Println("    entrypoint: /top-n-historic-avg")
+		fmt.Println("    environment:")
+		fmt.Println("      - RABBIT_IP=rabbitmq")
+		fmt.Printf("      - PARTITION_ID=%v\n", i)
+		fmt.Printf("      - INPUT=%v\n", middleware.TopNHistoricAvgPQueue)
+		fmt.Println("      - TOP_N=10")
+		fmt.Println("    networks:")
+		fmt.Println("      - net")
+		fmt.Println("    depends_on:")
+		fmt.Println("      - gateway")
+	}
+	fmt.Println("  q2-joiner:")
+	fmt.Println("    container_name: q2-joiner")
+	fmt.Println("    image: tp1:latest")
+	fmt.Println("    entrypoint: /top-n-historic-avg-joiner")
+	fmt.Println("    environment:")
+	fmt.Println("      - RABBIT_IP=rabbitmq")
+	fmt.Printf("      - PARTITIONS=%v\n", Q1)
+	fmt.Printf("      - INPUT=%v\n", middleware.TopNHistoricAvgJQueue)
+	fmt.Println("      - TOP_N=10")
 	fmt.Println("    networks:")
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
