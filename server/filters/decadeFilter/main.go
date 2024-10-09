@@ -7,8 +7,10 @@ import (
 	"distribuidos/tp1/server/middleware/node"
 	"distribuidos/tp1/utils"
 	"fmt"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/op/go-logging"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -73,8 +75,10 @@ func main() {
 	h := handler{
 		decade: cfg.Decade,
 	}
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
+
 	p, err := filter.NewFilter(filterCfg, h)
 	utils.Expect(err, "Failed to create filter")
-	err = p.Run(context.Background())
+	err = p.Run(ctx)
 	utils.Expect(err, "Failed to run filter")
 }

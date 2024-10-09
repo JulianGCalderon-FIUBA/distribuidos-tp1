@@ -8,7 +8,9 @@ import (
 	"distribuidos/tp1/utils"
 	"encoding/gob"
 	"maps"
+	"os/signal"
 	"slices"
+	"syscall"
 
 	"github.com/spf13/viper"
 )
@@ -80,9 +82,11 @@ func main() {
 		results: make(map[uint64]middleware.ReviewsPerGame),
 	}
 
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
+
 	agg, err := aggregator.NewAggregator(aggCfg, &h)
 	utils.Expect(err, "Failed to create more than n reviews node")
 
-	err = agg.Run(context.Background())
+	err = agg.Run(ctx)
 	utils.Expect(err, "Failed to run more than n reviews node")
 }

@@ -8,7 +8,9 @@ import (
 	"distribuidos/tp1/server/middleware/joiner"
 	"distribuidos/tp1/utils"
 	"encoding/gob"
+	"os/signal"
 	"sort"
+	"syscall"
 
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
@@ -95,10 +97,10 @@ func main() {
 		topN:      cfg.TopN,
 		topNGames: make([]middleware.GameStat, 0, cfg.TopN),
 	}
-
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 	join, err := joiner.NewJoiner(joinCfg, &h)
 	utils.Expect(err, "Failed to create partitioner")
 
-	err = join.Run(context.Background())
+	err = join.Run(ctx)
 	utils.Expect(err, "Failed to run partitioner")
 }

@@ -5,6 +5,8 @@ import (
 	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/server/middleware"
 	"distribuidos/tp1/server/middleware/aggregator"
+	"os/signal"
+	"syscall"
 
 	"distribuidos/tp1/utils"
 	"encoding/gob"
@@ -79,10 +81,11 @@ func main() {
 	h := handler{
 		sorted: make([]middleware.ReviewsPerGame, 0),
 	}
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 
 	agg, err := aggregator.NewAggregator(aggCfg, &h)
 	utils.Expect(err, "Failed to create 90 percentile node")
 
-	err = agg.Run(context.Background())
+	err = agg.Run(ctx)
 	utils.Expect(err, "Failed to run 90 percentile node")
 }

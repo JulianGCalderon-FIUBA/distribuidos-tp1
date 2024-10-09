@@ -7,8 +7,10 @@ import (
 	"distribuidos/tp1/server/middleware/aggregator"
 	"distribuidos/tp1/utils"
 	"encoding/gob"
+	"os/signal"
 	"slices"
 	"sort"
+	"syscall"
 
 	"github.com/spf13/viper"
 )
@@ -85,9 +87,10 @@ func main() {
 		N:      cfg.N,
 	}
 
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 	agg, err := aggregator.NewAggregator(aggCfg, &h)
 	utils.Expect(err, "Failed to create top n reviews node")
 
-	err = agg.Run(context.Background())
+	err = agg.Run(ctx)
 	utils.Expect(err, "Failed to run top n reviews node")
 }
