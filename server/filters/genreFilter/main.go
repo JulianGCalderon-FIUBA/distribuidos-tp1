@@ -38,10 +38,10 @@ func (h handler) Filter(g middleware.Game) []filter.RoutingKey {
 	rk := []filter.RoutingKey{}
 	if slices.Contains(g.Genres, middleware.IndieGenre) {
 		rk = append(rk, filter.RoutingKey(middleware.IndieGameKey))
-	} 
+	}
 	if slices.Contains(g.Genres, middleware.ActionGenre) {
 		rk = append(rk, filter.RoutingKey(middleware.ActionGameKey))
-	} 
+	}
 	return rk
 }
 
