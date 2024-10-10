@@ -48,6 +48,11 @@ const ResultsQueue string = "results"
 // games per platform
 const GamesPerPlatformJoin string = "games-per-platform-join"
 
+// top n reviews
+const TopNReviewsCalculator string = "results-handler-q3"
+const TopNReviewsGroup string = "q3-group"
+const TopNReviewsJoiner string = "q3-joiner"
+
 type queueConfig struct {
 	name       string
 	exchange   string
