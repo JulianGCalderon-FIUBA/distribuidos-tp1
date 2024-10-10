@@ -39,3 +39,7 @@ compose-down:
 compose-logs:
 	docker compose -f compose.yaml logs -f
 .PHONY: compose-logs
+
+write-compose:
+	go run ./cmd/compose > compose.yaml
+.PHONY: write-compose

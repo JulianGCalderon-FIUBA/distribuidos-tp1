@@ -48,6 +48,19 @@ const ResultsQueue string = "results"
 // games per platform
 const GamesPerPlatformJoin string = "games-per-platform-join"
 
+// top n reviews
+const TopNReviewsCalculator string = "results-handler-q3"
+const TopNReviewsGroup string = "q3-group"
+const TopNReviewsJoiner string = "q3-joiner"
+
+// more than n reviews
+const MoreThanNReviewsJoiner string = "q4-joiner"
+const MoreThanNReviewsCalculator string = "results-handler-q4"
+
+// 90 percentile
+const NinetyPercentileJoiner string = "q5-joiner"
+const NinetyPercentileCalculator string = "results-handler-q5"
+
 type queueConfig struct {
 	name       string
 	exchange   string
