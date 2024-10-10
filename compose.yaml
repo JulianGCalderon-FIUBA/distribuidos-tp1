@@ -258,7 +258,7 @@ services:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=1
       - INPUT=results-handler-q3-1
-      - OUTPUT=joiner-q3
+      - N=5000
     networks:
       - net
     depends_on:
@@ -285,7 +285,7 @@ services:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=2
       - INPUT=results-handler-q3-2
-      - OUTPUT=joiner-q3
+      - N=5000
     networks:
       - net
     depends_on:
@@ -312,7 +312,7 @@ services:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=3
       - INPUT=results-handler-q3-3
-      - OUTPUT=joiner-q3
+      - N=5000
     networks:
       - net
     depends_on:
@@ -325,7 +325,6 @@ services:
       - RABBIT_IP=rabbitmq
       - TOP_N=5
       - PARTITIONS=3
-      - INPUT=joiner-q3
     networks:
       - net
     depends_on:
@@ -418,7 +417,6 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - N=5000
-      - INPUT=results-handler-q4
     networks:
       - net
     depends_on:
@@ -510,7 +508,7 @@ services:
     entrypoint: /90-percentile
     environment:
       - RABBIT_IP=rabbitmq
-      - INPUT=results-handler-q5
+      - PERCENTILE=90
     networks:
       - net
     depends_on:
