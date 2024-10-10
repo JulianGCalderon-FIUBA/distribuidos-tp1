@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
 	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/server/middleware"
+	"distribuidos/tp1/utils"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -22,13 +25,19 @@ func (g *gateway) incrementActiveClients() {
 	g.activeClients++
 }
 
-func (g *gateway) startConnectionHandler() {
+func (g *gateway) startConnectionHandler(ctx context.Context) {
 	address := fmt.Sprintf(":%d", g.config.ConnectionEndpointPort)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		log.Fatalf("Failed to bind socket: %v", err)
 	}
 	defer listener.Close()
+
+	closer := utils.SpawnCloser(ctx, listener)
+	defer func() {
+		closeErr := closer.Close()
+		err = errors.Join(err, closeErr)
+	}()
 
 	err = g.m.InitResultsQueue()
 	if err != nil {
@@ -37,18 +46,24 @@ func (g *gateway) startConnectionHandler() {
 	}
 
 	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Errorf("Failed to accept connection: %v", err)
-			continue
-		}
-		g.incrementActiveClients()
-
-		go func() {
-			if err := g.handleClient(conn); err != nil {
-				log.Errorf("Error while handling client: %v", err)
+		select {
+		case <-ctx.Done():
+			log.Info("Context done, breaking the loop")
+			return
+		default:
+			conn, err := listener.Accept()
+			if err != nil {
+				log.Errorf("Failed to accept connection: %v", err)
+				continue
 			}
-		}()
+			g.incrementActiveClients()
+
+			go func() {
+				if err := g.handleClient(conn); err != nil {
+					log.Errorf("Error while handling client: %v", err)
+				}
+			}()
+		}
 	}
 }
 

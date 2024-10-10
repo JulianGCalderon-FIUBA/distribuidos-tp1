@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/server/middleware"
+	"distribuidos/tp1/utils"
 	"encoding/csv"
 	"errors"
 	"fmt"
@@ -13,7 +15,7 @@ import (
 	"time"
 )
 
-func (g *gateway) startDataHandler() {
+func (g *gateway) startDataHandler(ctx context.Context) {
 	address := fmt.Sprintf(":%v", g.config.DataEndpointPort)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
@@ -21,24 +23,37 @@ func (g *gateway) startDataHandler() {
 	}
 
 	err = g.m.Init(middleware.DataHandlerexchanges, middleware.DataHandlerQueues)
+	defer g.m.Close()
 	if err != nil {
 		log.Fatalf("Failed to initialize middleware")
 	}
 
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Errorf("Failed to accept connection: %v", err)
-			continue
-		}
+	closer := utils.SpawnCloser(ctx, listener)
+	defer func() {
+		closeErr := closer.Close()
+		err = errors.Join(err, closeErr)
+	}()
 
-		go func(conn net.Conn) {
-			defer conn.Close()
-			err := g.handleClientData(conn)
+	for {
+		select {
+		case <-ctx.Done():
+			log.Info("Context done, breaking data handler loop")
+			return
+		default:
+			conn, err := listener.Accept()
 			if err != nil {
-				log.Errorf("Error while handling client: %v", err)
+				log.Errorf("Failed to accept connection: %v", err)
+				continue
 			}
-		}(conn)
+
+			go func(conn net.Conn) {
+				defer conn.Close()
+				err := g.handleClientData(conn)
+				if err != nil {
+					log.Errorf("Error while handling client: %v", err)
+				}
+			}(conn)
+		}
 	}
 }
 

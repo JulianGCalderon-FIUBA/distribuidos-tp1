@@ -41,6 +41,18 @@ func (m *Middleware) Init(exchanges map[string]string, queues []queueConfig) err
 	return nil
 }
 
+func (m *Middleware) Close() error {
+	err := m.ch.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close channel: %w", err)
+	}
+	err = m.conn.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close connection: %w", err)
+	}
+	return nil
+}
+
 func (m *Middleware) initExchanges(exchanges map[string]string) error {
 	for exchange, kind := range exchanges {
 		err := m.ch.ExchangeDeclare(
