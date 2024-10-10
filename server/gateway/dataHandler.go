@@ -166,7 +166,7 @@ func (g *gateway) queueGames(r io.Reader) error {
 		sentGames += 1
 
 		if len(batch.Data) == g.config.BatchSize {
-			err = g.m.Send(batch, middleware.GamesExchange, "")
+			err = g.m.Send(batch, middleware.ExchangeGames, "")
 			if err != nil {
 				log.Errorf("Failed to send games batch: %v", err)
 			}
@@ -176,7 +176,7 @@ func (g *gateway) queueGames(r io.Reader) error {
 	}
 
 	batch.EOF = true
-	err := g.m.Send(batch, middleware.GamesExchange, "")
+	err := g.m.Send(batch, middleware.ExchangeGames, "")
 	if err != nil {
 		log.Errorf("Failed to send games batch: %v", err)
 	}
@@ -227,7 +227,7 @@ func (g *gateway) queueReviews(r io.Reader) error {
 		sentReviews += 1
 
 		if len(batch.Data) == g.config.BatchSize {
-			err = g.m.Send(batch, middleware.ReviewExchange, "")
+			err = g.m.Send(batch, middleware.ExchangeReviews, "")
 			if err != nil {
 				log.Errorf("Failed to send reviews batch: %v", err)
 			}
@@ -237,7 +237,7 @@ func (g *gateway) queueReviews(r io.Reader) error {
 	}
 
 	batch.EOF = true
-	err := g.m.Send(batch, middleware.ReviewExchange, "")
+	err := g.m.Send(batch, middleware.ExchangeReviews, "")
 	if err != nil {
 		log.Errorf("Failed to send reviews batch: %v", err)
 	}

@@ -18,7 +18,6 @@ import (
 type config struct {
 	RabbitIP string
 	N        int
-	Input    string
 }
 
 type handler struct {
@@ -43,7 +42,7 @@ func (h *handler) Conclude(ch *middleware.Channel) error {
 			EOF:  i == len(results)-1,
 		}
 
-		err := ch.SendAny(p, "", middleware.ResultsQueue)
+		err := ch.SendAny(p, "", middleware.Results)
 		if err != nil {
 			return err
 		}
@@ -59,7 +58,6 @@ func getConfig() (config, error) {
 
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")
 	_ = v.BindEnv("N", "N_REVIEWS")
-	_ = v.BindEnv("Input", "INPUT")
 
 	var c config
 	err := v.Unmarshal(&c)
@@ -73,8 +71,8 @@ func main() {
 
 	aggCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
-		Input:    cfg.Input,
-		Output:   middleware.ResultsQueue,
+		Input:    middleware.GroupedQ4Filter,
+		Output:   middleware.Results,
 	}
 
 	h := handler{

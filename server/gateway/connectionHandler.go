@@ -100,7 +100,7 @@ func (g *gateway) handleClient(ctx context.Context, netConn net.Conn) error {
 }
 
 func (g *gateway) receiveResults(ctx context.Context, conn *protocol.Conn) error {
-	deliveryCh, err := g.m.ReceiveFromQueue(middleware.ResultsQueue)
+	deliveryCh, err := g.m.ReceiveFromQueue(middleware.Results)
 	if err != nil {
 		return err
 	}

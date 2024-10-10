@@ -19,7 +19,6 @@ type config struct {
 	RabbitIP   string
 	TopN       int
 	Partitions int
-	Input      string
 }
 
 func getConfig() (config, error) {
@@ -32,7 +31,6 @@ func getConfig() (config, error) {
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")
 	_ = v.BindEnv("TopN", "TOP_N")
 	_ = v.BindEnv("Partitions", "PARTITIONS")
-	_ = v.BindEnv("Input", "INPUT")
 
 	var c config
 	err := v.Unmarshal(&c)
@@ -74,7 +72,7 @@ func (h *handler) Conclude(ch *middleware.Channel) error {
 
 	result := protocol.Q3Results{TopN: topNNames}
 
-	return ch.SendAny(result, "", middleware.ResultsQueue)
+	return ch.SendAny(result, "", middleware.Results)
 }
 
 func main() {
@@ -84,8 +82,8 @@ func main() {
 
 	joinCfg := joiner.Config{
 		RabbitIP:   cfg.RabbitIP,
-		Input:      cfg.Input,
-		Output:     middleware.ResultsQueue,
+		Input:      middleware.PartialQ3,
+		Output:     middleware.Results,
 		Partitions: cfg.Partitions,
 	}
 

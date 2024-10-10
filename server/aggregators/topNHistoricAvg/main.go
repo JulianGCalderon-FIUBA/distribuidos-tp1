@@ -79,7 +79,7 @@ func (h handler) Conclude(ch *middleware.Channel) error {
 		log.Infof("Game %v: %v", g.Name, g.Stat)
 	}
 
-	err := ch.Send(sortedGames, "", middleware.TopNHistoricAvgJQueue)
+	err := ch.Send(sortedGames, "", middleware.PartialQ2)
 	if err != nil {
 		return err
 	}

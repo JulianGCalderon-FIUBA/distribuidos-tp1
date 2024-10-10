@@ -47,7 +47,7 @@ func (h handler) Filter(g middleware.Game) []string {
 	releaseYear := strconv.Itoa(int(g.ReleaseYear))
 
 	if strings.Contains(releaseYear, mask) {
-		return []string{fmt.Sprintf("%v-%v", middleware.DecadeKey, h.decade)}
+		return []string{fmt.Sprintf("%v-%v", middleware.DecadeKeyPrefix, h.decade)}
 	}
 
 	return nil
@@ -59,15 +59,15 @@ func main() {
 		log.Fatalf("failed to read config: %v", err)
 	}
 
-	key := fmt.Sprintf("%v-%v", middleware.DecadeKey, cfg.Decade)
+	key := fmt.Sprintf("%v-%v", middleware.DecadeKeyPrefix, cfg.Decade)
 	filterCfg := filter.Config{
 		RabbitIP: cfg.RabbitIP,
-		Queue:    middleware.DecadeQueue,
+		Queue:    middleware.GamesDecade,
 		Exchange: node.ExchangeConfig{
-			Name: middleware.DecadeExchange,
+			Name: middleware.ExchangeDecade,
 			Type: amqp.ExchangeDirect,
 			QueuesByKey: map[string][]string{
-				key: {middleware.TopNHistoricAvgPQueue},
+				key: {middleware.GamesQ2},
 			},
 		},
 	}

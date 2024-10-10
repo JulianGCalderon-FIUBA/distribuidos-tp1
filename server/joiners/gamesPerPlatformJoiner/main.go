@@ -67,7 +67,7 @@ func (h handler) Conclude(ch *middleware.Channel) error {
 		Mac:     h.count[Mac],
 	}
 
-	return ch.SendAny(result, "", middleware.ResultsQueue)
+	return ch.SendAny(result, "", middleware.Results)
 }
 
 func main() {
@@ -77,8 +77,8 @@ func main() {
 
 	joinCfg := joiner.Config{
 		RabbitIP:   cfg.RabbitIP,
-		Input:      middleware.GamesPerPlatformJoin,
-		Output:     middleware.ResultsQueue,
+		Input:      middleware.PartialQ1,
+		Output:     middleware.Results,
 		Partitions: cfg.Partitions,
 	}
 

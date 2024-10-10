@@ -78,7 +78,7 @@ func (h *handler) Conclude(ch *middleware.Channel) error {
 	log.Infof("Top N games in historic average playtime: %v", topNNames)
 
 	result := protocol.Q2Results{TopN: topNNames}
-	return ch.SendAny(result, "", middleware.ResultsQueue)
+	return ch.SendAny(result, "", middleware.Results)
 }
 
 func main() {
@@ -89,7 +89,7 @@ func main() {
 	joinCfg := joiner.Config{
 		RabbitIP:   cfg.RabbitIP,
 		Input:      cfg.Input,
-		Output:     middleware.ResultsQueue,
+		Output:     middleware.Results,
 		Partitions: cfg.Partitions,
 	}
 
