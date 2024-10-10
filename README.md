@@ -23,6 +23,7 @@ Para terminar los procesos, ejecutar
 make compose-down
 ```
 
+
 Para ver las diferencias entre las librerías de lenguaje de Go y Python, ejecutar los scripts:
 ```bash
 go run ./cmd/detect-language/main.go 
@@ -30,7 +31,7 @@ python3 ./cmd/detect-language/main.py
 ```
 Aclaración: es conveniente correr estos scripts en paralelo ya que tardan bastante tiempo.
 
-Y luego ejecutar:
+Luego ejecutar:
 ```bash
 ./cmd/detect-language/diff.sh
 ```
