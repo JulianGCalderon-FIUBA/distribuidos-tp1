@@ -75,7 +75,7 @@ func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
 
-	qName := fmt.Sprintf("%v-x-%v", middleware.GamesPerPlatformQueue, cfg.PartitionID)
+	qName := fmt.Sprintf("%v-x-%v", middleware.GamesQ1, cfg.PartitionID)
 	aggCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
 		Output:   middleware.GamesPerPlatformJoin,

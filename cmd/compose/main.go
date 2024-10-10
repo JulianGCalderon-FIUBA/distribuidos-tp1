@@ -141,7 +141,7 @@ func generateQ1() {
 	fmt.Println("    entrypoint: /partitioner")
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
-	fmt.Printf("      - INPUT=%v\n", middleware.GamesPerPlatformQueue)
+	fmt.Printf("      - INPUT=%v\n", middleware.GamesQ1)
 	fmt.Printf("      - PARTITIONS=%v\n", Q1)
 	fmt.Println("      - TYPE=game")
 	fmt.Println("    networks:")

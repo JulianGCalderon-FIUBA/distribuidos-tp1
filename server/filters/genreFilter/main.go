@@ -57,7 +57,7 @@ func main() {
 
 	filterCfg := filter.Config{
 		RabbitIP: cfg.RabbitIP,
-		Queue:    middleware.GamesQueue,
+		Queue:    middleware.GamesGenre,
 		Exchange: node.ExchangeConfig{
 			Name: middleware.GenresExchange,
 			Type: amqp.ExchangeDirect,

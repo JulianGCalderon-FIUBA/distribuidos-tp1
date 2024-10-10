@@ -6,12 +6,18 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
+// El nombrado de las colas y exchanges sigue las siguientes reglas:
+// - Si es un exchange, termina en 'x'
+// - Si es un cola, el formato es `Tipo-Destino`
+
 // data Handler
-const GamesExchange string = "games"
-const ReviewExchange string = "reviews"
-const GamesQueue string = "games"
-const ReviewsQueue string = "reviews"
-const GamesPerPlatformQueue string = "games-per-platform"
+const (
+	ExchangeGames   string = "games-x"
+	ExchangeReviews string = "reviews-x"
+	GamesGenre      string = "games-genre"
+	ReviewsScore    string = "reviews-score"
+	GamesQ1         string = "games-Q1"
+)
 
 // genre Filter
 const GenresExchange string = "genres"
@@ -57,14 +63,14 @@ type queueConfig struct {
 }
 
 var DataHandlerexchanges = map[string]string{
-	ReviewExchange: amqp.ExchangeFanout,
-	GamesExchange:  amqp.ExchangeFanout,
+	ExchangeReviews: amqp.ExchangeFanout,
+	ExchangeGames:   amqp.ExchangeFanout,
 }
 
 var DataHandlerQueues = []queueConfig{
-	{GamesQueue, GamesExchange, ""},
-	{ReviewsQueue, ReviewExchange, ""},
-	{GamesPerPlatformQueue, GamesExchange, ""},
+	{GamesGenre, ExchangeGames, ""},
+	{ReviewsScore, ExchangeReviews, ""},
+	{GamesQ1, ExchangeGames, ""},
 }
 
 func Cat(v ...string) string {
