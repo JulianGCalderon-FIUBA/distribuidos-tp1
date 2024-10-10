@@ -88,7 +88,7 @@ func (g *gateway) handleClient(netConn net.Conn) error {
 }
 
 func (g *gateway) receiveResults(conn *protocol.Conn) error {
-	deliveryCh, err := g.m.ReceiveFromQueue(middleware.ResultsQueue)
+	deliveryCh, err := g.m.ReceiveFromQueue(middleware.Results)
 	if err != nil {
 		return err
 	}

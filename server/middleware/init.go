@@ -89,7 +89,7 @@ func (m *Middleware) initQueues(queues []queueConfig) error {
 }
 
 func (m *Middleware) InitResultsQueue() error {
-	_, err := m.ch.QueueDeclare(ResultsQueue,
+	_, err := m.ch.QueueDeclare(Results,
 		false,
 		false,
 		false,

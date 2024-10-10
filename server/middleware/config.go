@@ -1,65 +1,92 @@
 package middleware
 
 import (
+	"fmt"
+	"strings"
+
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-// data Handler
-const GamesExchange string = "games"
-const ReviewExchange string = "reviews"
-const GamesQueue string = "games"
-const ReviewsQueue string = "reviews"
-const GamesPerPlatformQueue string = "games-per-platform"
+// El nombrado de las colas y exchanges sigue las siguientes reglas:
+// - Si es un exchange, termina en 'x'
+// - Si es un cola, el formato es `TipoDato-Query-Destino`
 
-// genre Filter
-const GenresExchange string = "genres"
-const DecadeQueue string = "decades"
-const TopNAmountReviewsGamesQueue string = "games-top-n-amount-reviews"
-const MoreThanNReviewsGamesQueue string = "games-more-than-n-reviews"
-const NinetyPercentileGamesQueue string = "games-90-percentile"
-const IndieGameKey string = "indie"
-const ActionGameKey string = "action"
-const EmptyKey string = "empty"
+// Data Handler
+const (
+	ExchangeGames   string = "games-x"
+	ExchangeReviews string = "reviews-x"
+)
 
-// review filter
-const ReviewsScoreFilterExchange string = "reviews-filter-score"
-const NinetyPercentileReviewsQueue string = "reviews-90-percentile"
-const LanguageReviewsFilterQueue string = "reviews-language-filter"
-const TopNAmountReviewsQueue string = "reviews-top-n-partitioner"
-const PositiveReviewKey string = "positive-review"
-const NegativeReviewKey string = "negative-review"
+// Genre Filter
+const (
+	GamesGenre    string = "games-genre"
+	ExchangeGenre string = "genre-x"
+	IndieKey      string = "indie"
+	ActionKey     string = "action"
+)
 
-// decade filter
-const DecadeExchange string = "decades"
-const DecadeKey string = "decade"
+// Score filter
+const (
+	ReviewsScore  string = "reviews-score"
+	ExchangeScore string = "score-x"
+	PositiveKey   string = "positive"
+	NegativeKey   string = "negative"
+)
 
-// language filter
-const ReviewsEnglishFilterExchange string = "reviews-filter-english"
-const NThousandEnglishReviewsQueue string = "reviews-english-n-thousand-partitioner"
-const ReviewsEnglishKey string = "english"
+// Decade filter
+const (
+	GamesDecade     string = "games-decade"
+	ExchangeDecade  string = "decade-x"
+	DecadeKeyPrefix string = "decade"
+)
 
-// topNHistoricAvg aggregator
-const TopNHistoricAvgPQueue string = "top-n-historic-avg-partitioner"
-const TopNHistoricAvgJQueue string = "top-n-historic-avg-joiner"
+// Language filter
+const (
+	ReviewsLanguage  string = "reviews-language"
+	ExchangeLanguage string = "language-x"
+	EnglishKey       string = "english"
+)
 
-// results
-const ResultsQueue string = "results"
+// Q1
+const (
+	GamesQ1   string = "games-Q1"
+	PartialQ1 string = "partial-Q1-joiner"
+)
 
-// games per platform
-const GamesPerPlatformJoin string = "games-per-platform-join"
+// Q2
+const (
+	GamesQ2   string = "games-Q2"
+	PartialQ2 string = "partial-Q2-joiner"
+)
 
-// top n reviews
-const TopNReviewsCalculator string = "results-handler-q3"
-const TopNReviewsGroup string = "q3-group"
-const TopNReviewsJoiner string = "q3-joiner"
+// Q3
+const (
+	GamesQ3   string = "games-Q3"
+	ReviewsQ3 string = "reviews-Q3"
+	GroupedQ3 string = "grouped-Q3-top"
+	PartialQ3 string = "partial-Q3-joiner"
+)
 
-// more than n reviews
-const MoreThanNReviewsJoiner string = "q4-joiner"
-const MoreThanNReviewsCalculator string = "results-handler-q4"
+// Q4
+const (
+	GamesQ4         string = "games-Q4"
+	ReviewsQ4       string = "reviews-Q4"
+	GroupedQ4Joiner string = "grouped-Q4-joiner"
+	GroupedQ4Filter string = "grouped-Q4-filter"
+)
 
-// 90 percentile
-const NinetyPercentileJoiner string = "q5-joiner"
-const NinetyPercentileCalculator string = "results-handler-q5"
+// Q5
+const (
+	GamesQ5             string = "games-Q5"
+	ReviewsQ5           string = "reviews-Q5"
+	GroupedQ5Joiner     string = "grouped-Q5-joiner"
+	GroupedQ5Percentile string = "grouped-Q5-percentil"
+)
+
+// Results
+const (
+	Results string = "results"
+)
 
 type queueConfig struct {
 	name       string
@@ -68,12 +95,20 @@ type queueConfig struct {
 }
 
 var DataHandlerexchanges = map[string]string{
-	ReviewExchange: amqp.ExchangeFanout,
-	GamesExchange:  amqp.ExchangeFanout,
+	ExchangeReviews: amqp.ExchangeFanout,
+	ExchangeGames:   amqp.ExchangeFanout,
 }
 
 var DataHandlerQueues = []queueConfig{
-	{GamesQueue, GamesExchange, ""},
-	{ReviewsQueue, ReviewExchange, ""},
-	{GamesPerPlatformQueue, GamesExchange, ""},
+	{GamesGenre, ExchangeGames, ""},
+	{ReviewsScore, ExchangeReviews, ""},
+	{GamesQ1, ExchangeGames, ""},
+}
+
+func Cat(v ...any) string {
+	vs := make([]string, len(v))
+	for i, v := range v {
+		vs[i] = fmt.Sprintf("%v", v)
+	}
+	return strings.Join(vs, "-")
 }
