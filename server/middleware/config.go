@@ -41,8 +41,10 @@ const (
 )
 
 // decade filter
-const DecadeExchange string = "decades"
-const DecadeKey string = "decade"
+const (
+	ExchangeDecade  string = "decades"
+	DecadeKeyPrefix string = "decade"
+)
 
 // language filter
 const ReviewsEnglishFilterExchange string = "reviews-filter-english"
