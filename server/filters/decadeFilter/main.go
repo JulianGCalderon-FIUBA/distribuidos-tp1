@@ -67,7 +67,7 @@ func main() {
 			Name: middleware.ExchangeDecade,
 			Type: amqp.ExchangeDirect,
 			QueuesByKey: map[string][]string{
-				key: {middleware.TopNHistoricAvgPQueue},
+				key: {middleware.GamesQ2},
 			},
 		},
 	}

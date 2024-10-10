@@ -51,7 +51,7 @@ func (h *handler) Conclude(ch *middleware.Channel) error {
 		Percentile90: r,
 	}
 
-	return ch.SendAny(p, "", middleware.ResultsQueue)
+	return ch.SendAny(p, "", middleware.Results)
 }
 
 func getConfig() (config, error) {
@@ -75,7 +75,7 @@ func main() {
 	aggCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
 		Input:    cfg.Input,
-		Output:   middleware.ResultsQueue,
+		Output:   middleware.Results,
 	}
 
 	h := handler{

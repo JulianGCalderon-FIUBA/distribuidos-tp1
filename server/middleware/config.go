@@ -53,12 +53,14 @@ const (
 	EnglishKey       string = "english"
 )
 
-// topNHistoricAvg aggregator
-const TopNHistoricAvgPQueue string = "top-n-historic-avg-partitioner"
-const TopNHistoricAvgJQueue string = "top-n-historic-avg-joiner"
+// Q2
+const (
+	GamesQ2   string = "games-q2"
+	PartialQ2 string = "partial-q2"
+)
 
 // results
-const ResultsQueue string = "results"
+const Results string = "results"
 
 // games per platform
 const GamesPerPlatformJoin string = "games-per-platform-join"
