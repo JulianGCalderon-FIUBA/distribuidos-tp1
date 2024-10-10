@@ -31,7 +31,20 @@ func (g *gateway) start(ctx context.Context) {
 
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go g.startConnectionHandler(ctx)
-	go g.startDataHandler(ctx)
+	go func() {
+		defer wg.Done()
+		err := g.startConnectionHandler(ctx)
+		if err != nil {
+			log.Errorf("Failed to start connection handler: %v", err)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		err := g.startDataHandler(ctx)
+		if err != nil {
+			log.Errorf("Failed to start data handler: %v", err)
+		}
+	}()
 	wg.Wait()
 }

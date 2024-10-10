@@ -25,13 +25,12 @@ func (g *gateway) incrementActiveClients() {
 	g.activeClients++
 }
 
-func (g *gateway) startConnectionHandler(ctx context.Context) {
+func (g *gateway) startConnectionHandler(ctx context.Context) (err error) {
 	address := fmt.Sprintf(":%d", g.config.ConnectionEndpointPort)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
-		log.Fatalf("Failed to bind socket: %v", err)
+		return err
 	}
-	defer listener.Close()
 
 	closer := utils.SpawnCloser(ctx, listener)
 	defer func() {
@@ -41,33 +40,25 @@ func (g *gateway) startConnectionHandler(ctx context.Context) {
 
 	err = g.m.InitResultsQueue()
 	if err != nil {
-		log.Errorf("Failed to initialize results queue: %v", err)
-		return
+		return err
 	}
 
 	for {
-		select {
-		case <-ctx.Done():
-			log.Info("Context done, breaking the loop")
-			return
-		default:
-			conn, err := listener.Accept()
-			if err != nil {
-				log.Errorf("Failed to accept connection: %v", err)
-				continue
-			}
-			g.incrementActiveClients()
-
-			go func() {
-				if err := g.handleClient(conn); err != nil {
-					log.Errorf("Error while handling client: %v", err)
-				}
-			}()
+		conn, err := listener.Accept()
+		if err != nil {
+			return fmt.Errorf("Failed to accept connection: %v", err)
 		}
+		g.incrementActiveClients()
+
+		go func() {
+			if err := g.handleClient(ctx, conn); err != nil {
+				log.Errorf("Error while handling client: %v", err)
+			}
+		}()
 	}
 }
 
-func (g *gateway) handleClient(netConn net.Conn) error {
+func (g *gateway) handleClient(ctx context.Context, netConn net.Conn) error {
 	conn := protocol.NewConn(netConn)
 	defer conn.Close()
 
@@ -95,14 +86,14 @@ func (g *gateway) handleClient(netConn net.Conn) error {
 		if err != nil {
 			return err
 		}
-		err = g.receiveResults(conn)
+		err = g.receiveResults(ctx, conn)
 		if err != nil {
 			return err
 		}
 	}
 }
 
-func (g *gateway) receiveResults(conn *protocol.Conn) error {
+func (g *gateway) receiveResults(ctx context.Context, conn *protocol.Conn) error {
 	deliveryCh, err := g.m.ReceiveFromQueue(middleware.ResultsQueue)
 	if err != nil {
 		return err
@@ -110,44 +101,48 @@ func (g *gateway) receiveResults(conn *protocol.Conn) error {
 
 	results := 0
 
-	for d := range deliveryCh {
-		recv, err := middleware.Deserialize[any](d.Body)
-		if err != nil {
-			log.Errorf("Failed to deserialize: %v", err)
-			err = d.Nack(false, false)
+	for {
+		select {
+		case d := <-deliveryCh:
+			recv, err := middleware.Deserialize[any](d.Body)
 			if err != nil {
-				return err
+				log.Errorf("Failed to deserialize: %v", err)
+				err = d.Nack(false, false)
+				if err != nil {
+					return err
+				}
 			}
-		}
-		log.Infof("Received results")
-		switch r := recv.(type) {
-		case protocol.Q1Results:
-			results += 1
-		case protocol.Q2Results:
-			results += 1
-		case protocol.Q3Results:
-			results += 1
-		case protocol.Q4Results:
-			if r.EOF {
+			log.Infof("Received results")
+			switch r := recv.(type) {
+			case protocol.Q1Results:
+				results += 1
+			case protocol.Q2Results:
+				results += 1
+			case protocol.Q3Results:
+				results += 1
+			case protocol.Q4Results:
+				if r.EOF {
+					results += 1
+				}
+			case protocol.Q5Results:
 				results += 1
 			}
-		case protocol.Q5Results:
-			results += 1
-		}
 
-		err = d.Ack(false)
-		if err != nil {
-			return fmt.Errorf("failed to ack result: %v", err)
-		}
-		err = conn.SendAny(recv)
-		if err != nil {
-			return fmt.Errorf("failed to send result: %v", err)
-		}
+			err = d.Ack(false)
+			if err != nil {
+				return fmt.Errorf("failed to ack result: %v", err)
+			}
+			err = conn.SendAny(recv)
+			if err != nil {
+				return fmt.Errorf("failed to send result: %v", err)
+			}
 
-		if results == MAX_RESULTS {
-			log.Infof("Sent all results to client")
-			break
+			if results == MAX_RESULTS {
+				log.Infof("Sent all results to client")
+				break
+			}
+		case <-ctx.Done():
+			return fmt.Errorf("shutting down: %v", err)
 		}
 	}
-	return nil
 }
