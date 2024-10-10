@@ -39,7 +39,7 @@ type handler struct{}
 
 func (h handler) Filter(r middleware.Review) []string {
 	if h.isEnglish(r.Text) {
-		return []string{middleware.ReviewsEnglishKey}
+		return []string{middleware.EnglishKey}
 	}
 
 	return nil
@@ -61,11 +61,11 @@ func main() {
 		RabbitIP: cfg.RabbitIP,
 		Queue:    middleware.ReviewsLanguage,
 		Exchange: node.ExchangeConfig{
-			Name: middleware.ReviewsEnglishFilterExchange,
+			Name: middleware.ExchangeLanguage,
 			Type: amqp.ExchangeDirect,
 			QueuesByKey: map[string][]string{
-				middleware.ReviewsEnglishKey: {
-					middleware.NThousandEnglishReviewsQueue,
+				middleware.EnglishKey: {
+					middleware.ReviewsQ4,
 				},
 			},
 		},

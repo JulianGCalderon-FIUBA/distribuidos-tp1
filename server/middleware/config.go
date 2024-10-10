@@ -47,9 +47,11 @@ const (
 )
 
 // language filter
-const ReviewsEnglishFilterExchange string = "reviews-filter-english"
-const NThousandEnglishReviewsQueue string = "reviews-english-n-thousand-partitioner"
-const ReviewsEnglishKey string = "english"
+const (
+	ExchangeLanguage string = "language-x"
+	ReviewsQ4        string = "reviews-q4"
+	EnglishKey       string = "english"
+)
 
 // topNHistoricAvg aggregator
 const TopNHistoricAvgPQueue string = "top-n-historic-avg-partitioner"
