@@ -12,6 +12,9 @@ const Q4 = 3
 const Q5 = 3
 
 const LANGUAGE_FILTER = 4
+const DECADE_FILTER = 1
+const GENRE_FITLER = 1
+const SCORE_FILTER = 1
 
 func main() {
 	generateInit()
@@ -94,6 +97,9 @@ func generateGenreFilter() {
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
 	fmt.Println("      - gateway")
+	fmt.Println("    deploy:")
+	fmt.Println("      mode: replicated")
+	fmt.Printf("      replicas: %v\n", GENRE_FITLER)
 }
 
 func generateDecadeFilter() {
@@ -108,6 +114,9 @@ func generateDecadeFilter() {
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
 	fmt.Println("      - gateway")
+	fmt.Println("    deploy:")
+	fmt.Println("      mode: replicated")
+	fmt.Printf("      replicas: %v\n", DECADE_FILTER)
 }
 
 func generateScoreFilter() {
@@ -121,6 +130,9 @@ func generateScoreFilter() {
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
 	fmt.Println("      - gateway")
+	fmt.Println("    deploy:")
+	fmt.Println("      mode: replicated")
+	fmt.Printf("      replicas: %v\n", SCORE_FILTER)
 }
 
 func generateLanguageFilter() {
