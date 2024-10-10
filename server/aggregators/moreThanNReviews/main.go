@@ -18,7 +18,6 @@ import (
 type config struct {
 	RabbitIP string
 	N        int
-	Input    string
 }
 
 type handler struct {
@@ -59,7 +58,6 @@ func getConfig() (config, error) {
 
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")
 	_ = v.BindEnv("N", "N_REVIEWS")
-	_ = v.BindEnv("Input", "INPUT")
 
 	var c config
 	err := v.Unmarshal(&c)
@@ -73,7 +71,7 @@ func main() {
 
 	aggCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
-		Input:    cfg.Input,
+		Input:    middleware.MoreThanNReviewsCalculator,
 		Output:   middleware.ResultsQueue,
 	}
 

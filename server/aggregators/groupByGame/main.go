@@ -12,8 +12,11 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
+
+var log = logging.MustGetLogger("log")
 
 type config struct {
 	RabbitIP    string
@@ -121,7 +124,7 @@ func (h *reviewHandler) Conclude(ch *middleware.Channel) error {
 	}
 
 	games := slices.Collect(maps.Values(h.games))
-
+	log.Infof("Sending %v reviews per game", len(games))
 	for len(games) > 0 {
 		currBatchSize := min(h.batchSize, len(games))
 		var batchData []middleware.ReviewsPerGame
