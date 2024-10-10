@@ -409,7 +409,7 @@ func generateQ5() {
 	fmt.Println("      - gateway")
 
 	for i := 1; i <= Q5; i++ {
-		qname := fmt.Sprintf("q5-joiner-%v", i)
+		qname := fmt.Sprintf("%v-%v", middleware.NinetyPercentileJoiner, i)
 		fmt.Printf("  q5-group-%v:\n", i)
 		fmt.Printf("    container_name: q5-group-%v\n", i)
 		fmt.Println("    image: tp1:latest")
@@ -433,8 +433,8 @@ func generateQ5() {
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Printf("      - PARTITIONS=%v\n", Q5)
-	fmt.Printf("      - INPUT=%v\n", "q5-joiner")
-	fmt.Printf("      - OUTPUT=%v\n", "results-handler-q5")
+	fmt.Printf("      - INPUT=%v\n", middleware.NinetyPercentileJoiner)
+	fmt.Printf("      - OUTPUT=%v\n", middleware.NinetyPercentileCalculator)
 	fmt.Println("    networks:")
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
@@ -446,7 +446,7 @@ func generateQ5() {
 	fmt.Println("    entrypoint: /90-percentile")
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
-	fmt.Printf("      - INPUT=%v\n", "results-handler-q5")
+	fmt.Println("      - PERCENTILE=90")
 	fmt.Println("    networks:")
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")

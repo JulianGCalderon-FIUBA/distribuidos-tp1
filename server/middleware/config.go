@@ -57,6 +57,10 @@ const TopNReviewsJoiner string = "q3-joiner"
 const MoreThanNReviewsJoiner string = "q4-joiner"
 const MoreThanNReviewsCalculator string = "results-handler-q4"
 
+// 90 percentile
+const NinetyPercentileJoiner string = "q5-joiner"
+const NinetyPercentileCalculator string = "results-handler-q5"
+
 type queueConfig struct {
 	name       string
 	exchange   string
