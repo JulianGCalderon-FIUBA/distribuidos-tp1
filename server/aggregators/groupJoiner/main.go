@@ -5,7 +5,9 @@ import (
 	"distribuidos/tp1/server/middleware"
 	"distribuidos/tp1/server/middleware/aggregator"
 	"distribuidos/tp1/utils"
+	"os/signal"
 	"sync"
+	"syscall"
 
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
@@ -91,6 +93,8 @@ func main() {
 		m:               &sync.Mutex{},
 	}
 
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
+
 	wg := sync.WaitGroup{}
 	wg.Add(cfg.Partitions)
 
@@ -111,7 +115,7 @@ func main() {
 		go func() {
 			defer wg.Done()
 			log.Infof("Starting handler %v", i)
-			err = agg.Run(context.Background())
+			err = agg.Run(ctx)
 			utils.Expect(err, "Failed to run game aggregator")
 		}()
 	}
