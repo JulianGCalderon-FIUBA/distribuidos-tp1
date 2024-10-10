@@ -53,6 +53,10 @@ const TopNReviewsCalculator string = "results-handler-q3"
 const TopNReviewsGroup string = "q3-group"
 const TopNReviewsJoiner string = "q3-joiner"
 
+// more than n reviews
+const MoreThanNReviewsJoiner string = "q4-joiner"
+const MoreThanNReviewsCalculator string = "results-handler-q4"
+
 type queueConfig struct {
 	name       string
 	exchange   string

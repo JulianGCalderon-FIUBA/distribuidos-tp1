@@ -262,8 +262,8 @@ func generateQ3() {
 
 	for i := 1; i <= Q3; i++ {
 		groupOutput := fmt.Sprintf("%v-%v", middleware.TopNReviewsCalculator, i)
-		fmt.Printf("  %v-%v:\n", middleware.TopNReviewsGroup, i)
-		fmt.Printf("    container_name: %v-%v\n", middleware.TopNReviewsGroup, i)
+		fmt.Printf("  q3-group-%v:\n", i)
+		fmt.Printf("    container_name: q3-group-%v\n", i)
 		fmt.Println("    image: tp1:latest")
 		fmt.Println("    entrypoint: /group-by-game")
 		fmt.Println("    environment:")
@@ -335,7 +335,7 @@ func generateQ4() {
 	fmt.Println("      - gateway")
 
 	for i := 1; i <= Q4; i++ {
-		qname := fmt.Sprintf("q4-joiner-%v", i)
+		groupOutput := fmt.Sprintf("%v-%v", middleware.MoreThanNReviewsJoiner, i)
 		fmt.Printf("  q4-group-%v:\n", i)
 		fmt.Printf("    container_name: q4-group-%v\n", i)
 		fmt.Println("    image: tp1:latest")
@@ -345,7 +345,7 @@ func generateQ4() {
 		fmt.Printf("      - PARTITION_ID=%v\n", i)
 		fmt.Printf("      - GAME_INPUT=%v\n", middleware.MoreThanNReviewsGamesQueue)
 		fmt.Printf("      - REVIEW_INPUT=%v\n", middleware.NThousandEnglishReviewsQueue)
-		fmt.Printf("      - OUTPUT=%v\n", qname)
+		fmt.Printf("      - OUTPUT=%v\n", groupOutput)
 		fmt.Println("    networks:")
 		fmt.Println("      - net")
 		fmt.Println("    depends_on:")
@@ -359,8 +359,8 @@ func generateQ4() {
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Printf("      - PARTITIONS=%v\n", Q4)
-	fmt.Printf("      - INPUT=%v\n", "q4-joiner")
-	fmt.Printf("      - OUTPUT=%v\n", "results-handler-q4")
+	fmt.Printf("      - INPUT=%v\n", middleware.MoreThanNReviewsJoiner)
+	fmt.Printf("      - OUTPUT=%v\n", middleware.MoreThanNReviewsCalculator)
 	fmt.Println("    networks:")
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
@@ -373,7 +373,6 @@ func generateQ4() {
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Println("      - N=5000")
-	fmt.Printf("      - INPUT=%v\n", "results-handler-q4")
 	fmt.Println("    networks:")
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
