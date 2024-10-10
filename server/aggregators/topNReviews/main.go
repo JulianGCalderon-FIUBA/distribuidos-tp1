@@ -16,9 +16,9 @@ import (
 )
 
 type config struct {
-	RabbitIP string
-	Input    string
-	N        int
+	RabbitIP    string
+	PartitionID int
+	N           int
 }
 
 type handler struct {
@@ -58,10 +58,11 @@ func getConfig() (config, error) {
 
 	v.SetDefault("RabbitIP", "localhost")
 	v.SetDefault("N", "5")
+	v.SetDefault("PartitionID", "1")
 
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")
-	_ = v.BindEnv("Input", "INPUT")
 	_ = v.BindEnv("N", "N")
+	_ = v.BindEnv("PartitionID", "PARTITION_ID")
 
 	var c config
 	err := v.Unmarshal(&c)
@@ -73,14 +74,15 @@ func main() {
 	utils.Expect(err, "Failed to read config")
 	gob.Register(protocol.Q3Results{})
 
+	input := middleware.Cat(middleware.GroupedQ3, cfg.PartitionID)
 	aggCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
-		Input:    cfg.Input,
-		Output:   middleware.TopNReviewsJoiner,
+		Input:    input,
+		Output:   middleware.PartialQ3,
 	}
 
 	h := handler{
-		output: middleware.TopNReviewsJoiner,
+		output: middleware.PartialQ3,
 		sorted: make([]middleware.GameStat, 0),
 		N:      cfg.N,
 	}

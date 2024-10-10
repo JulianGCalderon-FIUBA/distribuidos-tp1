@@ -72,7 +72,7 @@ func (h *handler) Conclude(ch *middleware.Channel) error {
 
 	result := protocol.Q3Results{TopN: topNNames}
 
-	return ch.SendAny(result, "", middleware.ResultsQueue)
+	return ch.SendAny(result, "", middleware.Results)
 }
 
 func main() {
@@ -82,8 +82,8 @@ func main() {
 
 	joinCfg := joiner.Config{
 		RabbitIP:   cfg.RabbitIP,
-		Input:      middleware.TopNReviewsJoiner,
-		Output:     middleware.ResultsQueue,
+		Input:      middleware.PartialQ3,
+		Output:     middleware.Results,
 		Partitions: cfg.Partitions,
 	}
 

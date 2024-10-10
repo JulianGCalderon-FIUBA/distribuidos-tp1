@@ -5,7 +5,6 @@ import (
 	"distribuidos/tp1/server/middleware"
 	"distribuidos/tp1/server/middleware/aggregator"
 	"distribuidos/tp1/utils"
-	"fmt"
 	"maps"
 	"os/signal"
 	"slices"
@@ -148,11 +147,12 @@ func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
 
-	qName := fmt.Sprintf("%v-x-%v", cfg.GameInput, cfg.PartitionID)
+	output := middleware.Cat(cfg.Output, cfg.PartitionID)
+	input := middleware.Cat(cfg.GameInput, "x", cfg.PartitionID)
 	gameAggCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
-		Input:    qName,
-		Output:   cfg.Output,
+		Input:    input,
+		Output:   output,
 	}
 
 	h := reviewHandler{
@@ -161,7 +161,7 @@ func main() {
 		gameEof:   false,
 		batchSize: cfg.BatchSize,
 		m:         &sync.Mutex{},
-		output:    cfg.Output,
+		output:    output,
 	}
 	gh := gameHandler{
 		h: &h,
@@ -180,11 +180,11 @@ func main() {
 		utils.Expect(err, "Failed to run game aggregator")
 	}()
 
-	qName = fmt.Sprintf("%v-x-%v", cfg.ReviewInput, cfg.PartitionID)
+	input = middleware.Cat(cfg.ReviewInput, "x", cfg.PartitionID)
 	reviewCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
-		Input:    qName,
-		Output:   cfg.Output,
+		Input:    input,
+		Output:   output,
 	}
 
 	reviewAgg, err := aggregator.NewAggregator(reviewCfg, &h)

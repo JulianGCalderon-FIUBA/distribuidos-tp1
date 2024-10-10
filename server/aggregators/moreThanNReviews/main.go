@@ -42,7 +42,7 @@ func (h *handler) Conclude(ch *middleware.Channel) error {
 			EOF:  i == len(results)-1,
 		}
 
-		err := ch.SendAny(p, "", middleware.ResultsQueue)
+		err := ch.SendAny(p, "", middleware.Results)
 		if err != nil {
 			return err
 		}
@@ -71,8 +71,8 @@ func main() {
 
 	aggCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
-		Input:    middleware.MoreThanNReviewsCalculator,
-		Output:   middleware.ResultsQueue,
+		Input:    middleware.GroupedQ4Filter,
+		Output:   middleware.Results,
 	}
 
 	h := handler{

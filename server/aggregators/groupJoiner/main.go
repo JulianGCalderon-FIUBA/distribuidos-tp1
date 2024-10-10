@@ -5,7 +5,6 @@ import (
 	"distribuidos/tp1/server/middleware"
 	"distribuidos/tp1/server/middleware/aggregator"
 	"distribuidos/tp1/utils"
-	"fmt"
 	"sync"
 
 	"github.com/op/go-logging"
@@ -101,10 +100,10 @@ func main() {
 			sh:     &shared,
 			output: cfg.Output,
 		}
-		qname := fmt.Sprintf("%v-%v", cfg.Input, i)
+		input := middleware.Cat(cfg.Input, i)
 		hcfg := aggregator.Config{
 			RabbitIP: cfg.RabbitIP,
-			Input:    qname,
+			Input:    input,
 			Output:   cfg.Output,
 		}
 		agg, err := aggregator.NewAggregator(hcfg, h)
