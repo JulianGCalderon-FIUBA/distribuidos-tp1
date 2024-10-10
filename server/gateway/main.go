@@ -1,6 +1,10 @@
 package main
 
 import (
+	"context"
+	"os/signal"
+	"syscall"
+
 	logging "github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
@@ -39,6 +43,8 @@ func main() {
 	}
 	_ = cfg.DataEndpointPort
 
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
+
 	gateway := newGateway(cfg)
-	gateway.start()
+	gateway.start(ctx)
 }

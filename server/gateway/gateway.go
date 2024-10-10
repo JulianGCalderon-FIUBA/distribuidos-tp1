@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/server/middleware"
 	"sync"
@@ -21,7 +22,7 @@ func newGateway(config config) *gateway {
 	}
 }
 
-func (g *gateway) start() {
+func (g *gateway) start(ctx context.Context) {
 	m, err := middleware.NewMiddleware(g.config.RabbitIP)
 	if err != nil {
 		log.Fatalf("Failed to initialize middleware: %v", err)
@@ -30,7 +31,20 @@ func (g *gateway) start() {
 
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go g.startConnectionHandler()
-	go g.startDataHandler()
+	go func() {
+		defer wg.Done()
+		err := g.startConnectionHandler(ctx)
+		if err != nil {
+			log.Errorf("Failed to start connection handler: %v", err)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		err := g.startDataHandler(ctx)
+		if err != nil {
+			log.Errorf("Failed to start data handler: %v", err)
+		}
+	}()
 	wg.Wait()
 }
