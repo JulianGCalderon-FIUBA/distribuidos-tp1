@@ -8,8 +8,10 @@ import (
 const Q1 = 3
 const Q2 = 3
 const Q3 = 3
-const Q4 = 1
-const Q5 = 1
+const Q4 = 3
+const Q5 = 3
+
+const LANGUAGE_FILTER = 4
 
 func main() {
 	generateInit()
@@ -123,7 +125,6 @@ func generateScoreFilter() {
 
 func generateLanguageFilter() {
 	fmt.Println("  language-filter:")
-	fmt.Println("    container_name: language-filter")
 	fmt.Println("    image: tp1:latest")
 	fmt.Println("    entrypoint: /language-filter")
 	fmt.Println("    environment:")
@@ -132,6 +133,9 @@ func generateLanguageFilter() {
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
 	fmt.Println("      - gateway")
+	fmt.Println("    deploy:")
+	fmt.Println("      mode: replicated")
+	fmt.Printf("      replicas: %v\n", LANGUAGE_FILTER)
 }
 
 func generateQ1() {
@@ -323,6 +327,7 @@ func generateQ4() {
 	fmt.Println("      - gateway")
 
 	for i := 1; i <= Q4; i++ {
+		qname := fmt.Sprintf("q4-joiner-%v", i)
 		fmt.Printf("  q4-group-%v:\n", i)
 		fmt.Printf("    container_name: q4-group-%v\n", i)
 		fmt.Println("    image: tp1:latest")
@@ -332,12 +337,27 @@ func generateQ4() {
 		fmt.Printf("      - PARTITION_ID=%v\n", i)
 		fmt.Printf("      - GAME_INPUT=%v\n", middleware.MoreThanNReviewsGamesQueue)
 		fmt.Printf("      - REVIEW_INPUT=%v\n", middleware.NThousandEnglishReviewsQueue)
-		fmt.Printf("      - OUTPUT=%v\n", "results-handler-q4")
+		fmt.Printf("      - OUTPUT=%v\n", qname)
 		fmt.Println("    networks:")
 		fmt.Println("      - net")
 		fmt.Println("    depends_on:")
 		fmt.Println("      - gateway")
 	}
+
+	fmt.Println("  q4-joiner:")
+	fmt.Println("    container_name: q4-joiner")
+	fmt.Println("    image: tp1:latest")
+	fmt.Println("    entrypoint: /group-joiner")
+	fmt.Println("    environment:")
+	fmt.Println("      - RABBIT_IP=rabbitmq")
+	fmt.Printf("      - PARTITIONS=%v\n", Q4)
+	fmt.Printf("      - INPUT=%v\n", "q4-joiner")
+	fmt.Printf("      - OUTPUT=%v\n", "results-handler-q4")
+	fmt.Println("    networks:")
+	fmt.Println("      - net")
+	fmt.Println("    depends_on:")
+	fmt.Println("      - gateway")
+
 	fmt.Println("  q4:")
 	fmt.Println("    container_name: q4")
 	fmt.Println("    image: tp1:latest")
@@ -382,6 +402,7 @@ func generateQ5() {
 	fmt.Println("      - gateway")
 
 	for i := 1; i <= Q5; i++ {
+		qname := fmt.Sprintf("q5-joiner-%v", i)
 		fmt.Printf("  q5-group-%v:\n", i)
 		fmt.Printf("    container_name: q5-group-%v\n", i)
 		fmt.Println("    image: tp1:latest")
@@ -391,12 +412,27 @@ func generateQ5() {
 		fmt.Printf("      - PARTITION_ID=%v\n", i)
 		fmt.Printf("      - GAME_INPUT=%v\n", middleware.NinetyPercentileGamesQueue)
 		fmt.Printf("      - REVIEW_INPUT=%v\n", middleware.NinetyPercentileReviewsQueue)
-		fmt.Printf("      - OUTPUT=%v\n", "results-handler-q5")
+		fmt.Printf("      - OUTPUT=%v\n", qname)
 		fmt.Println("    networks:")
 		fmt.Println("      - net")
 		fmt.Println("    depends_on:")
 		fmt.Println("      - gateway")
 	}
+
+	fmt.Println("  q5-joiner:")
+	fmt.Println("    container_name: q5-joiner")
+	fmt.Println("    image: tp1:latest")
+	fmt.Println("    entrypoint: /group-joiner")
+	fmt.Println("    environment:")
+	fmt.Println("      - RABBIT_IP=rabbitmq")
+	fmt.Printf("      - PARTITIONS=%v\n", Q5)
+	fmt.Printf("      - INPUT=%v\n", "q5-joiner")
+	fmt.Printf("      - OUTPUT=%v\n", "results-handler-q5")
+	fmt.Println("    networks:")
+	fmt.Println("      - net")
+	fmt.Println("    depends_on:")
+	fmt.Println("      - gateway")
+
 	fmt.Println("  q5:")
 	fmt.Println("    container_name: q5")
 	fmt.Println("    image: tp1:latest")
