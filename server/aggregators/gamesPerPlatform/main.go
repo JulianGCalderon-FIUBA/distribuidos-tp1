@@ -78,12 +78,12 @@ func main() {
 	qName := fmt.Sprintf("%v-x-%v", middleware.GamesQ1, cfg.PartitionID)
 	aggCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
-		Output:   middleware.GamesPerPlatformJoin,
+		Output:   middleware.PartialQ1,
 		Input:    qName,
 	}
 	h := handler{
 		count:  make(map[Platform]int),
-		output: middleware.GamesPerPlatformJoin,
+		output: middleware.PartialQ1,
 	}
 
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)

@@ -77,7 +77,7 @@ func main() {
 
 	joinCfg := joiner.Config{
 		RabbitIP:   cfg.RabbitIP,
-		Input:      middleware.GamesPerPlatformJoin,
+		Input:      middleware.PartialQ1,
 		Output:     middleware.Results,
 		Partitions: cfg.Partitions,
 	}

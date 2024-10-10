@@ -8,62 +8,84 @@ import (
 
 // El nombrado de las colas y exchanges sigue las siguientes reglas:
 // - Si es un exchange, termina en 'x'
-// - Si es un cola, el formato es `Tipo-Destino`
+// - Si es un cola, el formato es `TipoDato-Query-Destino`
 
-// data Handler
+// Data Handler
 const (
 	ExchangeGames   string = "games-x"
 	ExchangeReviews string = "reviews-x"
-	GamesGenre      string = "games-genre"
-	ReviewsScore    string = "reviews-score"
-	GamesQ1         string = "games-Q1"
 )
 
-// genre Filter
+// Genre Filter
 const (
+	GamesGenre    string = "games-genre"
 	ExchangeGenre string = "genre-x"
-	GamesDecade   string = "games-decade"
-	GamesQ3       string = "games-q3"
-	GamesQ4       string = "games-q4"
-	GamesQ5       string = "games-q5"
 	IndieKey      string = "indie"
 	ActionKey     string = "action"
 )
 
-// review filter
+// Score filter
 const (
-	ExchangeScore   string = "score-x"
-	ReviewsQ5       string = "reviews-q5"
-	ReviewsLanguage string = "reviews-language"
-	ReviewsQ3       string = "reviews-q3"
-	PositiveKey     string = "positive"
-	NegativeKey     string = "negative"
+	ReviewsScore  string = "reviews-score"
+	ExchangeScore string = "score-x"
+	PositiveKey   string = "positive"
+	NegativeKey   string = "negative"
 )
 
-// decade filter
+// Decade filter
 const (
-	ExchangeDecade  string = "decades"
+	GamesDecade     string = "games-decade"
+	ExchangeDecade  string = "decade-x"
 	DecadeKeyPrefix string = "decade"
 )
 
-// language filter
+// Language filter
 const (
+	ReviewsLanguage  string = "reviews-language"
 	ExchangeLanguage string = "language-x"
-	ReviewsQ4        string = "reviews-q4"
 	EnglishKey       string = "english"
+)
+
+// Q1
+const (
+	GamesQ1   string = "games-Q1"
+	PartialQ1 string = "partial-Q1-joiner"
 )
 
 // Q2
 const (
-	GamesQ2   string = "games-q2"
-	PartialQ2 string = "partial-q2"
+	GamesQ2   string = "games-Q2"
+	PartialQ2 string = "partial-Q2-joiner"
 )
 
-// results
-const Results string = "results"
+// Q3
+const (
+	GamesQ3   string = "games-Q3"
+	ReviewsQ3 string = "reviews-Q3"
+	GroupedQ3 string = "grouped-Q3-top"
+	PartialQ3 string = "partial-Q3-joiner"
+)
 
-// games per platform
-const GamesPerPlatformJoin string = "games-per-platform-join"
+// Q4
+const (
+	GamesQ4             string = "games-Q4"
+	ReviewsQ4           string = "reviews-Q4"
+	GroupedQ4Joiner     string = "grouped-Q4-joiner"
+	GroupedQ4Percentile string = "grouped-Q4-percentile"
+)
+
+// Q5
+const (
+	GamesQ5         string = "games-Q5"
+	ReviewsQ5       string = "reviews-Q5"
+	GroupedQ5Joiner string = "grouped-Q5-joiner"
+	GroupedQ5Filter string = "grouped-Q5-filter"
+)
+
+// Results
+const (
+	Results string = "results"
+)
 
 type queueConfig struct {
 	name       string

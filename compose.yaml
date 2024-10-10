@@ -86,7 +86,7 @@ services:
     entrypoint: /partitioner
     environment:
       - RABBIT_IP=rabbitmq
-      - INPUT=games-per-platform
+      - INPUT=games-Q1
       - PARTITIONS=3
       - TYPE=game
     networks:
@@ -143,7 +143,7 @@ services:
     entrypoint: /partitioner
     environment:
       - RABBIT_IP=rabbitmq
-      - INPUT=top-n-historic-avg-partitioner
+      - INPUT=games-Q2
       - PARTITIONS=3
       - TYPE=game
     networks:
@@ -157,7 +157,7 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=1
-      - INPUT=top-n-historic-avg-partitioner
+      - INPUT=games-Q2
       - TOP_N=10
     networks:
       - net
@@ -170,7 +170,7 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=2
-      - INPUT=top-n-historic-avg-partitioner
+      - INPUT=games-Q2
       - TOP_N=10
     networks:
       - net
@@ -183,7 +183,7 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=3
-      - INPUT=top-n-historic-avg-partitioner
+      - INPUT=games-Q2
       - TOP_N=10
     networks:
       - net
@@ -196,7 +196,7 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITIONS=3
-      - INPUT=top-n-historic-avg-joiner
+      - INPUT=partial-Q2-joiner
       - TOP_N=10
     networks:
       - net
@@ -208,7 +208,7 @@ services:
     entrypoint: /partitioner
     environment:
       - RABBIT_IP=rabbitmq
-      - INPUT=games-top-n-amount-reviews
+      - INPUT=games-Q3
       - PARTITIONS=3
       - TYPE=game
     networks:
@@ -221,7 +221,7 @@ services:
     entrypoint: /partitioner
     environment:
       - RABBIT_IP=rabbitmq
-      - INPUT=reviews-top-n-partitioner
+      - INPUT=reviews-Q3
       - PARTITIONS=3
       - TYPE=review
     networks:
@@ -235,9 +235,9 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=1
-      - GAME_INPUT=games-top-n-amount-reviews
-      - REVIEW_INPUT=reviews-top-n-partitioner
-      - OUTPUT=results-handler-q3-1
+      - GAME_INPUT=games-Q3
+      - REVIEW_INPUT=reviews-Q3
+      - OUTPUT=grouped-Q3-top
     networks:
       - net
     depends_on:
@@ -249,8 +249,8 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=1
-      - INPUT=results-handler-q3-1
-      - OUTPUT=joiner-q3
+      - INPUT=grouped-Q3-top
+      - OUTPUT=partial-Q3-joiner
     networks:
       - net
     depends_on:
@@ -262,9 +262,9 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=2
-      - GAME_INPUT=games-top-n-amount-reviews
-      - REVIEW_INPUT=reviews-top-n-partitioner
-      - OUTPUT=results-handler-q3-2
+      - GAME_INPUT=games-Q3
+      - REVIEW_INPUT=reviews-Q3
+      - OUTPUT=grouped-Q3-top
     networks:
       - net
     depends_on:
@@ -276,8 +276,8 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=2
-      - INPUT=results-handler-q3-2
-      - OUTPUT=joiner-q3
+      - INPUT=grouped-Q3-top
+      - OUTPUT=partial-Q3-joiner
     networks:
       - net
     depends_on:
@@ -289,9 +289,9 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=3
-      - GAME_INPUT=games-top-n-amount-reviews
-      - REVIEW_INPUT=reviews-top-n-partitioner
-      - OUTPUT=results-handler-q3-3
+      - GAME_INPUT=games-Q3
+      - REVIEW_INPUT=reviews-Q3
+      - OUTPUT=grouped-Q3-top
     networks:
       - net
     depends_on:
@@ -303,8 +303,8 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=3
-      - INPUT=results-handler-q3-3
-      - OUTPUT=joiner-q3
+      - INPUT=grouped-Q3-top
+      - OUTPUT=partial-Q3-joiner
     networks:
       - net
     depends_on:
@@ -328,7 +328,7 @@ services:
     entrypoint: /partitioner
     environment:
       - RABBIT_IP=rabbitmq
-      - INPUT=games-more-than-n-reviews
+      - INPUT=games-Q4
       - PARTITIONS=1
       - TYPE=game
     networks:
@@ -341,7 +341,7 @@ services:
     entrypoint: /partitioner
     environment:
       - RABBIT_IP=rabbitmq
-      - INPUT=reviews-english-n-thousand-partitioner
+      - INPUT=reviews-Q4
       - PARTITIONS=1
       - TYPE=review
     networks:
@@ -355,9 +355,9 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=1
-      - GAME_INPUT=games-more-than-n-reviews
-      - REVIEW_INPUT=reviews-english-n-thousand-partitioner
-      - OUTPUT=results-handler-q4
+      - GAME_INPUT=games-Q4
+      - REVIEW_INPUT=reviews-Q4
+      - OUTPUT=grouped-Q4-percentile
     networks:
       - net
     depends_on:
@@ -369,7 +369,7 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - N=5000
-      - INPUT=results-handler-q4
+      - INPUT=grouped-Q4-percentile
     networks:
       - net
     depends_on:
@@ -380,7 +380,7 @@ services:
     entrypoint: /partitioner
     environment:
       - RABBIT_IP=rabbitmq
-      - INPUT=games-90-percentile
+      - INPUT=games-Q5
       - PARTITIONS=1
       - TYPE=game
     networks:
@@ -393,7 +393,7 @@ services:
     entrypoint: /partitioner
     environment:
       - RABBIT_IP=rabbitmq
-      - INPUT=reviews-90-percentile
+      - INPUT=reviews-Q5
       - PARTITIONS=1
       - TYPE=review
     networks:
@@ -407,9 +407,9 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=1
-      - GAME_INPUT=games-90-percentile
-      - REVIEW_INPUT=reviews-90-percentile
-      - OUTPUT=results-handler-q5
+      - GAME_INPUT=games-Q5
+      - REVIEW_INPUT=reviews-Q5
+      - OUTPUT=grouped-Q5-filter
     networks:
       - net
     depends_on:
@@ -420,7 +420,7 @@ services:
     entrypoint: /90-percentile
     environment:
       - RABBIT_IP=rabbitmq
-      - INPUT=results-handler-q5
+      - INPUT=grouped-Q5-filter
     networks:
       - net
     depends_on:
