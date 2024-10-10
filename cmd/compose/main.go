@@ -88,7 +88,6 @@ func generateClient() {
 
 func generateGenreFilter() {
 	fmt.Println("  genre-filter:")
-	fmt.Println("    container_name: genre-filter")
 	fmt.Println("    image: tp1:latest")
 	fmt.Println("    entrypoint: /genre-filter")
 	fmt.Println("    environment:")
@@ -104,7 +103,6 @@ func generateGenreFilter() {
 
 func generateDecadeFilter() {
 	fmt.Println("  decade-filter:")
-	fmt.Println("    container_name: decade-filter")
 	fmt.Println("    image: tp1:latest")
 	fmt.Println("    entrypoint: /decade-filter")
 	fmt.Println("    environment:")
@@ -121,7 +119,6 @@ func generateDecadeFilter() {
 
 func generateScoreFilter() {
 	fmt.Println("  review-filter:")
-	fmt.Println("    container_name: review-filter")
 	fmt.Println("    image: tp1:latest")
 	fmt.Println("    entrypoint: /review-filter")
 	fmt.Println("    environment:")
