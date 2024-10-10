@@ -229,7 +229,7 @@ func (c *client) waitResults() error {
 				c.results += 1
 			}
 		case protocol.Q5Results:
-			log.Infof("Received Q5 results")
+			log.Infof("Received Q5 results: %v", len(r.Percentile90))
 			c.results += 1
 			writeResults(r, 5)
 		}
