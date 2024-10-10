@@ -24,9 +24,9 @@ type handler struct{}
 
 func (h handler) Filter(r middleware.Review) []string {
 	if r.Score == middleware.PositiveScore {
-		return []string{middleware.PositiveReviewKey}
+		return []string{middleware.PositiveKey}
 	} else {
-		return []string{middleware.NegativeReviewKey}
+		return []string{middleware.NegativeKey}
 	}
 }
 
@@ -52,15 +52,15 @@ func main() {
 		RabbitIP: cfg.RabbitIP,
 		Queue:    middleware.ReviewsScore,
 		Exchange: node.ExchangeConfig{
-			Name: middleware.ReviewsScoreFilterExchange,
+			Name: middleware.ExchangeScore,
 			Type: amqp091.ExchangeDirect,
 			QueuesByKey: map[string][]string{
-				middleware.PositiveReviewKey: {
-					middleware.TopNAmountReviewsQueue,
+				middleware.PositiveKey: {
+					middleware.ReviewsQ3,
 				},
-				middleware.NegativeReviewKey: {
-					middleware.NinetyPercentileReviewsQueue,
-					middleware.LanguageReviewsFilterQueue,
+				middleware.NegativeKey: {
+					middleware.ReviewsQ5,
+					middleware.ReviewsLanguage,
 				},
 			},
 		},

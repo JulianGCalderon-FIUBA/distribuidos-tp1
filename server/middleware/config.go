@@ -31,12 +31,14 @@ const (
 )
 
 // review filter
-const ReviewsScoreFilterExchange string = "reviews-filter-score"
-const NinetyPercentileReviewsQueue string = "reviews-90-percentile"
-const LanguageReviewsFilterQueue string = "reviews-language-filter"
-const TopNAmountReviewsQueue string = "reviews-top-n-partitioner"
-const PositiveReviewKey string = "positive-review"
-const NegativeReviewKey string = "negative-review"
+const (
+	ExchangeScore   string = "score-x"
+	ReviewsQ5       string = "reviews-q5"
+	ReviewsLanguage string = "reviews-language"
+	ReviewsQ3       string = "reviews-q3"
+	PositiveKey     string = "positive"
+	NegativeKey     string = "negative"
+)
 
 // decade filter
 const DecadeExchange string = "decades"

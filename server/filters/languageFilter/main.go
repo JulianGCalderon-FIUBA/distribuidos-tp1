@@ -59,7 +59,7 @@ func main() {
 
 	filterCfg := filter.Config{
 		RabbitIP: cfg.RabbitIP,
-		Queue:    middleware.LanguageReviewsFilterQueue,
+		Queue:    middleware.ReviewsLanguage,
 		Exchange: node.ExchangeConfig{
 			Name: middleware.ReviewsEnglishFilterExchange,
 			Type: amqp.ExchangeDirect,
