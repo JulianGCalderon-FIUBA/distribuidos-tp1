@@ -44,7 +44,7 @@ func (g *gateway) startDataHandler(ctx context.Context) (err error) {
 
 		go func(conn net.Conn) {
 			defer conn.Close()
-			err := g.handleClientData(conn)
+			err := g.handleClientData(ctx, conn)
 			if err != nil {
 				log.Errorf("Error while handling client: %v", err)
 			}
@@ -52,11 +52,18 @@ func (g *gateway) startDataHandler(ctx context.Context) (err error) {
 	}
 }
 
-func (g *gateway) handleClientData(netConn net.Conn) error {
+func (g *gateway) handleClientData(ctx context.Context, netConn net.Conn) error {
+	var err error
 	conn := protocol.NewConn(netConn)
 
+	closer := utils.SpawnCloser(ctx, conn)
+	defer func() {
+		closeErr := closer.Close()
+		err = errors.Join(err, closeErr)
+	}()
+
 	var hello protocol.DataHello
-	err := conn.Recv(&hello)
+	err = conn.Recv(&hello)
 	if err != nil {
 		return err
 	}

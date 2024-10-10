@@ -59,8 +59,14 @@ func (g *gateway) startConnectionHandler(ctx context.Context) (err error) {
 }
 
 func (g *gateway) handleClient(ctx context.Context, netConn net.Conn) error {
+	var err error
 	conn := protocol.NewConn(netConn)
-	defer conn.Close()
+
+	closer := utils.SpawnCloser(ctx, conn)
+	defer func() {
+		closeErr := closer.Close()
+		err = errors.Join(err, closeErr)
+	}()
 
 	clientId := g.getActiveClients()
 	log.Infof("Client connected with id: %v", clientId)
