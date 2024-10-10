@@ -16,15 +16,14 @@ import (
 	"github.com/spf13/viper"
 )
 
-const PERCENTILE float64 = 90.0
-
 type config struct {
-	RabbitIP string
-	Input    string
+	RabbitIP   string
+	Percentile int
 }
 
 type handler struct {
-	sorted []middleware.ReviewsPerGame
+	sorted     []middleware.ReviewsPerGame
+	percentile float64
 }
 
 func (h *handler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middleware.ReviewsPerGame]) error {
@@ -40,7 +39,7 @@ func (h *handler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middle
 
 func (h *handler) Conclude(ch *middleware.Channel) error {
 	n := float64(len(h.sorted))
-	index := int(math.Ceil(PERCENTILE/100.0*n)) - 1
+	index := max(0, int(math.Ceil(h.percentile/100.0*n))-1)
 	results := h.sorted[index:]
 	r := make([]string, 0)
 	for _, res := range results {
@@ -58,9 +57,10 @@ func getConfig() (config, error) {
 	v := viper.New()
 
 	v.SetDefault("RabbitIP", "localhost")
+	v.SetDefault("Percentile", 90)
 
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")
-	_ = v.BindEnv("Input", "INPUT")
+	_ = v.BindEnv("Percentile", "PERCENTILE")
 
 	var c config
 	err := v.Unmarshal(&c)
@@ -74,12 +74,13 @@ func main() {
 
 	aggCfg := aggregator.Config{
 		RabbitIP: cfg.RabbitIP,
-		Input:    cfg.Input,
+		Input:    middleware.GroupedQ5Percentile,
 		Output:   middleware.Results,
 	}
 
 	h := handler{
-		sorted: make([]middleware.ReviewsPerGame, 0),
+		sorted:     make([]middleware.ReviewsPerGame, 0),
+		percentile: float64(cfg.Percentile),
 	}
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 

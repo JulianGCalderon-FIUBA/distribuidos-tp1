@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"strings"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -68,18 +69,18 @@ const (
 
 // Q4
 const (
-	GamesQ4             string = "games-Q4"
-	ReviewsQ4           string = "reviews-Q4"
-	GroupedQ4Joiner     string = "grouped-Q4-joiner"
-	GroupedQ4Percentile string = "grouped-Q4-percentile"
+	GamesQ4         string = "games-Q4"
+	ReviewsQ4       string = "reviews-Q4"
+	GroupedQ4Joiner string = "grouped-Q4-joiner"
+	GroupedQ4Filter string = "grouped-Q4-filter"
 )
 
 // Q5
 const (
-	GamesQ5         string = "games-Q5"
-	ReviewsQ5       string = "reviews-Q5"
-	GroupedQ5Joiner string = "grouped-Q5-joiner"
-	GroupedQ5Filter string = "grouped-Q5-filter"
+	GamesQ5             string = "games-Q5"
+	ReviewsQ5           string = "reviews-Q5"
+	GroupedQ5Joiner     string = "grouped-Q5-joiner"
+	GroupedQ5Percentile string = "grouped-Q5-percentil"
 )
 
 // Results
@@ -104,6 +105,10 @@ var DataHandlerQueues = []queueConfig{
 	{GamesQ1, ExchangeGames, ""},
 }
 
-func Cat(v ...string) string {
-	return strings.Join(v, "-")
+func Cat(v ...any) string {
+	vs := make([]string, len(v))
+	for i, v := range v {
+		vs[i] = fmt.Sprintf("%v", v)
+	}
+	return strings.Join(vs, "-")
 }
