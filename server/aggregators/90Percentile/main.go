@@ -39,7 +39,7 @@ func (h *handler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middle
 
 func (h *handler) Conclude(ch *middleware.Channel) error {
 	n := float64(len(h.sorted))
-	index := int(math.Ceil(h.percentile/100.0*n)) - 1
+	index := max(0, int(math.Ceil(h.percentile/100.0*n))-1)
 	results := h.sorted[index:]
 	r := make([]string, 0)
 	for _, res := range results {
