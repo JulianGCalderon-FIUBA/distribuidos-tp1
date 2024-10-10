@@ -41,10 +41,10 @@ type handler struct{}
 func (h handler) Filter(g middleware.Game) []string {
 	var rks []string
 	if slices.Contains(g.Genres, middleware.IndieGenre) {
-		rks = append(rks, middleware.IndieGameKey)
+		rks = append(rks, middleware.IndieKey)
 	}
 	if slices.Contains(g.Genres, middleware.ActionGenre) {
-		rks = append(rks, middleware.ActionGameKey)
+		rks = append(rks, middleware.ActionKey)
 	}
 	return rks
 }
@@ -59,16 +59,16 @@ func main() {
 		RabbitIP: cfg.RabbitIP,
 		Queue:    middleware.GamesGenre,
 		Exchange: node.ExchangeConfig{
-			Name: middleware.GenresExchange,
+			Name: middleware.ExchangeGenre,
 			Type: amqp.ExchangeDirect,
 			QueuesByKey: map[string][]string{
-				middleware.IndieGameKey: {
-					middleware.DecadeQueue,
-					middleware.TopNAmountReviewsGamesQueue,
+				middleware.IndieKey: {
+					middleware.GamesDecade,
+					middleware.GamesQ3,
 				},
-				middleware.ActionGameKey: {
-					middleware.MoreThanNReviewsGamesQueue,
-					middleware.NinetyPercentileGamesQueue,
+				middleware.ActionKey: {
+					middleware.GamesQ4,
+					middleware.GamesQ5,
 				},
 			},
 		},

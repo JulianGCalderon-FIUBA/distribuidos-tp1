@@ -62,7 +62,7 @@ func main() {
 	key := fmt.Sprintf("%v-%v", middleware.DecadeKey, cfg.Decade)
 	filterCfg := filter.Config{
 		RabbitIP: cfg.RabbitIP,
-		Queue:    middleware.DecadeQueue,
+		Queue:    middleware.GamesDecade,
 		Exchange: node.ExchangeConfig{
 			Name: middleware.DecadeExchange,
 			Type: amqp.ExchangeDirect,

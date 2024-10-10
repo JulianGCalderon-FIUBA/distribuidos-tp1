@@ -20,14 +20,15 @@ const (
 )
 
 // genre Filter
-const GenresExchange string = "genres"
-const DecadeQueue string = "decades"
-const TopNAmountReviewsGamesQueue string = "games-top-n-amount-reviews"
-const MoreThanNReviewsGamesQueue string = "games-more-than-n-reviews"
-const NinetyPercentileGamesQueue string = "games-90-percentile"
-const IndieGameKey string = "indie"
-const ActionGameKey string = "action"
-const EmptyKey string = "empty"
+const (
+	ExchangeGenre string = "genre-x"
+	GamesDecade   string = "games-decade"
+	GamesQ3       string = "games-q3"
+	GamesQ4       string = "games-q4"
+	GamesQ5       string = "games-q5"
+	IndieKey      string = "indie"
+	ActionKey     string = "action"
+)
 
 // review filter
 const ReviewsScoreFilterExchange string = "reviews-filter-score"
