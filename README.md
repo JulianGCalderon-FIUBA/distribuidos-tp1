@@ -1,13 +1,19 @@
 # Distribuidos - TP1
 
-## Ejecucion local
-
-Para levantar el gateway, ejecutá:
+## Configurar cantidad de nodos por query
+Para actualizar el archivo `compose.yaml` con la cantidad de nodos deseada, modificar las constantes del script `cmd/compose/main.go` y luego ejecutar el comando:
 ```bash
-make run-gateway
+make write-compose
 ```
 
-Para levantar un cliente, ejecutá:
+## Ejecucion con Docker
+
+Para levantar los procesos, ejecutar:
 ```bash
-make run-client
+make compose-up
+```
+
+Para terminar los procesos, ejecutar
+```bash
+make compose-down
 ```
