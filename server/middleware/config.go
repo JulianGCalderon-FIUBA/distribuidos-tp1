@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"strings"
+
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -63,4 +65,8 @@ var DataHandlerQueues = []queueConfig{
 	{GamesQueue, GamesExchange, ""},
 	{ReviewsQueue, ReviewExchange, ""},
 	{GamesPerPlatformQueue, GamesExchange, ""},
+}
+
+func Cat(v ...string) string {
+	return strings.Join(v, "-")
 }
