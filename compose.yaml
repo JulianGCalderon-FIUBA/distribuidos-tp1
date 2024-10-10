@@ -317,7 +317,7 @@ services:
       - RABBIT_IP=rabbitmq
       - TOP_N=5
       - PARTITIONS=3
-      - INPUT=joiner-q3
+      - INPUT=partial-Q3-joiner
     networks:
       - net
     depends_on:

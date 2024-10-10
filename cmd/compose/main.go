@@ -285,7 +285,7 @@ func generateQ3() {
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Println("      - TOP_N=5")
 	fmt.Printf("      - PARTITIONS=%v\n", Q3)
-	fmt.Printf("      - INPUT=%v\n", "joiner-q3")
+	fmt.Printf("      - INPUT=%v\n", middleware.PartialQ3)
 	fmt.Println("    networks:")
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
