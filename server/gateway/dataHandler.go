@@ -19,15 +19,14 @@ func (g *gateway) startDataHandler(ctx context.Context) (err error) {
 	address := fmt.Sprintf(":%v", g.config.DataEndpointPort)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
-		log.Fatalf("Failed to bind socket: %v", err)
-		return
+		return fmt.Errorf("Failed to bind socket: %v", err)
 	}
 
 	err = g.m.Init(middleware.DataHandlerexchanges, middleware.DataHandlerQueues)
 	defer g.m.Close()
+
 	if err != nil {
-		log.Fatalf("Failed to initialize middleware")
-		return
+		return fmt.Errorf("Failed to initialize middleware: %v", err)
 	}
 
 	closer := utils.SpawnCloser(ctx, listener)

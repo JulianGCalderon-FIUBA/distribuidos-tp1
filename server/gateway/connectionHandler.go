@@ -29,7 +29,7 @@ func (g *gateway) startConnectionHandler(ctx context.Context) (err error) {
 	address := fmt.Sprintf(":%d", g.config.ConnectionEndpointPort)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to bind socket: %v", err)
 	}
 
 	closer := utils.SpawnCloser(ctx, listener)
@@ -40,7 +40,7 @@ func (g *gateway) startConnectionHandler(ctx context.Context) (err error) {
 
 	err = g.m.InitResultsQueue()
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to initialize results queue: %v", err)
 	}
 
 	for {
@@ -142,7 +142,7 @@ func (g *gateway) receiveResults(ctx context.Context, conn *protocol.Conn) error
 				break
 			}
 		case <-ctx.Done():
-			return fmt.Errorf("shutting down: %v", err)
+			return nil
 		}
 	}
 }
