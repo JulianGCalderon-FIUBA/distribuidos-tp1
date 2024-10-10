@@ -8,14 +8,17 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
 
+var log = logging.MustGetLogger("log")
+
 type config struct {
-	RabbitIP         string
-	PartitionsNumber int
-	Input            string
-	Output           string
+	RabbitIP   string
+	Partitions int
+	Input      string
+	Output     string
 }
 
 type sharedHandler struct {
@@ -26,27 +29,27 @@ type sharedHandler struct {
 }
 
 type handler struct {
-	id int
-	sh *sharedHandler
+	id     int
+	sh     *sharedHandler
+	output string
 }
 
-func (h handler) Aggregate(r middleware.Batch[middleware.ReviewsPerGame]) error {
+func (h handler) Aggregate(ch *middleware.Channel, batch middleware.Batch[middleware.ReviewsPerGame]) error {
 	h.sh.m.Lock()
 	defer h.sh.m.Unlock()
 
 	h.sh.lastBatchId += 1
 	b := middleware.Batch[middleware.ReviewsPerGame]{
-		Data:     r.Data,
-		ClientID: r.ClientID,
+		Data:     batch.Data,
+		ClientID: batch.ClientID,
 		BatchID:  h.sh.lastBatchId,
 		EOF:      false,
 	}
 
-	// mandar b
-	return nil
+	return ch.Send(b, "", h.output)
 }
 
-func (h handler) Conclude() ([]any, error) {
+func (h handler) Conclude(ch *middleware.Channel) error {
 	h.sh.m.Lock()
 	defer h.sh.m.Unlock()
 
@@ -55,21 +58,20 @@ func (h handler) Conclude() ([]any, error) {
 
 	if h.sh.eofReceived == h.sh.totalPartitions {
 		b.EOF = true
+		return ch.Send(b, "", h.output)
 	}
 
-	// mandar b
-
-	return nil, nil
+	return nil
 }
 
 func getConfig() (config, error) {
 	v := viper.New()
 
 	v.SetDefault("RabbitIP", "localhost")
-	v.SetDefault("PartitionsNumber", "1")
+	v.SetDefault("Partitions", "1")
 
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")
-	_ = v.BindEnv("PartitionsNumber", "PARTITIONS")
+	_ = v.BindEnv("Partitions", "PARTITIONS")
 	_ = v.BindEnv("Input", "INPUT")
 	_ = v.BindEnv("Output", "OUTPUT")
 
@@ -86,30 +88,34 @@ func main() {
 	shared := sharedHandler{
 		lastBatchId:     0,
 		eofReceived:     0,
-		totalPartitions: cfg.PartitionsNumber,
+		totalPartitions: cfg.Partitions,
 		m:               &sync.Mutex{},
 	}
 
 	wg := sync.WaitGroup{}
-	wg.Add(cfg.PartitionsNumber)
+	wg.Add(cfg.Partitions)
 
-	for i := range cfg.PartitionsNumber {
+	for i := 1; i <= cfg.Partitions; i++ {
 		h := handler{
-			id: i + 1,
-			sh: &shared,
+			id:     i,
+			sh:     &shared,
+			output: cfg.Output,
 		}
-		qname := fmt.Sprintf("%v-%v", cfg.Input, i+1)
+		qname := fmt.Sprintf("%v-%v", cfg.Input, i)
 		hcfg := aggregator.Config{
 			RabbitIP: cfg.RabbitIP,
 			Input:    qname,
 			Output:   cfg.Output,
 		}
+		agg, err := aggregator.NewAggregator(hcfg, h)
+		utils.Expect(err, "Failed to create game aggregator")
 		go func() {
 			defer wg.Done()
-			agg, err := aggregator.NewAggregator(hcfg, h)
-			utils.Expect(err, "Failed to create game aggregator")
+			log.Infof("Starting handler %v", i)
 			err = agg.Run(context.Background())
 			utils.Expect(err, "Failed to run game aggregator")
 		}()
 	}
+
+	wg.Wait()
 }
