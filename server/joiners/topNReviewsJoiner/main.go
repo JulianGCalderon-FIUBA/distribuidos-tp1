@@ -3,9 +3,9 @@ package main
 import (
 	"container/heap"
 	"context"
-	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/middleware/joiner"
+	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/utils"
 	"encoding/gob"
 	"os/signal"
@@ -39,7 +39,7 @@ func getConfig() (config, error) {
 
 type handler struct {
 	topN      int
-	topNGames utils.GameHeap
+	topNGames middleware.GameHeap
 }
 
 func (h *handler) Aggregate(_ *middleware.Channel, partial []middleware.GameStat) error {

@@ -1,8 +1,6 @@
-package utils
+package middleware
 
-import "distribuidos/tp1/middleware"
-
-type GameHeap []middleware.GameStat
+type GameHeap []GameStat
 
 func (g GameHeap) Len() int { return len(g) }
 func (g GameHeap) Less(i, j int) bool {
@@ -10,7 +8,7 @@ func (g GameHeap) Less(i, j int) bool {
 }
 func (g GameHeap) Swap(i, j int) { g[i], g[j] = g[j], g[i] }
 func (g *GameHeap) Push(x any) {
-	*g = append(*g, x.(middleware.GameStat))
+	*g = append(*g, x.(GameStat))
 }
 
 func (g *GameHeap) Pop() any {
