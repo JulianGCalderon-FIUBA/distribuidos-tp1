@@ -13,49 +13,63 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func (g *gateway) startDataHandler(ctx context.Context) (err error) {
+func (g *gateway) startDataEndpoint(ctx context.Context) (err error) {
 	address := fmt.Sprintf(":%v", g.config.DataEndpointPort)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
-		return fmt.Errorf("Failed to bind socket: %v", err)
+		return err
 	}
-
-	err = g.m.Init(middleware.DataHandlerexchanges, middleware.DataHandlerQueues)
-	defer g.m.Close()
-
-	if err != nil {
-		return fmt.Errorf("Failed to initialize middleware: %v", err)
-	}
-
 	closer := utils.SpawnCloser(ctx, listener)
 	defer func() {
 		closeErr := closer.Close()
 		err = errors.Join(err, closeErr)
 	}()
 
+	topology := middleware.Topology{
+		Exchanges: []middleware.ExchangeConfig{
+			{Name: middleware.ExchangeGames, Type: amqp.ExchangeFanout},
+			{Name: middleware.ExchangeReviews, Type: amqp.ExchangeFanout},
+		},
+		Queues: []middleware.QueueConfig{
+			{Name: middleware.GamesQ1,
+				Bindings: map[string][]string{middleware.ExchangeGames: {""}}},
+			{Name: middleware.GamesGenre,
+				Bindings: map[string][]string{middleware.ExchangeGames: {""}}},
+			{Name: middleware.ReviewsScore,
+				Bindings: map[string][]string{middleware.ExchangeReviews: {""}}},
+		},
+	}
+	ch, err := g.rabbit.Channel()
+	if err != nil {
+		return err
+	}
+	err = topology.Declare(ch)
+	if err != nil {
+		return err
+	}
+
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Errorf("Failed to accept connection: %v", err)
 			return err
 		}
 
-		go func(conn net.Conn) {
-			defer conn.Close()
+		// todo: add wait group
+		go func() {
 			err := g.handleClientData(ctx, conn)
 			if err != nil {
 				log.Errorf("Error while handling client: %v", err)
 			}
-		}(conn)
+		}()
 	}
 }
 
-func (g *gateway) handleClientData(ctx context.Context, netConn net.Conn) error {
-	var err error
-	conn := protocol.NewConn(netConn)
-
+func (g *gateway) handleClientData(ctx context.Context, rawConn net.Conn) (err error) {
+	conn := protocol.NewConn(rawConn)
 	closer := utils.SpawnCloser(ctx, conn)
 	defer func() {
 		closeErr := closer.Close()
@@ -76,9 +90,18 @@ func (g *gateway) handleClientData(ctx context.Context, netConn net.Conn) error 
 		return err
 	}
 
+	rawCh, err := g.rabbit.Channel()
+	if err != nil {
+		return err
+	}
+	ch := middleware.Channel{
+		Ch:       rawCh,
+		ClientID: int(hello.ClientID),
+	}
+
 	gamesRecv, gamesSend := net.Pipe()
 	go func() {
-		err := g.queueGames(gamesRecv)
+		err := g.queueGames(gamesRecv, ch)
 		if err != nil {
 			log.Errorf("Error while queuing games: %v", err)
 		}
@@ -91,7 +114,7 @@ func (g *gateway) handleClientData(ctx context.Context, netConn net.Conn) error 
 
 	reviewsRecv, reviewsSend := net.Pipe()
 	go func() {
-		err := g.queueReviews(reviewsRecv)
+		err := g.queueReviews(reviewsRecv, ch)
 		if err != nil {
 			log.Errorf("Error while queuing reviews: %v", err)
 		}
@@ -125,20 +148,24 @@ func (g *gateway) receiveData(unm *protocol.Conn, w io.Writer) error {
 	}
 }
 
-func (g *gateway) queueGames(r io.Reader) error {
+// todo: refactor queue functions to avoid repeating code as they are almost
+// identical, except in the data type
+
+func (g *gateway) queueGames(r io.Reader, ch middleware.Channel) error {
 	csvReader := csv.NewReader(r)
 	csvReader.FieldsPerRecord = -1
 
 	var sentGames int
 	batch := middleware.Batch[middleware.Game]{
-		Data: []middleware.Game{},
-		// todo: receive client ID
-		ClientID: 1,
-		BatchID:  1,
-		EOF:      false,
+		Data:    []middleware.Game{},
+		BatchID: 1,
+		EOF:     false,
 	}
 
-	_, _ = csvReader.Read()
+	_, err := csvReader.Read()
+	if err != nil {
+		return err
+	}
 
 	for {
 		record, err := csvReader.Read()
@@ -166,9 +193,9 @@ func (g *gateway) queueGames(r io.Reader) error {
 		sentGames += 1
 
 		if len(batch.Data) == g.config.BatchSize {
-			err = g.m.Send(batch, middleware.ExchangeGames, "")
+			err = ch.Send(batch, middleware.ExchangeGames, "")
 			if err != nil {
-				log.Errorf("Failed to send games batch: %v", err)
+				return err
 			}
 			batch.Data = batch.Data[:0]
 			batch.BatchID += 1
@@ -176,9 +203,9 @@ func (g *gateway) queueGames(r io.Reader) error {
 	}
 
 	batch.EOF = true
-	err := g.m.Send(batch, middleware.ExchangeGames, "")
+	err = ch.Send(batch, middleware.ExchangeGames, "")
 	if err != nil {
-		log.Errorf("Failed to send games batch: %v", err)
+		return err
 	}
 
 	log.Infof("Finished sending %v games", sentGames)
@@ -186,17 +213,15 @@ func (g *gateway) queueGames(r io.Reader) error {
 	return nil
 }
 
-func (g *gateway) queueReviews(r io.Reader) error {
+func (g *gateway) queueReviews(r io.Reader, ch middleware.Channel) error {
 	csvReader := csv.NewReader(r)
 	csvReader.FieldsPerRecord = -1
 
 	var sentReviews int
 	batch := middleware.Batch[middleware.Review]{
-		Data: []middleware.Review{},
-		// todo: receive client ID
-		ClientID: 1,
-		BatchID:  1,
-		EOF:      false,
+		Data:    []middleware.Review{},
+		BatchID: 1,
+		EOF:     false,
 	}
 
 	_, _ = csvReader.Read()
@@ -227,9 +252,9 @@ func (g *gateway) queueReviews(r io.Reader) error {
 		sentReviews += 1
 
 		if len(batch.Data) == g.config.BatchSize {
-			err = g.m.Send(batch, middleware.ExchangeReviews, "")
+			err = ch.Send(batch, middleware.ExchangeReviews, "")
 			if err != nil {
-				log.Errorf("Failed to send reviews batch: %v", err)
+				return err
 			}
 			batch.Data = batch.Data[:0]
 			batch.BatchID += 1
@@ -237,9 +262,9 @@ func (g *gateway) queueReviews(r io.Reader) error {
 	}
 
 	batch.EOF = true
-	err := g.m.Send(batch, middleware.ExchangeReviews, "")
+	err := ch.Send(batch, middleware.ExchangeReviews, "")
 	if err != nil {
-		log.Errorf("Failed to send reviews batch: %v", err)
+		return err
 	}
 
 	log.Infof("Finished sending %v reviews", sentReviews)

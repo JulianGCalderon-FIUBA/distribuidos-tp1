@@ -46,5 +46,8 @@ func main() {
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 
 	gateway := newGateway(cfg)
-	gateway.start(ctx)
+	err = gateway.start(ctx)
+	if err != nil {
+		log.Fatalf("Failed to run gateway: %v", err)
+	}
 }
