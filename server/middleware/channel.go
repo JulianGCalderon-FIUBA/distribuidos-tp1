@@ -8,7 +8,8 @@ import (
 var log = logging.MustGetLogger("log")
 
 type Channel struct {
-	Ch *amqp.Channel
+	Ch       *amqp.Channel
+	ClientID int
 }
 
 func (c *Channel) Send(msg any, exchange, key string) error {
