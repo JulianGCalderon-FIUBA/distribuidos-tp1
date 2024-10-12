@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"distribuidos/tp1/middleware"
-	"distribuidos/tp1/middleware/filter"
-	"distribuidos/tp1/middleware/node"
 	"distribuidos/tp1/utils"
 	"errors"
 	"fmt"
@@ -12,7 +10,6 @@ import (
 	"strconv"
 	"syscall"
 
-	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/spf13/viper"
 )
 
@@ -53,7 +50,7 @@ func getConfig() (config, error) {
 		return c, fmt.Errorf("Type should be one of: [%v, %v]", string(GameDataType), string(ReviewDataType))
 	}
 	if c.Output == "" {
-		c.Output = fmt.Sprintf("%v-x", c.Input)
+		c.Output = middleware.Cat(c.Input, "x")
 	}
 
 	return c, err
@@ -79,41 +76,39 @@ func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
 
-	filterCfg := filter.Config{
-		RabbitIP: cfg.RabbitIP,
-		Queue:    cfg.Input,
-		Exchange: node.ExchangeConfig{
-			Name:        cfg.Output,
-			Type:        amqp.ExchangeDirect,
-			QueuesByKey: map[string][]string{},
-		},
+	filterCfg := middleware.FilterConfig{
+		RabbitIP:    cfg.RabbitIP,
+		Queue:       cfg.Input,
+		Exchange:    cfg.Output,
+		QueuesByKey: make(map[string][]string),
 	}
 
 	for i := 1; i <= cfg.Partitions; i++ {
 		qName := fmt.Sprintf("%v-%v", cfg.Output, i)
 		qKey := strconv.Itoa(i)
-		qNames := filterCfg.Exchange.QueuesByKey[qKey]
+		qNames := filterCfg.QueuesByKey[qKey]
 		qNames = append(qNames, qName)
-		filterCfg.Exchange.QueuesByKey[qKey] = qNames
+		filterCfg.QueuesByKey[qKey] = qNames
 	}
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
-	var f *filter.Filter
 
 	switch cfg.Type {
 	case GameDataType:
 		h := gameHandler{
 			partitionsNumber: cfg.Partitions,
 		}
-		f, err = filter.NewFilter(filterCfg, h)
+		n, err := middleware.NewFilter(filterCfg, h.Filter)
+		utils.Expect(err, "Failed to create partitioner")
+		err = n.Run(ctx)
+		utils.Expect(err, "Failed to run partitioner")
 	case ReviewDataType:
 		h := reviewHandler{
 			partitionsNumber: cfg.Partitions,
 		}
-		f, err = filter.NewFilter(filterCfg, h)
+		n, err := middleware.NewFilter(filterCfg, h.Filter)
+		utils.Expect(err, "Failed to create partitioner")
+		err = n.Run(ctx)
+		utils.Expect(err, "Failed to run partitioner")
 	}
-
-	utils.Expect(err, "Failed to create partitioner")
-	err = f.Run(ctx)
-	utils.Expect(err, "Failed to run partitioner")
 
 }

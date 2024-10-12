@@ -92,7 +92,7 @@ services:
   q1-partitioner:
     container_name: q1-partitioner
     image: tp1:latest
-    entrypoint: /partitioner
+    entrypoint: /build/partitioner
     environment:
       - RABBIT_IP=rabbitmq
       - INPUT=games-Q1
@@ -149,7 +149,7 @@ services:
   q2-partitioner:
     container_name: q2-partitioner
     image: tp1:latest
-    entrypoint: /partitioner
+    entrypoint: /build/partitioner
     environment:
       - RABBIT_IP=rabbitmq
       - INPUT=games-Q2
@@ -214,7 +214,7 @@ services:
   q3-games-partitioner:
     container_name: q3-games-partitioner
     image: tp1:latest
-    entrypoint: /partitioner
+    entrypoint: /build/partitioner
     environment:
       - RABBIT_IP=rabbitmq
       - INPUT=games-Q3
@@ -227,7 +227,7 @@ services:
   q3-reviews-partitioner:
     container_name: q3-reviews-partitioner
     image: tp1:latest
-    entrypoint: /partitioner
+    entrypoint: /build/partitioner
     environment:
       - RABBIT_IP=rabbitmq
       - INPUT=reviews-Q3
@@ -330,7 +330,7 @@ services:
   q4-games-partitioner:
     container_name: q4-games-partitioner
     image: tp1:latest
-    entrypoint: /partitioner
+    entrypoint: /build/partitioner
     environment:
       - RABBIT_IP=rabbitmq
       - INPUT=games-Q4
@@ -343,7 +343,7 @@ services:
   q4-reviews-partitioner:
     container_name: q4-reviews-partitioner
     image: tp1:latest
-    entrypoint: /partitioner
+    entrypoint: /build/partitioner
     environment:
       - RABBIT_IP=rabbitmq
       - INPUT=reviews-Q4
@@ -422,7 +422,7 @@ services:
   q5-games-partitioner:
     container_name: q5-games-partitioner
     image: tp1:latest
-    entrypoint: /partitioner
+    entrypoint: /build/partitioner
     environment:
       - RABBIT_IP=rabbitmq
       - INPUT=games-Q5
@@ -435,7 +435,7 @@ services:
   q5-reviews-partitioner:
     container_name: q5-reviews-partitioner
     image: tp1:latest
-    entrypoint: /partitioner
+    entrypoint: /build/partitioner
     environment:
       - RABBIT_IP=rabbitmq
       - INPUT=reviews-Q5

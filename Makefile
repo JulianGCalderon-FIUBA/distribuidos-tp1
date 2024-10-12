@@ -8,7 +8,6 @@ build: deps
 	go build -o .build/ ./cmd/...
 
 	# todo: eventualy remove these
-	go build -o bin/partitioner ./server/filters/partitioner
 	go build -o bin/genre-filter ./server/filters/genreFilter
 	go build -o bin/review-filter ./server/filters/reviewFilter
 	go build -o bin/decade-filter ./server/filters/decadeFilter
