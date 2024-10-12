@@ -85,6 +85,7 @@ func NewFilter[T any](config FilterConfig, f FilterFunc[T]) (*Node[filterHandler
 		}
 		queueConfigs = append(queueConfigs, queueConfig)
 	}
+	queueConfigs = append(queueConfigs, QueueConfig{Name: config.Queue})
 
 	nConfig := Config[filterHandler[T]]{
 		RabbitIP: config.RabbitIP,
