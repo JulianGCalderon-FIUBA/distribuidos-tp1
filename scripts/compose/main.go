@@ -90,7 +90,7 @@ func generateClient() {
 func generateGenreFilter() {
 	fmt.Println("  genre-filter:")
 	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /genre-filter")
+	fmt.Println("    entrypoint: /filter-genre")
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Println("    networks:")
@@ -105,7 +105,7 @@ func generateGenreFilter() {
 func generateDecadeFilter() {
 	fmt.Println("  decade-filter:")
 	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /decade-filter")
+	fmt.Println("    entrypoint: /filter-decade")
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Println("      - DECADE=2010")
@@ -121,7 +121,7 @@ func generateDecadeFilter() {
 func generateScoreFilter() {
 	fmt.Println("  review-filter:")
 	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /review-filter")
+	fmt.Println("    entrypoint: /filter-review")
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Println("    networks:")
@@ -136,7 +136,7 @@ func generateScoreFilter() {
 func generateLanguageFilter() {
 	fmt.Println("  language-filter:")
 	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /language-filter")
+	fmt.Println("    entrypoint: /filter-language")
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Println("    networks:")

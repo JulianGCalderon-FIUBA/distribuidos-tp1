@@ -8,10 +8,6 @@ build: deps
 	go build -o .build/ ./cmd/...
 
 	# todo: eventualy remove these
-	go build -o bin/genre-filter ./server/filters/genreFilter
-	go build -o bin/review-filter ./server/filters/reviewFilter
-	go build -o bin/decade-filter ./server/filters/decadeFilter
-	go build -o bin/language-filter ./server/filters/languageFilter
 	go build -o bin/games-per-platform ./server/aggregators/gamesPerPlatform
 	go build -o bin/games-per-platform-joiner ./server/joiners/gamesPerPlatformJoiner
 	go build -o bin/group-by-game ./server/aggregators/groupByGame

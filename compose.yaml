@@ -42,7 +42,7 @@ services:
       - gateway
   genre-filter:
     image: tp1:latest
-    entrypoint: /genre-filter
+    entrypoint: /filter-genre
     environment:
       - RABBIT_IP=rabbitmq
     networks:
@@ -54,7 +54,7 @@ services:
       replicas: 3
   decade-filter:
     image: tp1:latest
-    entrypoint: /decade-filter
+    entrypoint: /filter-decade
     environment:
       - RABBIT_IP=rabbitmq
       - DECADE=2010
@@ -67,7 +67,7 @@ services:
       replicas: 3
   review-filter:
     image: tp1:latest
-    entrypoint: /review-filter
+    entrypoint: /filter-review
     environment:
       - RABBIT_IP=rabbitmq
     networks:
@@ -79,7 +79,7 @@ services:
       replicas: 3
   language-filter:
     image: tp1:latest
-    entrypoint: /language-filter
+    entrypoint: /filter-language
     environment:
       - RABBIT_IP=rabbitmq
     networks:
