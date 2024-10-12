@@ -10,7 +10,6 @@ build: deps
 	# todo: eventualy remove these
 	go build -o bin/games-per-platform ./server/aggregators/gamesPerPlatform
 	go build -o bin/games-per-platform-joiner ./server/joiners/gamesPerPlatformJoiner
-	go build -o bin/group-by-game ./server/aggregators/groupByGame
 	go build -o bin/more-than-n-reviews ./server/aggregators/moreThanNReviews
 	go build -o bin/90-percentile ./server/aggregators/90Percentile
 	go build -o bin/top-n-historic-avg ./server/aggregators/topNHistoricAvg

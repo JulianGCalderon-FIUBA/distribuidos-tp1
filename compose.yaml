@@ -240,7 +240,7 @@ services:
   q3-group-1:
     container_name: q3-group-1
     image: tp1:latest
-    entrypoint: /group-by-game
+    entrypoint: /build/group-by
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=1
@@ -266,7 +266,7 @@ services:
   q3-group-2:
     container_name: q3-group-2
     image: tp1:latest
-    entrypoint: /group-by-game
+    entrypoint: /build/group-by
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=2
@@ -292,7 +292,7 @@ services:
   q3-group-3:
     container_name: q3-group-3
     image: tp1:latest
-    entrypoint: /group-by-game
+    entrypoint: /build/group-by
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=3
@@ -356,7 +356,7 @@ services:
   q4-group-1:
     container_name: q4-group-1
     image: tp1:latest
-    entrypoint: /group-by-game
+    entrypoint: /build/group-by
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=1
@@ -370,7 +370,7 @@ services:
   q4-group-2:
     container_name: q4-group-2
     image: tp1:latest
-    entrypoint: /group-by-game
+    entrypoint: /build/group-by
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=2
@@ -384,7 +384,7 @@ services:
   q4-group-3:
     container_name: q4-group-3
     image: tp1:latest
-    entrypoint: /group-by-game
+    entrypoint: /build/group-by
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=3
@@ -448,7 +448,7 @@ services:
   q5-group-1:
     container_name: q5-group-1
     image: tp1:latest
-    entrypoint: /group-by-game
+    entrypoint: /build/group-by
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=1
@@ -462,7 +462,7 @@ services:
   q5-group-2:
     container_name: q5-group-2
     image: tp1:latest
-    entrypoint: /group-by-game
+    entrypoint: /build/group-by
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=2
@@ -476,7 +476,7 @@ services:
   q5-group-3:
     container_name: q5-group-3
     image: tp1:latest
-    entrypoint: /group-by-game
+    entrypoint: /build/group-by
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=3
