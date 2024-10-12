@@ -3,14 +3,11 @@ package main
 import (
 	"context"
 	"distribuidos/tp1/middleware"
-	"distribuidos/tp1/middleware/filter"
-	"distribuidos/tp1/middleware/node"
 	"distribuidos/tp1/utils"
 	"os/signal"
 	"syscall"
 
 	"github.com/op/go-logging"
-	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/rylans/getlang"
 	"github.com/spf13/viper"
 )
@@ -35,10 +32,8 @@ func getConfig() (config, error) {
 	return c, err
 }
 
-type handler struct{}
-
-func (h handler) Filter(r middleware.Review) []string {
-	if h.isEnglish(r.Text) {
+func Filter(r middleware.Review) []string {
+	if isEnglish(r.Text) {
 		return []string{middleware.EnglishKey}
 	}
 
@@ -46,7 +41,7 @@ func (h handler) Filter(r middleware.Review) []string {
 }
 
 // Detects if received text is English or not
-func (h handler) isEnglish(text string) bool {
+func isEnglish(text string) bool {
 	info := getlang.FromString(text)
 	return info.LanguageName() == ENGLISH
 }
@@ -57,22 +52,18 @@ func main() {
 		log.Fatalf("failed to read config: %v", err)
 	}
 
-	filterCfg := filter.Config{
+	filterCfg := middleware.FilterConfig{
 		RabbitIP: cfg.RabbitIP,
 		Queue:    middleware.ReviewsLanguage,
-		Exchange: node.ExchangeConfig{
-			Name: middleware.ExchangeLanguage,
-			Type: amqp.ExchangeDirect,
-			QueuesByKey: map[string][]string{
-				middleware.EnglishKey: {
-					middleware.ReviewsQ4,
-				},
+		Exchange: middleware.ExchangeLanguage,
+		QueuesByKey: map[string][]string{
+			middleware.EnglishKey: {
+				middleware.ReviewsQ4,
 			},
 		},
 	}
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
-	h := handler{}
-	p, err := filter.NewFilter(filterCfg, h)
+	p, err := middleware.NewFilter(filterCfg, Filter)
 	utils.Expect(err, "Failed to create filter")
 	err = p.Run(ctx)
 	utils.Expect(err, "Failed to run filter")

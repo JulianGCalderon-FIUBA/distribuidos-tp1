@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"distribuidos/tp1/middleware"
-	"distribuidos/tp1/middleware/filter"
-	"distribuidos/tp1/middleware/node"
 	"distribuidos/tp1/utils"
 	"fmt"
 	"os/signal"
@@ -13,7 +11,6 @@ import (
 	"syscall"
 
 	"github.com/op/go-logging"
-	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/spf13/viper"
 )
 
@@ -60,15 +57,12 @@ func main() {
 	}
 
 	key := fmt.Sprintf("%v-%v", middleware.DecadeKeyPrefix, cfg.Decade)
-	filterCfg := filter.Config{
+	filterCfg := middleware.FilterConfig{
 		RabbitIP: cfg.RabbitIP,
 		Queue:    middleware.GamesDecade,
-		Exchange: node.ExchangeConfig{
-			Name: middleware.ExchangeDecade,
-			Type: amqp.ExchangeDirect,
-			QueuesByKey: map[string][]string{
-				key: {middleware.GamesQ2},
-			},
+		Exchange: middleware.ExchangeDecade,
+		QueuesByKey: map[string][]string{
+			key: {middleware.GamesQ2},
 		},
 	}
 
@@ -77,7 +71,7 @@ func main() {
 	}
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 
-	p, err := filter.NewFilter(filterCfg, h)
+	p, err := middleware.NewFilter(filterCfg, h.Filter)
 	utils.Expect(err, "Failed to create filter")
 	err = p.Run(ctx)
 	utils.Expect(err, "Failed to run filter")
