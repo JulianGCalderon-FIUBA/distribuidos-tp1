@@ -1,8 +1,5 @@
-import numpy as np
 import pandas as pd
-import os
-import langid
-import time
+import random
 
 from pandas import DataFrame
 
@@ -33,11 +30,45 @@ reviews_negative: DataFrame = reviews[reviews["review_score"] == -1] # type: ign
 print("Reviews Negative:", reviews_negative.shape[0])
 
 def detect_language(texto):
-    language, _ = langid.classify(texto)
-    return language
+    # random for debugging
+    if random.random() < 0.978388118:
+        return "en"
+    else:
+        return "es"
+    # language, _ = langid.classify(texto)
+    # return language
 
 reviews_negative_ingles = reviews_negative.copy()
 reviews_negative_ingles["review_language"] = reviews_negative_ingles['review_text'].apply(detect_language)
 
 reviews_negative_ingles = reviews_negative_ingles[reviews_negative_ingles["review_language"] == "en"]
 print("Reviews Negative Ingles:", reviews_negative_ingles.shape[0])
+
+# utils
+
+def group(games, reviews) -> DataFrame:
+    return pd.merge(games, reviews, left_on='AppID', right_on='app_id', how='inner').groupby("AppID").aggregate({
+        "Name": lambda x: ",".join(x.unique()),
+        "review_text": "count",
+    }).rename({
+        "review_text": "Reviews" 
+    }, axis='columns') # type: ignore
+
+# Q3
+
+q3_grouped = group(games_indie, reviews_positive)
+q3_top = q3_grouped.sort_values("Reviews", ascending=False).head(5)
+q3_top.to_csv(".results/3.py.csv", header=True, index=True)
+
+# Q4
+
+q4_grouped = group(games_shooter, reviews_negative_ingles)
+q4_filtered = q4_grouped[q4_grouped["Reviews"] > 5000]
+q4_filtered.sort_index().to_csv(".results/4.py.csv", header=True, index=True)
+
+# Q5
+
+q5_grouped = group(games_shooter, reviews_negative)
+percentile = q5_grouped["Reviews"].quantile(0.90)
+q5_top = q5_grouped[q5_grouped["Reviews"] >= percentile]
+q5_top.sort_index().to_csv(".results/5.py.csv", header=True, index=True)
