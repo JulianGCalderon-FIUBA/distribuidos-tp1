@@ -1,7 +1,7 @@
 package main
 
 import (
-	"distribuidos/tp1/server/middleware"
+	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/utils"
 	"encoding/csv"
 	"errors"

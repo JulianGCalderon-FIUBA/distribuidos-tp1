@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
-	"distribuidos/tp1/server/middleware"
-	"distribuidos/tp1/server/middleware/filter"
-	"distribuidos/tp1/server/middleware/node"
+	"distribuidos/tp1/middleware"
+	"distribuidos/tp1/middleware/filter"
+	"distribuidos/tp1/middleware/node"
 	"distribuidos/tp1/utils"
 	"os/signal"
 	"syscall"

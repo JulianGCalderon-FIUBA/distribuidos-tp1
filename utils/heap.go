@@ -1,6 +1,6 @@
 package utils
 
-import "distribuidos/tp1/server/middleware"
+import "distribuidos/tp1/middleware"
 
 type GameHeap []middleware.GameStat
 

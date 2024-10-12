@@ -2,8 +2,8 @@ package joiner
 
 import (
 	"context"
-	"distribuidos/tp1/server/middleware"
-	"distribuidos/tp1/server/middleware/node"
+	"distribuidos/tp1/middleware"
+	"distribuidos/tp1/middleware/node"
 
 	logging "github.com/op/go-logging"
 	amqp "github.com/rabbitmq/amqp091-go"

@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"distribuidos/tp1/protocol"
-	"distribuidos/tp1/server/middleware"
-	"distribuidos/tp1/server/middleware/aggregator"
+	"distribuidos/tp1/middleware"
+	"distribuidos/tp1/middleware/aggregator"
 	"distribuidos/tp1/utils"
 	"encoding/gob"
 	"os/signal"

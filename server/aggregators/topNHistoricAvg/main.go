@@ -3,8 +3,8 @@ package main
 import (
 	"container/heap"
 	"context"
-	"distribuidos/tp1/server/middleware"
-	"distribuidos/tp1/server/middleware/aggregator"
+	"distribuidos/tp1/middleware"
+	"distribuidos/tp1/middleware/aggregator"
 	"distribuidos/tp1/utils"
 	"fmt"
 	"os/signal"
