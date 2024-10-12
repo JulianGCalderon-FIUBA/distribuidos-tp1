@@ -3,8 +3,6 @@ package middleware
 import (
 	"fmt"
 	"strings"
-
-	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 // El nombrado de las colas y exchanges sigue las siguientes reglas:
@@ -87,23 +85,6 @@ const (
 const (
 	Results string = "results"
 )
-
-type queueConfig struct {
-	name       string
-	exchange   string
-	routingKey string
-}
-
-var DataHandlerexchanges = map[string]string{
-	ExchangeReviews: amqp.ExchangeFanout,
-	ExchangeGames:   amqp.ExchangeFanout,
-}
-
-var DataHandlerQueues = []queueConfig{
-	{GamesGenre, ExchangeGames, ""},
-	{ReviewsScore, ExchangeReviews, ""},
-	{GamesQ1, ExchangeGames, ""},
-}
 
 func Cat(v ...any) string {
 	vs := make([]string, len(v))
