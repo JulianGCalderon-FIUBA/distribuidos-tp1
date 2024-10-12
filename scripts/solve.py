@@ -3,6 +3,8 @@ import random
 
 from pandas import DataFrame
 
+# games
+
 games = pd.read_csv('.data/games.csv')
 games_columns = ['AppID', 'Name', 'Windows', 'Mac', 'Linux', 'Genres', 'Release date', 'Average playtime forever', 'Positive', 'Negative']
 games = games.filter(games_columns, axis="columns").dropna()
@@ -14,8 +16,21 @@ games_indie: DataFrame = games[games["Genres"].str.contains("indie")] # type: ig
 print("Games Indie:", games_indie.shape[0])
 games_shooter = games[games["Genres"].str.contains("action")]
 print("Games Shooter:", games_shooter.shape[0])
-games_indie_2010 = games_indie[games_indie["Release date"].str.contains("201")]
+games_indie_2010: DataFrame = games_indie[games_indie["Release date"].str.contains("201")] # type: ignore
 print("Games Indie 2010:", games_indie_2010.shape[0])
+
+# Q1
+
+q1_count = games[["Linux", "Mac", "Windows"]].sum()
+q1_count.to_csv(".results/1.py.csv", header=False, index=True)
+
+# Q2
+
+q1_games = games_indie_2010.filter(["AppID", "Name", "Average playtime forever"], axis="columns")
+q1_top = q1_games.sort_values("Average playtime forever", ascending=False).head(10)
+q1_top.to_csv(".results/2.py.csv", header=True, index=False)
+
+# reviews
 
 reviews = pd.read_csv('.data/reviews.csv')
 reviews_columns = ['app_id', 'review_text', 'review_score']
