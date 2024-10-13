@@ -6,7 +6,7 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-// Each client should be handled completely indepently. Therefore,
+// Each client should be handled completely independent. Therefore,
 // our middleware can hide this detail to the business layer.
 // As some handlers require to keep state, we can't use the same instance for
 // each client. Therefore, we need a HandlerBuilder function that creates
