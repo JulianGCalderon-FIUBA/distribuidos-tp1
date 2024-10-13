@@ -6,8 +6,8 @@ type Sequencer struct {
 	fakeEOF    bool
 }
 
-func NewSequencer() Sequencer {
-	return Sequencer{
+func NewSequencer() *Sequencer {
+	return &Sequencer{
 		missingIDs: make(map[int]struct{}),
 		latestID:   -1,
 		fakeEOF:    false,

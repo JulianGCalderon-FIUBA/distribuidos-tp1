@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/middleware"
+	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/utils"
 	"encoding/csv"
 	"errors"
@@ -158,7 +158,7 @@ func (g *gateway) queueGames(r io.Reader, ch middleware.Channel) error {
 	var sentGames int
 	batch := middleware.Batch[middleware.Game]{
 		Data:    []middleware.Game{},
-		BatchID: 1,
+		BatchID: 0,
 		EOF:     false,
 	}
 
@@ -220,7 +220,7 @@ func (g *gateway) queueReviews(r io.Reader, ch middleware.Channel) error {
 	var sentReviews int
 	batch := middleware.Batch[middleware.Review]{
 		Data:    []middleware.Review{},
-		BatchID: 1,
+		BatchID: 0,
 		EOF:     false,
 	}
 

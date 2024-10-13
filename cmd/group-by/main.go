@@ -47,8 +47,8 @@ func getConfig() (config, error) {
 type handler struct {
 	games           map[uint64]middleware.GameStat
 	reviews         map[uint64]int
-	gameSequencer   utils.Sequencer
-	reviewSequencer utils.Sequencer
+	gameSequencer   *utils.Sequencer
+	reviewSequencer *utils.Sequencer
 	batchSize       int
 	output          string
 }
@@ -76,6 +76,7 @@ func (h *handler) handleGame(_ *middleware.Channel, data []byte) error {
 	}
 
 	if h.gameSequencer.EOF() {
+		log.Infof("Received game EOF")
 		clear(h.reviews)
 	}
 
@@ -100,6 +101,7 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 	}
 
 	if h.reviewSequencer.EOF() {
+		log.Infof("Received review EOF")
 		return h.Conclude(ch)
 	}
 
@@ -121,7 +123,6 @@ func (h *handler) Conclude(ch *middleware.Channel) error {
 	}
 
 	games := slices.Collect(maps.Values(h.games))
-	log.Infof("Sending %v reviews per game", len(games))
 
 	for len(games) > 0 {
 		currBatchSize := min(h.batchSize, len(games))
@@ -152,13 +153,14 @@ func main() {
 	output := middleware.Cat(cfg.Output, cfg.PartitionID)
 	gameInput := middleware.Cat(cfg.GameInput, "x", cfg.PartitionID)
 	reviewInput := middleware.Cat(cfg.ReviewInput, "x", cfg.PartitionID)
-	middleware.Topology{
+	err = middleware.Topology{
 		Queues: []middleware.QueueConfig{
 			{Name: gameInput},
 			{Name: reviewInput},
 			{Name: output},
 		},
 	}.Declare(ch)
+	utils.Expect(err, "Failed to declare queues")
 
 	nodeCfg := middleware.Config[handler]{
 		Builder: func(clientID int) handler {

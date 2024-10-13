@@ -24,7 +24,7 @@ type filterHandler[T any] struct {
 	filter     FilterFunc[T]
 	partitions map[string]Batch[T]
 	stats      map[string]int
-	sequencer  utils.Sequencer
+	sequencer  *utils.Sequencer
 }
 
 func (h *filterHandler[T]) handle(ch *Channel, data []byte) error {
@@ -60,7 +60,7 @@ func (h *filterHandler[T]) handle(ch *Channel, data []byte) error {
 	}
 
 	if h.sequencer.EOF() {
-		log.Info("Received EOF from client %v", h.clientID)
+		log.Infof("Received EOF from client %v", h.clientID)
 		for rk, stats := range h.stats {
 			log.Infof("Sent %v records to key %v", stats, rk)
 		}
