@@ -92,10 +92,13 @@ func NewFilter[T any](config FilterConfig, f FilterFunc[T]) (*Node[filterHandler
 	}
 	queueConfigs = append(queueConfigs, QueueConfig{Name: config.Queue})
 
-	Topology{
+	err = Topology{
 		Exchanges: []ExchangeConfig{exchangeConfig},
 		Queues:    queueConfigs,
 	}.Declare(ch)
+	if err != nil {
+		return nil, err
+	}
 
 	nConfig := Config[filterHandler[T]]{
 		Builder: func(clientID int) filterHandler[T] {
