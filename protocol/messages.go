@@ -75,24 +75,25 @@ func (q3 Q3Results) ToStringArray() []string {
 }
 
 type Q4Results struct {
-	Name string
-	EOF  bool
+	Name  string
+	Count int
+	EOF   bool
 }
 
 func (q4 Q4Results) ToStringArray() []string {
 	res := make([]string, 0)
-	res = append(res, fmt.Sprintf("%v\n", q4.Name))
+	res = append(res, fmt.Sprintf("%v,%v\n", q4.Name, q4.Count))
 	return res
 }
 
 type Q5Results struct {
-	Percentile90 []string
+	Percentile90 map[string]uint64
 }
 
 func (q5 Q5Results) ToStringArray() []string {
 	res := make([]string, 0)
-	for _, s := range q5.Percentile90 {
-		res = append(res, fmt.Sprintf("%v\n", s))
+	for name, value := range q5.Percentile90 {
+		res = append(res, fmt.Sprintf("%v,%v\n", name, value))
 	}
 	return res
 }
