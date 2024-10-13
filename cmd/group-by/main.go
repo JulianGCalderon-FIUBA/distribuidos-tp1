@@ -9,7 +9,7 @@ import (
 	"slices"
 	"syscall"
 
-	"github.com/op/go-logging"
+	logging "github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
 
@@ -45,7 +45,7 @@ func getConfig() (config, error) {
 }
 
 type handler struct {
-	games           map[uint64]middleware.ReviewsPerGame
+	games           map[uint64]middleware.GameStat
 	reviews         map[uint64]int
 	gameSequencer   utils.Sequencer
 	reviewSequencer utils.Sequencer
@@ -62,13 +62,13 @@ func (h *handler) handleGame(_ *middleware.Channel, data []byte) error {
 	h.gameSequencer.Mark(batch.BatchID, batch.EOF)
 
 	for _, g := range batch.Data {
-		game := middleware.ReviewsPerGame{
-			AppID:   g.AppID,
-			Name:    g.Name,
-			Reviews: 0,
+		game := middleware.GameStat{
+			AppID: g.AppID,
+			Name:  g.Name,
+			Stat:  0,
 		}
 		if count, ok := h.reviews[g.AppID]; ok {
-			game.Reviews = uint64(count)
+			game.Stat = uint64(count)
 			delete(h.reviews, g.AppID)
 		}
 
@@ -92,7 +92,7 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 
 	for _, r := range batch.Data {
 		if game, ok := h.games[r.AppID]; ok {
-			game.Reviews += 1
+			game.Stat += 1
 			h.games[r.AppID] = game
 		} else if !h.gameSequencer.EOF() {
 			h.reviews[r.AppID] += 1
@@ -108,13 +108,13 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 
 func (h *handler) Conclude(ch *middleware.Channel) error {
 	for k, v := range h.games {
-		if v.Reviews == 0 {
+		if v.Stat == 0 {
 			delete(h.games, k)
 		}
 	}
 
-	batch := middleware.Batch[middleware.ReviewsPerGame]{
-		Data:     []middleware.ReviewsPerGame{},
+	batch := middleware.Batch[middleware.GameStat]{
+		Data:     []middleware.GameStat{},
 		ClientID: 1,
 		BatchID:  0,
 		EOF:      false,
@@ -125,7 +125,7 @@ func (h *handler) Conclude(ch *middleware.Channel) error {
 
 	for len(games) > 0 {
 		currBatchSize := min(h.batchSize, len(games))
-		var batchData []middleware.ReviewsPerGame
+		var batchData []middleware.GameStat
 		games, batchData = games[currBatchSize:], games[:currBatchSize]
 
 		batch.EOF = len(games) == 0
@@ -163,7 +163,7 @@ func main() {
 	nodeCfg := middleware.Config[handler]{
 		Builder: func(clientID int) handler {
 			return handler{
-				games:           make(map[uint64]middleware.ReviewsPerGame),
+				games:           make(map[uint64]middleware.GameStat),
 				reviews:         make(map[uint64]int),
 				gameSequencer:   utils.NewSequencer(),
 				reviewSequencer: utils.NewSequencer(),

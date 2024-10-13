@@ -70,14 +70,11 @@ func (h *handler) Conclude(ch *middleware.Channel) error {
 		return sortedGames[i].Stat > sortedGames[j].Stat
 	})
 
-	topNNames := make([]string, 0, h.topN)
 	for _, g := range sortedGames {
-		topNNames = append(topNNames, g.Name)
+		log.Infof("%v: %v", g.Name, g.Stat)
 	}
 
-	log.Infof("Top N games in historic average playtime: %v", topNNames)
-
-	result := protocol.Q2Results{TopN: topNNames}
+	result := protocol.Q2Results{TopN: sortedGames}
 	return ch.SendAny(result, "", middleware.Results)
 }
 

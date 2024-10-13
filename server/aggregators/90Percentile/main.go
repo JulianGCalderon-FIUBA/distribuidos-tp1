@@ -22,14 +22,14 @@ type config struct {
 }
 
 type handler struct {
-	sorted     []middleware.ReviewsPerGame
+	sorted     []middleware.GameStat
 	percentile float64
 }
 
-func (h *handler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middleware.ReviewsPerGame]) error {
+func (h *handler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middleware.GameStat]) error {
 	for _, r := range batch.Data {
-		i := sort.Search(len(h.sorted), func(i int) bool { return h.sorted[i].Reviews >= r.Reviews })
-		h.sorted = append(h.sorted, middleware.ReviewsPerGame{})
+		i := sort.Search(len(h.sorted), func(i int) bool { return h.sorted[i].Stat >= r.Stat })
+		h.sorted = append(h.sorted, middleware.GameStat{})
 		copy(h.sorted[i+1:], h.sorted[i:])
 		h.sorted[i] = r
 	}
@@ -41,13 +41,9 @@ func (h *handler) Conclude(ch *middleware.Channel) error {
 	n := float64(len(h.sorted))
 	index := max(0, int(math.Ceil(h.percentile/100.0*n))-1)
 	results := h.sorted[index:]
-	r := make([]string, 0)
-	for _, res := range results {
-		r = append(r, res.Name)
-	}
 
 	p := protocol.Q5Results{
-		Percentile90: r,
+		Percentile90: results,
 	}
 
 	return ch.SendAny(p, "", middleware.Results)
@@ -79,7 +75,7 @@ func main() {
 	}
 
 	h := handler{
-		sorted:     make([]middleware.ReviewsPerGame, 0),
+		sorted:     make([]middleware.GameStat, 0),
 		percentile: float64(cfg.Percentile),
 	}
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)

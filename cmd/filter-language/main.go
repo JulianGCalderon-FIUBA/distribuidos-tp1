@@ -7,14 +7,13 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/op/go-logging"
-	"github.com/rylans/getlang"
+	lingua "github.com/pemistahl/lingua-go"
+
+	logging "github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
 
 var log = logging.MustGetLogger("log")
-
-const ENGLISH = "English"
 
 type config struct {
 	RabbitIP string
@@ -32,8 +31,12 @@ func getConfig() (config, error) {
 	return c, err
 }
 
-func Filter(r middleware.Review) []string {
-	if isEnglish(r.Text) {
+type handler struct {
+	detector lingua.LanguageDetector
+}
+
+func (h handler) Filter(r middleware.Review) []string {
+	if h.isEnglish(r.Text) {
 		return []string{middleware.EnglishKey}
 	}
 
@@ -41,15 +44,26 @@ func Filter(r middleware.Review) []string {
 }
 
 // Detects if received text is English or not
-func isEnglish(text string) bool {
-	info := getlang.FromString(text)
-	return info.LanguageName() == ENGLISH
+func (h handler) isEnglish(text string) bool {
+	lang, _ := h.detector.DetectLanguageOf(text)
+	return lang == lingua.English
 }
 
 func main() {
 	cfg, err := getConfig()
 	if err != nil {
 		log.Fatalf("failed to read config: %v", err)
+	}
+
+	languages := []lingua.Language{
+		lingua.English,
+		lingua.Spanish,
+	}
+	detector := lingua.NewLanguageDetectorBuilder().
+		FromLanguages(languages...).
+		Build()
+	h := handler{
+		detector: detector,
 	}
 
 	filterCfg := middleware.FilterConfig{
@@ -63,7 +77,7 @@ func main() {
 		},
 	}
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
-	p, err := middleware.NewFilter(filterCfg, Filter)
+	p, err := middleware.NewFilter(filterCfg, h.Filter)
 	utils.Expect(err, "Failed to create filter")
 	err = p.Run(ctx)
 	utils.Expect(err, "Failed to run filter")
