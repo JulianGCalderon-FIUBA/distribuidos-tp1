@@ -6,7 +6,15 @@ require github.com/rabbitmq/amqp091-go v1.10.0
 
 require github.com/spf13/viper v1.19.0
 
-require github.com/rylans/getlang v0.0.0-20201227074721-9e7f44ff8aa0
+require (
+	github.com/pemistahl/lingua-go v1.4.0
+	github.com/rylans/getlang v0.0.0-20201227074721-9e7f44ff8aa0
+)
+
+require (
+	github.com/shopspring/decimal v1.3.1 // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
+)
 
 require (
 	github.com/fsnotify/fsnotify v1.7.0 // indirect

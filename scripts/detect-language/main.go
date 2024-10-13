@@ -10,8 +10,23 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/rylans/getlang"
+	lingua "github.com/pemistahl/lingua-go"
 )
+
+func isEnglish(text string) bool {
+	languages := []lingua.Language{
+		lingua.English,
+		lingua.Spanish,
+	}
+
+	detector := lingua.NewLanguageDetectorBuilder().
+		FromLanguages(languages...).
+		Build()
+
+	lang, _ := detector.DetectLanguageOf(text)
+
+	return lang == lingua.English
+}
 
 func main() {
 	inputFile, err := os.Open(".data/reviews.csv")
@@ -40,13 +55,14 @@ func main() {
 			continue
 		}
 
-		info := getlang.FromString(review.Text)
-		if info.LanguageName() == "English" {
-			err = writer.Write([]string{
-				strconv.Itoa(int(review.AppID)),
-				review.Text,
-			})
-			utils.Expect(err, "failed to write file")
+		if review.AppID == 570 {
+			if isEnglish(review.Text) {
+				err = writer.Write([]string{
+					strconv.Itoa(int(review.AppID)),
+					review.Text,
+				})
+				utils.Expect(err, "failed to write file")
+			}
 		}
 	}
 
