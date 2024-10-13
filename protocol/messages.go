@@ -75,13 +75,14 @@ func (q3 Q3Results) ToStringArray() []string {
 }
 
 type Q4Results struct {
-	Name string
-	EOF  bool
+	Name  string
+	Count int
+	EOF   bool
 }
 
 func (q4 Q4Results) ToStringArray() []string {
 	res := make([]string, 0)
-	res = append(res, fmt.Sprintf("%v\n", q4.Name))
+	res = append(res, fmt.Sprintf("%v,%v\n", q4.Name, q4.Count))
 	return res
 }
 

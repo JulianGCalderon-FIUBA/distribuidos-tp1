@@ -38,8 +38,9 @@ func (h *handler) Conclude(ch *middleware.Channel) error {
 	results := slices.Collect(maps.Values(h.results))
 	for i, res := range results {
 		p := protocol.Q4Results{
-			Name: res.Name,
-			EOF:  i == len(results)-1,
+			Name:  res.Name,
+			Count: int(res.Reviews),
+			EOF:   i == len(results)-1,
 		}
 
 		err := ch.SendAny(p, "", middleware.Results)
