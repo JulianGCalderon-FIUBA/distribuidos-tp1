@@ -11,11 +11,8 @@ import (
 	"sort"
 	"syscall"
 
-	logging "github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
-
-var log = logging.MustGetLogger("log")
 
 type config struct {
 	RabbitIP    string
@@ -51,14 +48,16 @@ func (h handler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middlew
 	for _, g := range batch.Data {
 		if h.results.Len() < h.topN {
 			heap.Push(&h.results, middleware.GameStat{
-				Name: g.Name,
-				Stat: g.AveragePlaytimeForever,
+				AppID: g.AppID,
+				Name:  g.Name,
+				Stat:  g.AveragePlaytimeForever,
 			})
 		} else if g.AveragePlaytimeForever > h.results.Peek().(middleware.GameStat).Stat {
 			heap.Pop(&h.results)
 			heap.Push(&h.results, middleware.GameStat{
-				Name: g.Name,
-				Stat: g.AveragePlaytimeForever,
+				AppID: g.AppID,
+				Name:  g.Name,
+				Stat:  g.AveragePlaytimeForever,
 			})
 		}
 	}
@@ -74,10 +73,6 @@ func (h handler) Conclude(ch *middleware.Channel) error {
 	sort.Slice(sortedGames, func(i, j int) bool {
 		return sortedGames[i].Stat > sortedGames[j].Stat
 	})
-
-	for _, g := range sortedGames {
-		log.Infof("Game %v: %v", g.Name, g.Stat)
-	}
 
 	err := ch.Send(sortedGames, "", middleware.PartialQ2)
 	if err != nil {
