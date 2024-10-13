@@ -35,12 +35,12 @@ type handler struct {
 	output string
 }
 
-func (h handler) Aggregate(ch *middleware.Channel, batch middleware.Batch[middleware.ReviewsPerGame]) error {
+func (h handler) Aggregate(ch *middleware.Channel, batch middleware.Batch[middleware.GameStat]) error {
 	h.sh.m.Lock()
 	defer h.sh.m.Unlock()
 
 	h.sh.lastBatchId += 1
-	b := middleware.Batch[middleware.ReviewsPerGame]{
+	b := middleware.Batch[middleware.GameStat]{
 		Data:     batch.Data,
 		ClientID: batch.ClientID,
 		BatchID:  h.sh.lastBatchId,
@@ -55,7 +55,7 @@ func (h handler) Conclude(ch *middleware.Channel) error {
 	defer h.sh.m.Unlock()
 
 	h.sh.eofReceived += 1
-	b := middleware.Batch[middleware.ReviewsPerGame]{}
+	b := middleware.Batch[middleware.GameStat]{}
 
 	if h.sh.eofReceived == h.sh.totalPartitions {
 		b.EOF = true
