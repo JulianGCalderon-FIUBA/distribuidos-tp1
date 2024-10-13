@@ -9,9 +9,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	lingua "github.com/pemistahl/lingua-go"
+
 	"github.com/op/go-logging"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"github.com/rylans/getlang"
 	"github.com/spf13/viper"
 )
 
@@ -35,10 +36,11 @@ func getConfig() (config, error) {
 	return c, err
 }
 
-type handler struct{}
+type handler struct{ detector lingua.LanguageDetector }
 
 func (h handler) Filter(r middleware.Review) []string {
-	if h.isEnglish(r.Text) {
+	lang, _ := h.isEnglish(r.Text)
+	if lang == lingua.English {
 		return []string{middleware.EnglishKey}
 	}
 
@@ -46,9 +48,8 @@ func (h handler) Filter(r middleware.Review) []string {
 }
 
 // Detects if received text is English or not
-func (h handler) isEnglish(text string) bool {
-	info := getlang.FromString(text)
-	return info.LanguageName() == ENGLISH
+func (h handler) isEnglish(text string) (lingua.Language, bool) {
+	return h.detector.DetectLanguageOf(text)
 }
 
 func main() {
@@ -56,6 +57,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to read config: %v", err)
 	}
+
+	languages := []lingua.Language{
+		lingua.English,
+		lingua.Spanish,
+	}
+	detector := lingua.NewLanguageDetectorBuilder().
+		FromLanguages(languages...).
+		Build()
 
 	filterCfg := filter.Config{
 		RabbitIP: cfg.RabbitIP,
@@ -71,7 +80,7 @@ func main() {
 		},
 	}
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
-	h := handler{}
+	h := handler{detector}
 	p, err := filter.NewFilter(filterCfg, h)
 	utils.Expect(err, "Failed to create filter")
 	err = p.Run(ctx)
