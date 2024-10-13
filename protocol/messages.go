@@ -87,13 +87,13 @@ func (q4 Q4Results) ToStringArray() []string {
 }
 
 type Q5Results struct {
-	Percentile90 []string
+	Percentile90 map[string]uint64
 }
 
 func (q5 Q5Results) ToStringArray() []string {
 	res := make([]string, 0)
-	for _, s := range q5.Percentile90 {
-		res = append(res, fmt.Sprintf("%v\n", s))
+	for name, value := range q5.Percentile90 {
+		res = append(res, fmt.Sprintf("%v,%v\n", name, value))
 	}
 	return res
 }
