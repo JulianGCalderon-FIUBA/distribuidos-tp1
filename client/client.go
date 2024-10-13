@@ -210,19 +210,19 @@ func (c *client) waitResults() error {
 		}
 		switch r := results.(type) {
 		case protocol.Q1Results:
-			log.Infof("Received Q1 results: %v", r)
+			log.Infof("Received Q1 results: %+v", r)
 			c.results += 1
 			writeResults(r, 1)
 		case protocol.Q2Results:
-			log.Infof("Received Q2 results: %v", r)
+			log.Infof("Received Q2 results: %+v", r)
 			c.results += 1
 			writeResults(r, 2)
 		case protocol.Q3Results:
-			log.Infof("Received Q3 results: %v", r)
+			log.Infof("Received Q3 results: %+v", r)
 			c.results += 1
 			writeResults(r, 3)
 		case protocol.Q4Results:
-			log.Infof("Received Q4 results: %v", r)
+			log.Infof("Received Q4 results: %+v", r)
 			writeResults(r, 4)
 			if r.EOF {
 				log.Infof("Received Q4 EOF")
