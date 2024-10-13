@@ -22,12 +22,12 @@ type config struct {
 
 type handler struct {
 	N       int
-	results map[uint64]middleware.ReviewsPerGame
+	results map[uint64]middleware.GameStat
 }
 
-func (h *handler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middleware.ReviewsPerGame]) error {
+func (h *handler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middleware.GameStat]) error {
 	for _, r := range batch.Data {
-		if int(r.Reviews) > h.N {
+		if int(r.Stat) > h.N {
 			h.results[r.AppID] = r
 		}
 	}
@@ -39,7 +39,7 @@ func (h *handler) Conclude(ch *middleware.Channel) error {
 	for i, res := range results {
 		p := protocol.Q4Results{
 			Name:  res.Name,
-			Count: int(res.Reviews),
+			Count: int(res.Stat),
 			EOF:   i == len(results)-1,
 		}
 
@@ -78,7 +78,7 @@ func main() {
 
 	h := handler{
 		N:       cfg.N,
-		results: make(map[uint64]middleware.ReviewsPerGame),
+		results: make(map[uint64]middleware.GameStat),
 	}
 
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)

@@ -40,12 +40,6 @@ type GameStat struct {
 	Stat  uint64
 }
 
-type ReviewsPerGame struct {
-	AppID   uint64
-	Name    string
-	Reviews uint64
-}
-
 type Batch[T any] struct {
 	Data     []T
 	ClientID int

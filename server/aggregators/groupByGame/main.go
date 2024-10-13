@@ -47,7 +47,7 @@ func getConfig() (config, error) {
 }
 
 type reviewHandler struct {
-	games     map[uint64]middleware.ReviewsPerGame
+	games     map[uint64]middleware.GameStat
 	reviews   map[uint64]int
 	gameEof   bool
 	batchSize int
@@ -64,13 +64,13 @@ func (h *gameHandler) Aggregate(_ *middleware.Channel, batch middleware.Batch[mi
 	defer h.h.m.Unlock()
 
 	for _, g := range batch.Data {
-		game := middleware.ReviewsPerGame{
-			AppID:   g.AppID,
-			Name:    g.Name,
-			Reviews: 0,
+		game := middleware.GameStat{
+			AppID: g.AppID,
+			Name:  g.Name,
+			Stat:  0,
 		}
 		if count, ok := h.h.reviews[g.AppID]; ok {
-			game.Reviews = uint64(count)
+			game.Stat = uint64(count)
 			delete(h.h.reviews, g.AppID)
 		}
 
@@ -86,7 +86,7 @@ func (h *reviewHandler) Aggregate(_ *middleware.Channel, batch middleware.Batch[
 
 	for _, r := range batch.Data {
 		if game, ok := h.games[r.AppID]; ok {
-			game.Reviews += 1
+			game.Stat += 1
 			h.games[r.AppID] = game
 		} else if !h.gameEof {
 			h.reviews[r.AppID] += 1
@@ -110,13 +110,13 @@ func (h *reviewHandler) Conclude(ch *middleware.Channel) error {
 	defer h.m.Unlock()
 
 	for k, v := range h.games {
-		if v.Reviews == 0 {
+		if v.Stat == 0 {
 			delete(h.games, k)
 		}
 	}
 
-	batch := middleware.Batch[middleware.ReviewsPerGame]{
-		Data:     []middleware.ReviewsPerGame{},
+	batch := middleware.Batch[middleware.GameStat]{
+		Data:     []middleware.GameStat{},
 		ClientID: 1,
 		BatchID:  0,
 		EOF:      false,
@@ -126,7 +126,7 @@ func (h *reviewHandler) Conclude(ch *middleware.Channel) error {
 	log.Infof("Sending %v reviews per game", len(games))
 	for len(games) > 0 {
 		currBatchSize := min(h.batchSize, len(games))
-		var batchData []middleware.ReviewsPerGame
+		var batchData []middleware.GameStat
 		games, batchData = games[currBatchSize:], games[:currBatchSize]
 
 		batch.EOF = len(games) == 0
@@ -156,7 +156,7 @@ func main() {
 	}
 
 	h := reviewHandler{
-		games:     make(map[uint64]middleware.ReviewsPerGame),
+		games:     make(map[uint64]middleware.GameStat),
 		reviews:   make(map[uint64]int),
 		gameEof:   false,
 		batchSize: cfg.BatchSize,

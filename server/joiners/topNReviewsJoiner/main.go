@@ -12,8 +12,11 @@ import (
 	"sort"
 	"syscall"
 
+	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
+
+var log = logging.MustGetLogger("log")
 
 type config struct {
 	RabbitIP   string
@@ -65,13 +68,11 @@ func (h *handler) Conclude(ch *middleware.Channel) error {
 		return sortedGames[i].Stat > sortedGames[j].Stat
 	})
 
-	topNNames := make([]string, 0, h.topN)
 	for _, g := range sortedGames {
-		topNNames = append(topNNames, g.Name)
+		log.Infof("%v: %v", g.Name, g.Stat)
 	}
 
-	result := protocol.Q3Results{TopN: topNNames}
-
+	result := protocol.Q3Results{TopN: sortedGames}
 	return ch.SendAny(result, "", middleware.Results)
 }
 
