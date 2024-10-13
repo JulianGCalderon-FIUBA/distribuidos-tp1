@@ -38,6 +38,7 @@ func (h *handler) Conclude(ch *middleware.Channel) error {
 	results := slices.Collect(maps.Values(h.results))
 	for i, res := range results {
 		p := protocol.Q4Results{
+			AppID: res.AppID,
 			Name:  res.Name,
 			Count: int(res.Stat),
 			EOF:   i == len(results)-1,
