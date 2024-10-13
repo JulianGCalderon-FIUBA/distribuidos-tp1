@@ -1,6 +1,9 @@
 package protocol
 
-import "fmt"
+import (
+	"distribuidos/tp1/server/middleware"
+	"fmt"
+)
 
 // Sent by the client to initiate a request
 type RequestHello struct {
@@ -51,7 +54,7 @@ func (q1 Q1Results) ToStringArray() []string {
 }
 
 type Q2Results struct {
-	TopN []string
+	TopN []middleware.GameStat
 }
 
 func (q2 Q2Results) ToStringArray() []string {
@@ -63,7 +66,7 @@ func (q2 Q2Results) ToStringArray() []string {
 }
 
 type Q3Results struct {
-	TopN []string
+	TopN []middleware.GameStat
 }
 
 func (q3 Q3Results) ToStringArray() []string {
@@ -75,6 +78,7 @@ func (q3 Q3Results) ToStringArray() []string {
 }
 
 type Q4Results struct {
+	AppId uint64
 	Name  string
 	Count int
 	EOF   bool
@@ -87,7 +91,7 @@ func (q4 Q4Results) ToStringArray() []string {
 }
 
 type Q5Results struct {
-	Percentile90 []string
+	Percentile90 []middleware.GameStat
 }
 
 func (q5 Q5Results) ToStringArray() []string {
