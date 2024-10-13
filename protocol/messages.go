@@ -60,7 +60,7 @@ type Q2Results struct {
 func (q2 Q2Results) ToStringArray() []string {
 	res := make([]string, 0)
 	for _, s := range q2.TopN {
-		res = append(res, fmt.Sprintf("%v\n", s))
+		res = append(res, fmt.Sprintf("%v,%v,%v\n", s.AppID, s.Name, s.Stat))
 	}
 	return res
 }
@@ -72,13 +72,13 @@ type Q3Results struct {
 func (q3 Q3Results) ToStringArray() []string {
 	res := make([]string, 0)
 	for _, s := range q3.TopN {
-		res = append(res, fmt.Sprintf("%v\n", s))
+		res = append(res, fmt.Sprintf("%v,%v,%v\n", s.AppID, s.Name, s.Stat))
 	}
 	return res
 }
 
 type Q4Results struct {
-	AppId uint64
+	AppID uint64
 	Name  string
 	Count int
 	EOF   bool
@@ -86,7 +86,7 @@ type Q4Results struct {
 
 func (q4 Q4Results) ToStringArray() []string {
 	res := make([]string, 0)
-	res = append(res, fmt.Sprintf("%v,%v\n", q4.Name, q4.Count))
+	res = append(res, fmt.Sprintf("%v,%v,%v\n", q4.AppID, q4.Name, q4.Count))
 	return res
 }
 
@@ -97,7 +97,7 @@ type Q5Results struct {
 func (q5 Q5Results) ToStringArray() []string {
 	res := make([]string, 0)
 	for _, s := range q5.Percentile90 {
-		res = append(res, fmt.Sprintf("%v\n", s))
+		res = append(res, fmt.Sprintf("%v,%v,%v\n", s.AppID, s.Name, s.Stat))
 	}
 	return res
 }
