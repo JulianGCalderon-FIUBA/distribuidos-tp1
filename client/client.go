@@ -203,26 +203,26 @@ func (c *client) sendFile(filePath string) error {
 
 func (c *client) waitResults() error {
 	for {
-		var results any
+		var results protocol.Results
 		err := c.conn.Recv(&results)
 		if err != nil {
 			return err
 		}
 		switch r := results.(type) {
 		case protocol.Q1Results:
-			log.Infof("Received Q1 results: %#v", results)
+			log.Infof("Received Q1 results: %v", r)
 			c.results += 1
 			writeResults(r, 1)
 		case protocol.Q2Results:
-			log.Infof("Received Q2 results: %#v", results)
+			log.Infof("Received Q2 results: %v", r)
 			c.results += 1
 			writeResults(r, 2)
 		case protocol.Q3Results:
-			log.Infof("Received Q3 results: %#v", results)
+			log.Infof("Received Q3 results: %v", r)
 			c.results += 1
 			writeResults(r, 3)
 		case protocol.Q4Results:
-			log.Infof("Received Q4 results: %#v", results)
+			log.Infof("Received Q4 results: %v", r)
 			writeResults(r, 4)
 			if r.EOF {
 				log.Infof("Received Q4 EOF")
