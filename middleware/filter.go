@@ -70,6 +70,11 @@ func (h *filterHandler[T]) handle(ch *Channel, data []byte) error {
 }
 
 func NewFilter[T any](config FilterConfig, f FilterFunc[T]) (*Node[filterHandler[T]], error) {
+	conn, ch, err := Dial(config.RabbitIP)
+	if err != nil {
+		return nil, err
+	}
+
 	exchangeConfig := ExchangeConfig{
 		Name: config.Exchange,
 		Type: amqp.ExchangeDirect,
@@ -87,12 +92,12 @@ func NewFilter[T any](config FilterConfig, f FilterFunc[T]) (*Node[filterHandler
 	}
 	queueConfigs = append(queueConfigs, QueueConfig{Name: config.Queue})
 
+	Topology{
+		Exchanges: []ExchangeConfig{exchangeConfig},
+		Queues:    queueConfigs,
+	}.Declare(ch)
+
 	nConfig := Config[filterHandler[T]]{
-		RabbitIP: config.RabbitIP,
-		Topology: Topology{
-			Exchanges: []ExchangeConfig{exchangeConfig},
-			Queues:    queueConfigs,
-		},
 		Builder: func(clientID int) filterHandler[T] {
 			partitions := make(map[string]Batch[T])
 			for key := range config.QueuesByKey {
@@ -113,7 +118,7 @@ func NewFilter[T any](config FilterConfig, f FilterFunc[T]) (*Node[filterHandler
 		},
 	}
 
-	return NewNode(nConfig)
+	return NewNode(nConfig, conn)
 }
 
 func transpose(queuesByKey map[string][]string) (keysByQueue map[string][]string) {

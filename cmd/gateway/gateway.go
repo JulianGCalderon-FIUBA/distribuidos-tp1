@@ -2,20 +2,21 @@ package main
 
 import (
 	"context"
+	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/utils"
 	"errors"
-	"fmt"
 	"sync"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type gateway struct {
-	config  config
-	rabbit  *amqp.Connection
-	mu      *sync.Mutex
-	clients map[int]*protocol.Conn
+	config   config
+	rabbit   *amqp.Connection
+	rabbitCh *amqp.Channel
+	mu       *sync.Mutex
+	clients  map[int]*protocol.Conn
 }
 
 func newGateway(config config) *gateway {
@@ -28,17 +29,17 @@ func newGateway(config config) *gateway {
 }
 
 func (g *gateway) start(ctx context.Context) error {
-	addr := fmt.Sprintf("amqp://guest:guest@%v:5672/", g.config.RabbitIP)
-	conn, err := amqp.Dial(addr)
+	conn, ch, err := middleware.Dial(g.config.RabbitIP)
 	if err != nil {
 		return err
 	}
-	g.rabbit = conn
 	closer := utils.SpawnCloser(ctx, conn)
 	defer func() {
 		closeErr := closer.Close()
 		err = errors.Join(err, closeErr)
 	}()
+	g.rabbit = conn
+	g.rabbitCh = ch
 
 	wg := &sync.WaitGroup{}
 	wg.Add(3)

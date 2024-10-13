@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"fmt"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -21,9 +20,6 @@ type HandlerBuilder[T any] func(clientID int) T
 type HandlerFunc[T any] func(h *T, ch *Channel, data []byte) error
 
 type Config[T any] struct {
-	// todo: consider receiving connection/channel directly
-	RabbitIP string
-	Topology Topology
 	// For each client, the builder is called to initialize a new builder
 	Builder HandlerBuilder[T]
 	// Each queue is registered to a particular HandlerFunc
@@ -32,38 +28,27 @@ type Config[T any] struct {
 
 type Node[T any] struct {
 	config  Config[T]
-	conn    *amqp.Connection
+	rabbit  *amqp.Connection
 	ch      *amqp.Channel
 	clients map[int]T
 }
 
-func NewNode[T any](config Config[T]) (*Node[T], error) {
-	addr := fmt.Sprintf("amqp://guest:guest@%v:5672/", config.RabbitIP)
-	conn, err := amqp.Dial(addr)
-	if err != nil {
-		return nil, err
-	}
-
-	ch, err := conn.Channel()
-	if err != nil {
-		return nil, err
-	}
-
-	err = config.Topology.Declare(ch)
+func NewNode[T any](config Config[T], rabbit *amqp.Connection) (*Node[T], error) {
+	ch, err := rabbit.Channel()
 	if err != nil {
 		return nil, err
 	}
 
 	return &Node[T]{
 		config:  config,
-		conn:    conn,
+		rabbit:  rabbit,
 		ch:      ch,
 		clients: make(map[int]T),
 	}, nil
 }
 
 func (n *Node[T]) Run(ctx context.Context) error {
-	defer n.conn.Close()
+	defer n.rabbit.Close()
 
 	dch := make(chan Delivery)
 	for queue := range n.config.Endpoints {

@@ -3,6 +3,8 @@ package middleware
 import (
 	"fmt"
 	"strings"
+
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 // El nombrado de las colas y exchanges sigue las siguientes reglas:
@@ -92,4 +94,19 @@ func Cat(v ...any) string {
 		vs[i] = fmt.Sprintf("%v", v)
 	}
 	return strings.Join(vs, "-")
+}
+
+func Dial(ip string) (*amqp.Connection, *amqp.Channel, error) {
+	addr := fmt.Sprintf("amqp://guest:guest@%v:5672/", ip)
+	conn, err := amqp.Dial(addr)
+	if err != nil {
+		return nil, nil, err
+	}
+	ch, err := conn.Channel()
+	if err != nil {
+		conn.Close()
+		return nil, nil, err
+	}
+
+	return conn, ch, nil
 }

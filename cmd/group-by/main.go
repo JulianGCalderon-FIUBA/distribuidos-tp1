@@ -146,19 +146,21 @@ func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
 
+	conn, ch, err := middleware.Dial(cfg.RabbitIP)
+	utils.Expect(err, "Failed to dial rabbit")
+
 	output := middleware.Cat(cfg.Output, cfg.PartitionID)
 	gameInput := middleware.Cat(cfg.GameInput, "x", cfg.PartitionID)
 	reviewInput := middleware.Cat(cfg.ReviewInput, "x", cfg.PartitionID)
+	middleware.Topology{
+		Queues: []middleware.QueueConfig{
+			{Name: gameInput},
+			{Name: reviewInput},
+			{Name: output},
+		},
+	}.Declare(ch)
 
 	nodeCfg := middleware.Config[handler]{
-		RabbitIP: cfg.RabbitIP,
-		Topology: middleware.Topology{
-			Queues: []middleware.QueueConfig{
-				{Name: gameInput},
-				{Name: reviewInput},
-				{Name: output},
-			},
-		},
 		Builder: func(clientID int) handler {
 			return handler{
 				games:           make(map[uint64]middleware.ReviewsPerGame),
@@ -175,7 +177,7 @@ func main() {
 		},
 	}
 
-	node, err := middleware.NewNode(nodeCfg)
+	node, err := middleware.NewNode(nodeCfg, conn)
 	utils.Expect(err, "Failed to create node")
 
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)

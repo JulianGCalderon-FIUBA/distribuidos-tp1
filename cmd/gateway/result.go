@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/middleware"
+	"distribuidos/tp1/protocol"
 	"fmt"
 )
 
@@ -58,18 +58,22 @@ func (g *gateway) startResultsEndpoint(ctx context.Context) error {
 		}
 	}
 
+	topology := middleware.Topology{
+		Queues: []middleware.QueueConfig{{Name: middleware.Results}},
+	}
+	err := topology.Declare(g.rabbitCh)
+	if err != nil {
+		return err
+	}
+
 	cfg := middleware.Config[resultsHandler]{
-		RabbitIP: g.config.RabbitIP,
-		Topology: middleware.Topology{
-			Queues: []middleware.QueueConfig{{Name: middleware.Results}},
-		},
 		Builder: newResultsHandler,
 		Endpoints: map[string]middleware.HandlerFunc[resultsHandler]{
 			middleware.Results: (*resultsHandler).handle,
 		},
 	}
 
-	node, err := middleware.NewNode(cfg)
+	node, err := middleware.NewNode(cfg, g.rabbit)
 	if err != nil {
 		return err
 	}
