@@ -48,14 +48,16 @@ func (h handler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middlew
 	for _, g := range batch.Data {
 		if h.results.Len() < h.topN {
 			heap.Push(&h.results, middleware.GameStat{
-				Name: g.Name,
-				Stat: g.AveragePlaytimeForever,
+				AppID: g.AppID,
+				Name:  g.Name,
+				Stat:  g.AveragePlaytimeForever,
 			})
 		} else if g.AveragePlaytimeForever > h.results.Peek().(middleware.GameStat).Stat {
 			heap.Pop(&h.results)
 			heap.Push(&h.results, middleware.GameStat{
-				Name: g.Name,
-				Stat: g.AveragePlaytimeForever,
+				AppID: g.AppID,
+				Name:  g.Name,
+				Stat:  g.AveragePlaytimeForever,
 			})
 		}
 	}
