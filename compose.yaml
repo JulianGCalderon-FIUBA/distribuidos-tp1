@@ -503,7 +503,7 @@ services:
   q5-percentile:
     container_name: q5-percentile
     image: tp1:latest
-    entrypoint: /90-percentile
+    entrypoint: /build/percentile
     environment:
       - RABBIT_IP=rabbitmq
       - PERCENTILE=90
