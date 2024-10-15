@@ -440,7 +440,7 @@ func generateQ5() {
 	fmt.Println("  q5-percentile:")
 	fmt.Println("    container_name: q5-percentile")
 	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /90-percentile")
+	fmt.Println("    entrypoint: /build/percentile")
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Println("      - PERCENTILE=90")
