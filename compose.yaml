@@ -398,7 +398,7 @@ services:
   q4-joiner:
     container_name: q4-joiner
     image: tp1:latest
-    entrypoint: /group-joiner
+    entrypoint: /build/group-joiner
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITIONS=3
@@ -490,7 +490,7 @@ services:
   q5-joiner:
     container_name: q5-joiner
     image: tp1:latest
-    entrypoint: /group-joiner
+    entrypoint: /build/group-joiner
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITIONS=3
