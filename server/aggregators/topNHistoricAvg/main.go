@@ -3,8 +3,8 @@ package main
 import (
 	"container/heap"
 	"context"
-	"distribuidos/tp1/server/middleware"
-	"distribuidos/tp1/server/middleware/aggregator"
+	"distribuidos/tp1/middleware"
+	"distribuidos/tp1/middleware/aggregator"
 	"distribuidos/tp1/utils"
 	"fmt"
 	"os/signal"
@@ -41,7 +41,7 @@ func getConfig() (config, error) {
 
 type handler struct {
 	topN    int
-	results utils.GameHeap
+	results middleware.GameHeap
 }
 
 func (h handler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middleware.Game]) error {
@@ -94,7 +94,7 @@ func main() {
 
 	h := handler{
 		topN:    cfg.TopN,
-		results: make(utils.GameHeap, cfg.TopN),
+		results: make(middleware.GameHeap, cfg.TopN),
 	}
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 	agg, err := aggregator.NewAggregator(aggCfg, h)

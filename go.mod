@@ -6,7 +6,10 @@ require github.com/rabbitmq/amqp091-go v1.10.0
 
 require github.com/spf13/viper v1.19.0
 
-require github.com/rylans/getlang v0.0.0-20201227074721-9e7f44ff8aa0
+require (
+	github.com/pemistahl/lingua-go v1.4.0
+	github.com/rylans/getlang v0.0.0-20201227074721-9e7f44ff8aa0
+)
 
 require (
 	github.com/shopspring/decimal v1.3.1 // indirect
@@ -20,7 +23,6 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
-	github.com/pemistahl/lingua-go v1.4.0
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
