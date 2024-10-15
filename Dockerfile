@@ -16,7 +16,6 @@ RUN CGO_ENABLED=0 go build -o bin/top-n-historic-avg-joiner ./server/joiners/top
 RUN CGO_ENABLED=0 go build -o bin/top-n-reviews ./server/aggregators/topNReviews
 RUN CGO_ENABLED=0 go build -o bin/top-n-reviews-joiner ./server/joiners/topNReviewsJoiner
 RUN CGO_ENABLED=0 go build -o bin/more-than-n-reviews ./server/aggregators/moreThanNReviews
-RUN CGO_ENABLED=0 go build -o bin/group-joiner ./server/aggregators/groupJoiner
 
 FROM alpine:latest
 COPY --from=builder /build/.build/ /build
@@ -29,6 +28,5 @@ COPY --from=builder /build/bin/top-n-historic-avg-joiner /top-n-historic-avg-joi
 COPY --from=builder /build/bin/top-n-reviews /top-n-reviews
 COPY --from=builder /build/bin/more-than-n-reviews /more-than-n-reviews
 COPY --from=builder /build/bin/top-n-reviews-joiner /top-n-reviews-joiner
-COPY --from=builder /build/bin/group-joiner /group-joiner
 
 ENTRYPOINT ["/bin/sh"]
