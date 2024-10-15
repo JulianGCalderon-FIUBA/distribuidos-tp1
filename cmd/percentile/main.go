@@ -11,11 +11,8 @@ import (
 	"sort"
 	"syscall"
 
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
-
-var log = logging.MustGetLogger("log")
 
 type config struct {
 	RabbitIP   string
@@ -62,7 +59,6 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 		n := float64(len(h.sorted))
 		index := max(0, int(math.Ceil(h.percentile/100.0*n))-1)
 		results := h.sorted[index:]
-		log.Infof("q5 results: %v", len(results))
 		p := protocol.Q5Results{
 			Percentile90: results,
 		}
