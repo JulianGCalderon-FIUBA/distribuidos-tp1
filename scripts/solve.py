@@ -66,7 +66,7 @@ def group(games, reviews) -> DataFrame:
         "Name": lambda x: ",".join(x.unique()),
         "review_text": "count",
     }).rename({
-        "review_text": "Reviews" 
+        "review_text": "Reviews"
     }, axis='columns') # type: ignore
 
 # Q3

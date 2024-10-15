@@ -1,7 +1,7 @@
 package protocol
 
 import (
-	"distribuidos/tp1/server/middleware"
+	"distribuidos/tp1/middleware"
 	"fmt"
 )
 
