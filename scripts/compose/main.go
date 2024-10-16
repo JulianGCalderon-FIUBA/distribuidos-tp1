@@ -7,7 +7,7 @@ import (
 
 const Q1 = 1
 const Q2 = 1
-const Q3 = 1
+const Q3 = 3
 const Q4 = 1
 const Q5 = 1
 
@@ -280,7 +280,7 @@ func generateQ3() {
 		fmt.Printf("  q3-top-%v:\n", i)
 		fmt.Printf("    container_name: q3-top-%v\n", i)
 		fmt.Println("    image: tp1:latest")
-		fmt.Println("    entrypoint: /top-n-reviews")
+		fmt.Println("    entrypoint: /build/top-n-reviews")
 		fmt.Println("    environment:")
 		fmt.Println("      - RABBIT_IP=rabbitmq")
 		fmt.Printf("      - PARTITION_ID=%v\n", i)
