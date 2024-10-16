@@ -6,6 +6,7 @@ import (
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/utils"
+	"encoding/gob"
 	"os/signal"
 	"sort"
 	"syscall"
@@ -92,6 +93,7 @@ func (h *handler) conclude(ch *middleware.Channel) error {
 func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
+	gob.Register(protocol.Q2Results{})
 
 	conn, ch, err := middleware.Dial(cfg.RabbitIP)
 	utils.Expect(err, "Failed to dial rabbit")
@@ -121,7 +123,7 @@ func main() {
 			qInput: (*handler).handlePartialResult,
 		},
 	}
-	
+
 	node, err := middleware.NewNode(nConfig, conn)
 	utils.Expect(err, "Failed to create node")
 

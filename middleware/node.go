@@ -86,6 +86,7 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 	}
 
 	err := n.config.Endpoints[d.Queue](&h, ch, d.Body)
+	n.clients[clientID] = h
 	if err != nil {
 		log.Errorf("Failed to handle message %v", err)
 		err = d.Nack(false, false)
