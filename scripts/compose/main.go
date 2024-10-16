@@ -6,15 +6,15 @@ import (
 )
 
 const Q1 = 3
-const Q2 = 3
-const Q3 = 3
-const Q4 = 3
-const Q5 = 3
+const Q2 = 1
+const Q3 = 1
+const Q4 = 1
+const Q5 = 1
 
-const LANGUAGE_FILTER = 3
-const DECADE_FILTER = 3
-const GENRE_FITLER = 3
-const SCORE_FILTER = 3
+const LANGUAGE_FILTER = 8
+const DECADE_FILTER = 1
+const GENRE_FITLER = 1
+const SCORE_FILTER = 1
 
 func main() {
 	generateInit()
@@ -166,7 +166,7 @@ func generateQ1() {
 		fmt.Printf("  q1-count-%v:\n", i)
 		fmt.Printf("    container_name: q1-count-%v\n", i)
 		fmt.Println("    image: tp1:latest")
-		fmt.Println("    entrypoint: /games-per-platform")
+		fmt.Println("    entrypoint: /build/games-per-platform")
 		fmt.Println("    environment:")
 		fmt.Println("      - RABBIT_IP=rabbitmq")
 		fmt.Printf("      - PARTITION_ID=%v\n", i)
@@ -280,7 +280,7 @@ func generateQ3() {
 		fmt.Printf("  q3-top-%v:\n", i)
 		fmt.Printf("    container_name: q3-top-%v\n", i)
 		fmt.Println("    image: tp1:latest")
-		fmt.Println("    entrypoint: /top-n-reviews")
+		fmt.Println("    entrypoint: /build/top-n-reviews")
 		fmt.Println("    environment:")
 		fmt.Println("      - RABBIT_IP=rabbitmq")
 		fmt.Printf("      - PARTITION_ID=%v\n", i)
@@ -353,7 +353,7 @@ func generateQ4() {
 	fmt.Println("  q4-joiner:")
 	fmt.Println("    container_name: q4-joiner")
 	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /group-joiner")
+	fmt.Println("    entrypoint: /build/group-joiner")
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Printf("      - PARTITIONS=%v\n", Q4)
@@ -367,7 +367,7 @@ func generateQ4() {
 	fmt.Println("  q4-filter:")
 	fmt.Println("    container_name: q4-filter")
 	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /more-than-n-reviews")
+	fmt.Println("    entrypoint: /build/more-than-n-reviews")
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Println("      - N=5000")
@@ -426,7 +426,7 @@ func generateQ5() {
 	fmt.Println("  q5-joiner:")
 	fmt.Println("    container_name: q5-joiner")
 	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /group-joiner")
+	fmt.Println("    entrypoint: /build/group-joiner")
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Printf("      - PARTITIONS=%v\n", Q5)
@@ -440,7 +440,7 @@ func generateQ5() {
 	fmt.Println("  q5-percentile:")
 	fmt.Println("    container_name: q5-percentile")
 	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /90-percentile")
+	fmt.Println("    entrypoint: /build/percentile")
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Println("      - PERCENTILE=90")
