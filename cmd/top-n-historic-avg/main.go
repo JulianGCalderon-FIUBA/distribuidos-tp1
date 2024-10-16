@@ -9,12 +9,10 @@ import (
 	"sort"
 	"syscall"
 
-	logging "github.com/op/go-logging"
+	// logging "github.com/op/go-logging"
 
 	"github.com/spf13/viper"
 )
-
-var log = logging.MustGetLogger("log")
 
 type config struct {
 	RabbitIP    string
@@ -139,6 +137,4 @@ func main() {
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 	err = node.Run(ctx)
 	utils.Expect(err, "Failed to run node")
-
-	log.Infof("Top n historic avg started")
 }

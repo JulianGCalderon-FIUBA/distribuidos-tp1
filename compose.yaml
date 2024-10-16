@@ -162,7 +162,7 @@ services:
   q2-top-1:
     container_name: q2-top-1
     image: tp1:latest
-    entrypoint: /top-n-historic-avg
+    entrypoint: /build/top-n-historic-avg
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=1
@@ -175,7 +175,7 @@ services:
   q2-top-2:
     container_name: q2-top-2
     image: tp1:latest
-    entrypoint: /top-n-historic-avg
+    entrypoint: /build/top-n-historic-avg
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=2
@@ -188,7 +188,7 @@ services:
   q2-top-3:
     container_name: q2-top-3
     image: tp1:latest
-    entrypoint: /top-n-historic-avg
+    entrypoint: /build/top-n-historic-avg
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=3
@@ -201,7 +201,7 @@ services:
   q2-joiner:
     container_name: q2-joiner
     image: tp1:latest
-    entrypoint: /top-n-historic-avg-joiner
+    entrypoint: /build/top-n-historic-avg-joiner
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITIONS=3
