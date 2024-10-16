@@ -411,7 +411,7 @@ services:
   q4-filter:
     container_name: q4-filter
     image: tp1:latest
-    entrypoint: /more-than-n-reviews
+    entrypoint: /build/more-than-n-reviews
     environment:
       - RABBIT_IP=rabbitmq
       - N=5000

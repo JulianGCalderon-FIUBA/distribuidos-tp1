@@ -5,16 +5,16 @@ import (
 	"fmt"
 )
 
-const Q1 = 3
-const Q2 = 3
-const Q3 = 3
-const Q4 = 3
-const Q5 = 3
+const Q1 = 1
+const Q2 = 1
+const Q3 = 1
+const Q4 = 1
+const Q5 = 1
 
-const LANGUAGE_FILTER = 3
-const DECADE_FILTER = 3
-const GENRE_FITLER = 3
-const SCORE_FILTER = 3
+const LANGUAGE_FILTER = 8
+const DECADE_FILTER = 1
+const GENRE_FITLER = 1
+const SCORE_FILTER = 1
 
 func main() {
 	generateInit()
@@ -367,7 +367,7 @@ func generateQ4() {
 	fmt.Println("  q4-filter:")
 	fmt.Println("    container_name: q4-filter")
 	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /more-than-n-reviews")
+	fmt.Println("    entrypoint: /build/more-than-n-reviews")
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Println("      - N=5000")
