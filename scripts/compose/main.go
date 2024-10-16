@@ -5,9 +5,9 @@ import (
 	"fmt"
 )
 
-const Q1 = 1
+const Q1 = 3
 const Q2 = 1
-const Q3 = 3
+const Q3 = 1
 const Q4 = 1
 const Q5 = 1
 
@@ -166,7 +166,7 @@ func generateQ1() {
 		fmt.Printf("  q1-count-%v:\n", i)
 		fmt.Printf("    container_name: q1-count-%v\n", i)
 		fmt.Println("    image: tp1:latest")
-		fmt.Println("    entrypoint: /games-per-platform")
+		fmt.Println("    entrypoint: /build/games-per-platform")
 		fmt.Println("    environment:")
 		fmt.Println("      - RABBIT_IP=rabbitmq")
 		fmt.Printf("      - PARTITION_ID=%v\n", i)
