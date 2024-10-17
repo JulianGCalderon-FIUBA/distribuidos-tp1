@@ -82,10 +82,6 @@ func (h *handler) conclude(ch *middleware.Channel) error {
 		return sortedGames[i].Stat > sortedGames[j].Stat
 	})
 
-	for _, g := range sortedGames {
-		log.Infof("%v: %v", g.Name, g.Stat)
-	}
-
 	result := protocol.Q2Results{TopN: sortedGames}
 	return ch.SendAny(result, "", h.output)
 }
@@ -107,7 +103,7 @@ func main() {
 	}.Declare(ch)
 
 	if err != nil {
-		utils.Expect(err, "Failed to initialize topology")
+		utils.Expect(err, "Failed to declare topology")
 	}
 
 	nConfig := middleware.Config[handler]{
@@ -130,6 +126,4 @@ func main() {
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 	err = node.Run(ctx)
 	utils.Expect(err, "Failed to run node")
-
-	log.Infof("top-n-historic-avg joiner started")
 }

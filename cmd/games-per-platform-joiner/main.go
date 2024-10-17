@@ -125,6 +125,4 @@ func main() {
 	if err != nil {
 		utils.Expect(err, "Failed to run joiner node")
 	}
-
-	log.Infof("top-n-historic-avg joiner started")
 }
