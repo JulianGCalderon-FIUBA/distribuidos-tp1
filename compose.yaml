@@ -96,7 +96,7 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - INPUT=games-Q1
-      - PARTITIONS=3
+      - PARTITIONS=1
       - TYPE=game
     networks:
       - net
@@ -113,35 +113,13 @@ services:
       - net
     depends_on:
       - gateway
-  q1-count-2:
-    container_name: q1-count-2
-    image: tp1:latest
-    entrypoint: /build/games-per-platform
-    environment:
-      - RABBIT_IP=rabbitmq
-      - PARTITION_ID=2
-    networks:
-      - net
-    depends_on:
-      - gateway
-  q1-count-3:
-    container_name: q1-count-3
-    image: tp1:latest
-    entrypoint: /build/games-per-platform
-    environment:
-      - RABBIT_IP=rabbitmq
-      - PARTITION_ID=3
-    networks:
-      - net
-    depends_on:
-      - gateway
   q1-joiner:
     container_name: q1-joiner
     image: tp1:latest
-    entrypoint: /games-per-platform-joiner
+    entrypoint: /build/games-per-platform-joiner
     environment:
       - RABBIT_IP=rabbitmq
-      - PARTITIONS=3
+      - PARTITIONS=1
     networks:
       - net
     depends_on:
@@ -162,7 +140,7 @@ services:
   q2-top-1:
     container_name: q2-top-1
     image: tp1:latest
-    entrypoint: /top-n-historic-avg
+    entrypoint: /build/top-n-historic-avg
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=1
@@ -175,7 +153,7 @@ services:
   q2-joiner:
     container_name: q2-joiner
     image: tp1:latest
-    entrypoint: /top-n-historic-avg-joiner
+    entrypoint: /build/top-n-historic-avg-joiner
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITIONS=1
@@ -240,7 +218,7 @@ services:
   q3-joiner:
     container_name: q3-joiner
     image: tp1:latest
-    entrypoint: /top-n-reviews-joiner
+    entrypoint: /build/top-n-reviews-joiner
     environment:
       - RABBIT_IP=rabbitmq
       - TOP_N=5

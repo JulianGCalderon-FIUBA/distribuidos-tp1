@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-const Q1 = 3
+const Q1 = 1
 const Q2 = 1
 const Q3 = 1
 const Q4 = 1
@@ -178,7 +178,7 @@ func generateQ1() {
 	fmt.Println("  q1-joiner:")
 	fmt.Println("    container_name: q1-joiner")
 	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /games-per-platform-joiner")
+	fmt.Println("    entrypoint: /build/games-per-platform-joiner")
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Printf("      - PARTITIONS=%v\n", Q1)
@@ -206,7 +206,7 @@ func generateQ2() {
 		fmt.Printf("  q2-top-%v:\n", i)
 		fmt.Printf("    container_name: q2-top-%v\n", i)
 		fmt.Println("    image: tp1:latest")
-		fmt.Println("    entrypoint: /top-n-historic-avg")
+		fmt.Println("    entrypoint: /build/top-n-historic-avg")
 		fmt.Println("    environment:")
 		fmt.Println("      - RABBIT_IP=rabbitmq")
 		fmt.Printf("      - PARTITION_ID=%v\n", i)
@@ -220,7 +220,7 @@ func generateQ2() {
 	fmt.Println("  q2-joiner:")
 	fmt.Println("    container_name: q2-joiner")
 	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /top-n-historic-avg-joiner")
+	fmt.Println("    entrypoint: /build/top-n-historic-avg-joiner")
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Printf("      - PARTITIONS=%v\n", Q2)
@@ -293,7 +293,7 @@ func generateQ3() {
 	fmt.Println("  q3-joiner:")
 	fmt.Println("    container_name: q3-joiner")
 	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /top-n-reviews-joiner")
+	fmt.Println("    entrypoint: /build/top-n-reviews-joiner")
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Println("      - TOP_N=5")
