@@ -55,13 +55,11 @@ func (g *gateway) handleClient(_ context.Context, netConn net.Conn, clientID int
 
 	log.Infof("Received client hello: %v", clientID)
 
-	{
-		// register connection for the result handler
-		// todo: consider receiving results and handle connection here
-		g.mu.Lock()
-		g.clients[clientID] = conn
-		g.mu.Unlock()
-	}
+	ch := make(chan protocol.Results)
+
+	g.mu.Lock()
+	g.clients[clientID] = ch
+	g.mu.Unlock()
 
 	err = conn.Send(protocol.AcceptRequest{
 		ClientID: uint64(clientID),
@@ -70,5 +68,21 @@ func (g *gateway) handleClient(_ context.Context, netConn net.Conn, clientID int
 		return err
 	}
 
-	return nil
+	return g.waitResults(ch, conn)
+}
+
+func (g *gateway) waitResults(ch chan protocol.Results, conn *protocol.Conn) error {
+	for {
+		result, more := <-ch
+		if more {
+			err := conn.SendAny(result)
+			if err != nil {
+				log.Infof("Failed to send result to client")
+			}
+		} else {
+			log.Infof("Sent all client results, closing connection")
+			return nil
+		}
+
+	}
 }
