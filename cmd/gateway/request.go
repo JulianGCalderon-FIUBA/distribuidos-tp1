@@ -75,7 +75,9 @@ func (g *gateway) handleClient(_ context.Context, netConn net.Conn, clientID int
 		result, more := <-ch
 		if !more {
 			log.Infof("Sent all results to client %v, closing connection", clientID)
-
+			g.mu.Lock()
+			delete(g.clients, clientID)
+			g.mu.Unlock()
 			return nil
 		}
 		err := conn.SendAny(result)
