@@ -116,7 +116,7 @@ services:
   q1-joiner:
     container_name: q1-joiner
     image: tp1:latest
-    entrypoint: /games-per-platform-joiner
+    entrypoint: /build/games-per-platform-joiner
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITIONS=1

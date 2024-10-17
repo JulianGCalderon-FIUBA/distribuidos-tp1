@@ -178,7 +178,7 @@ func generateQ1() {
 	fmt.Println("  q1-joiner:")
 	fmt.Println("    container_name: q1-joiner")
 	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /games-per-platform-joiner")
+	fmt.Println("    entrypoint: /build/games-per-platform-joiner")
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Printf("      - PARTITIONS=%v\n", Q1)
