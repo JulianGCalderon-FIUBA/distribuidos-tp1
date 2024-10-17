@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-const Q1 = 3
+const Q1 = 1
 const Q2 = 1
 const Q3 = 1
 const Q4 = 1
