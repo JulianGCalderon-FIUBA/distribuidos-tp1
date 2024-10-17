@@ -73,14 +73,14 @@ func (g *gateway) handleClient(_ context.Context, netConn net.Conn, clientID int
 
 	for {
 		result, more := <-ch
-		if more {
-			err := conn.SendAny(result)
-			if err != nil {
-				log.Infof("Failed to send result to client")
-			}
-		} else {
+		if !more {
 			log.Infof("Sent all results to client %v, closing connection", clientID)
+
 			return nil
+		}
+		err := conn.SendAny(result)
+		if err != nil {
+			log.Infof("Failed to send result to client")
 		}
 	}
 }
