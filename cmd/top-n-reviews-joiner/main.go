@@ -21,7 +21,6 @@ type config struct {
 	RabbitIP   string
 	TopN       int
 	Partitions int
-	Input      string
 }
 
 func getConfig() (config, error) {
