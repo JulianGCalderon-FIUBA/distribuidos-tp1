@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync"
 )
 
 const MAX_RESULTS = 5
@@ -26,14 +27,16 @@ func (g *gateway) startRequestEndpoint(ctx context.Context) (err error) {
 
 	clientCounter := 0
 
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			return fmt.Errorf("Failed to accept connection: %v", err)
 		}
 		clientCounter += 1
-
-		// todo: add wait group
+		wg.Add(1)
 		go func(clientID int) {
 			err := g.handleClient(ctx, conn, clientID)
 			if err != nil {
@@ -83,6 +86,5 @@ func (g *gateway) waitResults(ch chan protocol.Results, conn *protocol.Conn) err
 			log.Infof("Sent all client results, closing connection")
 			return nil
 		}
-
 	}
 }
