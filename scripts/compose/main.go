@@ -293,7 +293,7 @@ func generateQ3() {
 	fmt.Println("  q3-joiner:")
 	fmt.Println("    container_name: q3-joiner")
 	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /top-n-reviews-joiner")
+	fmt.Println("    entrypoint: /build/top-n-reviews-joiner")
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Println("      - TOP_N=5")

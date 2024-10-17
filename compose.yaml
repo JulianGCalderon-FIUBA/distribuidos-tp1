@@ -9,7 +9,7 @@ services:
     networks:
       - net
     healthcheck:
-      test: [ "CMD", "rabbitmqctl", "status" ]
+      test: ["CMD", "rabbitmqctl", "status"]
       interval: 5s
       timeout: 5s
       retries: 3
@@ -218,7 +218,7 @@ services:
   q3-joiner:
     container_name: q3-joiner
     image: tp1:latest
-    entrypoint: /top-n-reviews-joiner
+    entrypoint: /build/top-n-reviews-joiner
     environment:
       - RABBIT_IP=rabbitmq
       - TOP_N=5
