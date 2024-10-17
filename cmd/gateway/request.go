@@ -71,10 +71,6 @@ func (g *gateway) handleClient(_ context.Context, netConn net.Conn, clientID int
 		return err
 	}
 
-	return g.waitResults(ch, conn)
-}
-
-func (g *gateway) waitResults(ch chan protocol.Results, conn *protocol.Conn) error {
 	for {
 		result, more := <-ch
 		if more {
@@ -83,7 +79,7 @@ func (g *gateway) waitResults(ch chan protocol.Results, conn *protocol.Conn) err
 				log.Infof("Failed to send result to client")
 			}
 		} else {
-			log.Infof("Sent all client results, closing connection")
+			log.Infof("Sent all results to client %v, closing connection", clientID)
 			return nil
 		}
 	}
