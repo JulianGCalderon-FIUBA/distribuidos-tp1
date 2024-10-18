@@ -12,6 +12,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -52,14 +53,18 @@ func (g *gateway) startDataEndpoint(ctx context.Context) (err error) {
 		return err
 	}
 
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			return err
 		}
 
-		// todo: add wait group
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			err := g.handleClientData(ctx, conn)
 			if err != nil {
 				log.Errorf("Error while handling client: %v", err)
