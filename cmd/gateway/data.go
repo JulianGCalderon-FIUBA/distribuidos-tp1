@@ -109,8 +109,12 @@ func (g *gateway) handleClientData(ctx context.Context, rawConn net.Conn) (err e
 		ClientID: int(hello.ClientID),
 	}
 
+	wg := &sync.WaitGroup{}
+	wg.Add(2)
+
 	gamesRecv, gamesSend := net.Pipe()
 	go func() {
+		defer wg.Done()
 		err := g.queueGames(gamesRecv, ch)
 		if err != nil {
 			log.Errorf("Error while queuing games: %v", err)
@@ -124,6 +128,7 @@ func (g *gateway) handleClientData(ctx context.Context, rawConn net.Conn) (err e
 
 	reviewsRecv, reviewsSend := net.Pipe()
 	go func() {
+		defer wg.Done()
 		err := g.queueReviews(reviewsRecv, ch)
 		if err != nil {
 			log.Errorf("Error while queuing reviews: %v", err)
@@ -134,6 +139,8 @@ func (g *gateway) handleClientData(ctx context.Context, rawConn net.Conn) (err e
 		return err
 	}
 	reviewsSend.Close()
+
+	wg.Wait()
 
 	return nil
 }
