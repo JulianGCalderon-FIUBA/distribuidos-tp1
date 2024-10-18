@@ -16,14 +16,14 @@ type gateway struct {
 	rabbit   *amqp.Connection
 	rabbitCh *amqp.Channel
 	mu       *sync.Mutex
-	clients  map[int]*protocol.Conn
+	clients  map[int]chan protocol.Results
 }
 
 func newGateway(config config) *gateway {
 	protocol.Register()
 	return &gateway{
 		config:  config,
-		clients: make(map[int]*protocol.Conn),
+		clients: make(map[int]chan protocol.Results),
 		mu:      &sync.Mutex{},
 	}
 }

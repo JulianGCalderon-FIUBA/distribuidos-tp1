@@ -4,21 +4,21 @@ import (
 	"context"
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/protocol"
-	"fmt"
 )
 
 type resultsHandler struct {
-	Conn    *protocol.Conn
+	ch      chan protocol.Results
 	results int
 }
 
 func (h *resultsHandler) handle(ch *middleware.Channel, data []byte) error {
-	result, err := middleware.Deserialize[any](data)
+	result, err := middleware.Deserialize[protocol.Results](data)
 	if err != nil {
 		return err
 	}
 
 	log.Infof("Received results")
+
 	switch r := result.(type) {
 	case protocol.Q1Results:
 		h.results += 1
@@ -33,14 +33,11 @@ func (h *resultsHandler) handle(ch *middleware.Channel, data []byte) error {
 	case protocol.Q5Results:
 		h.results += 1
 	}
-
-	err = h.Conn.SendAny(result)
-	if err != nil {
-		return fmt.Errorf("failed to send result: %v", err)
-	}
+	h.ch <- result
 
 	if h.results == MAX_RESULTS {
-		log.Infof("Sent all results to client")
+		log.Infof("Received all results")
+		close(h.ch)
 		return nil
 	}
 
@@ -50,11 +47,11 @@ func (h *resultsHandler) handle(ch *middleware.Channel, data []byte) error {
 func (g *gateway) startResultsEndpoint(ctx context.Context) error {
 	newResultsHandler := func(clientID int) resultsHandler {
 		g.mu.Lock()
-		conn := g.clients[clientID]
+		chanResults := g.clients[clientID]
 		g.mu.Unlock()
 
 		return resultsHandler{
-			Conn: conn,
+			ch: chanResults,
 		}
 	}
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/utils"
-	"fmt"
 	"os/signal"
 	"syscall"
 
@@ -87,7 +86,7 @@ func main() {
 	conn, ch, err := middleware.Dial(cfg.RabbitIP)
 	utils.Expect(err, "Failed to dial rabbit")
 
-	qName := fmt.Sprintf("%v-x-%v", middleware.GamesQ1, cfg.PartitionID)
+	qName := middleware.Cat(middleware.GamesQ1, "x", cfg.PartitionID)
 	err = middleware.Topology{
 		Queues: []middleware.QueueConfig{
 			{Name: qName},

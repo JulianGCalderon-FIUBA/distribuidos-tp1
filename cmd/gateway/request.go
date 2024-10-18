@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync"
 )
 
 const MAX_RESULTS = 5
@@ -26,15 +27,18 @@ func (g *gateway) startRequestEndpoint(ctx context.Context) (err error) {
 
 	clientCounter := 0
 
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			return fmt.Errorf("Failed to accept connection: %v", err)
 		}
 		clientCounter += 1
-
-		// todo: add wait group
+		wg.Add(1)
 		go func(clientID int) {
+			defer wg.Done()
 			err := g.handleClient(ctx, conn, clientID)
 			if err != nil {
 				log.Errorf("Error while handling client: %v", err)
@@ -55,13 +59,11 @@ func (g *gateway) handleClient(_ context.Context, netConn net.Conn, clientID int
 
 	log.Infof("Received client hello: %v", clientID)
 
-	{
-		// register connection for the result handler
-		// todo: consider receiving results and handle connection here
-		g.mu.Lock()
-		g.clients[clientID] = conn
-		g.mu.Unlock()
-	}
+	ch := make(chan protocol.Results)
+
+	g.mu.Lock()
+	g.clients[clientID] = ch
+	g.mu.Unlock()
 
 	err = conn.Send(protocol.AcceptRequest{
 		ClientID: uint64(clientID),
@@ -70,5 +72,18 @@ func (g *gateway) handleClient(_ context.Context, netConn net.Conn, clientID int
 		return err
 	}
 
-	return nil
+	for {
+		result, more := <-ch
+		if !more {
+			log.Infof("Sent all results to client %v, closing connection", clientID)
+			g.mu.Lock()
+			delete(g.clients, clientID)
+			g.mu.Unlock()
+			return nil
+		}
+		err := conn.SendAny(result)
+		if err != nil {
+			log.Infof("Failed to send result to client")
+		}
+	}
 }
