@@ -5,6 +5,8 @@ import (
 	"fmt"
 )
 
+const CLIENT = 1
+
 const Q1 = 1
 const Q2 = 1
 const Q3 = 1
@@ -71,20 +73,22 @@ func generateGateway() {
 }
 
 func generateClient() {
-	fmt.Println("  client:")
-	fmt.Println("    container_name: client")
-	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /build/client")
-	fmt.Println("    environment:")
-	fmt.Println("      - GATEWAY_CONN_ADDR=gateway:9001")
-	fmt.Println("      - GATEWAY_DATA_ADDR=gateway:9002")
-	fmt.Println("    volumes:")
-	fmt.Println("      - ./.data:/.data")
-	fmt.Println("      - ./.results:/.results")
-	fmt.Println("    networks:")
-	fmt.Println("      - net")
-	fmt.Println("    depends_on:")
-	fmt.Println("      - gateway")
+	for i := 1; i <= CLIENT; i++ {
+		fmt.Printf("  client-%v:\n", i)
+		fmt.Printf("    container_name: client-%v\n", i)
+		fmt.Println("    image: tp1:latest")
+		fmt.Println("    entrypoint: /build/client")
+		fmt.Println("    environment:")
+		fmt.Println("      - GATEWAY_CONN_ADDR=gateway:9001")
+		fmt.Println("      - GATEWAY_DATA_ADDR=gateway:9002")
+		fmt.Println("    volumes:")
+		fmt.Println("      - ./.data:/.data")
+		fmt.Println("      - ./.results:/.results")
+		fmt.Println("    networks:")
+		fmt.Println("      - net")
+		fmt.Println("    depends_on:")
+		fmt.Println("      - gateway")
+	}
 }
 
 func generateGenreFilter() {
