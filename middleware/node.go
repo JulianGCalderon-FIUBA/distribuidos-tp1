@@ -73,7 +73,7 @@ func (n *Node[T]) Run(ctx context.Context) error {
 
 func (n *Node[T]) processDelivery(d Delivery) error {
 	// todo: get correct client handler
-	clientID := 1
+	clientID := int(d.Headers["clientID"].(int32))
 
 	h, ok := n.clients[clientID]
 	if !ok {
