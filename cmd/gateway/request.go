@@ -38,6 +38,7 @@ func (g *gateway) startRequestEndpoint(ctx context.Context) (err error) {
 		clientCounter += 1
 		wg.Add(1)
 		go func(clientID int) {
+			defer wg.Done()
 			err := g.handleClient(ctx, conn, clientID)
 			if err != nil {
 				log.Errorf("Error while handling client: %v", err)
