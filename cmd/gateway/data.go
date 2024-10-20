@@ -88,7 +88,6 @@ func (g *gateway) handleClientData(ctx context.Context, rawConn net.Conn) (err e
 	}
 
 	log.Infof("Client data hello with id: %v", hello.ClientID)
-	// no sé si este chequeo puede generar condiciones de carrera, porque el cliente hace todo de forma secuencial entonces cuando le manda al data handler el connection handler ya debería haberlo registrado
 	g.mu.Lock()
 	if _, ok := g.clients[int(hello.ClientID)]; !ok {
 		return fmt.Errorf("Client ID received is unknown")
