@@ -50,7 +50,7 @@ func (g *gateway) startRequestEndpoint(ctx context.Context) (err error) {
 func (g *gateway) handleClient(ctx context.Context, netConn net.Conn, clientID int) error {
 	var err error
 	conn := protocol.NewConn(netConn)
-
+	// no estoy muy segura si este close alcanza, acepto sugerencias
 	closer := utils.SpawnCloser(ctx, conn)
 	defer func() {
 		closeErr := closer.Close()
