@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-const CLIENT = 1
+const CLIENT = 3
 
 const Q1 = 1
 const Q2 = 1
@@ -13,7 +13,7 @@ const Q3 = 1
 const Q4 = 1
 const Q5 = 1
 
-const LANGUAGE_FILTER = 8
+const LANGUAGE_FILTER = 4
 const DECADE_FILTER = 1
 const GENRE_FITLER = 1
 const SCORE_FILTER = 1
