@@ -47,9 +47,15 @@ func (g *gateway) startRequestEndpoint(ctx context.Context) (err error) {
 	}
 }
 
-func (g *gateway) handleClient(_ context.Context, netConn net.Conn, clientID int) error {
+func (g *gateway) handleClient(ctx context.Context, netConn net.Conn, clientID int) error {
 	var err error
 	conn := protocol.NewConn(netConn)
+
+	closer := utils.SpawnCloser(ctx, conn)
+	defer func() {
+		closeErr := closer.Close()
+		err = errors.Join(err, closeErr)
+	}()
 
 	var hello protocol.RequestHello
 	err = conn.Recv(&hello)
@@ -73,17 +79,22 @@ func (g *gateway) handleClient(_ context.Context, netConn net.Conn, clientID int
 	}
 
 	for {
-		result, more := <-ch
-		if !more {
-			log.Infof("Sent all results to client %v, closing connection", clientID)
-			g.mu.Lock()
-			delete(g.clients, clientID)
-			g.mu.Unlock()
+		select {
+		case <-ctx.Done():
 			return nil
+		case result, more := <-ch:
+			if !more {
+				log.Infof("Sent all results to client %v, closing connection", clientID)
+				g.mu.Lock()
+				delete(g.clients, clientID)
+				g.mu.Unlock()
+				return nil
+			}
+			err := conn.SendAny(result)
+			if err != nil {
+				log.Infof("Failed to send result to client")
+			}
 		}
-		err := conn.SendAny(result)
-		if err != nil {
-			log.Infof("Failed to send result to client")
-		}
+
 	}
 }
