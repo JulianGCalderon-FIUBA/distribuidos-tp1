@@ -9,8 +9,6 @@ import (
 	"net"
 )
 
-const MAX_RESULTS = 5
-
 func (g *gateway) startRequestEndpoint(ctx context.Context) (err error) {
 	address := fmt.Sprintf(":%d", g.config.ConnectionEndpointPort)
 	listener, err := net.Listen("tcp", address)
