@@ -6,6 +6,8 @@ import (
 	"distribuidos/tp1/protocol"
 )
 
+const MAX_RESULTS = 5
+
 type resultsHandler struct {
 	ch      chan protocol.Results
 	results int
@@ -20,17 +22,11 @@ func (h *resultsHandler) handle(ch *middleware.Channel, data []byte) error {
 	log.Infof("Received results")
 
 	switch r := result.(type) {
-	case protocol.Q1Results:
-		h.results += 1
-	case protocol.Q2Results:
-		h.results += 1
-	case protocol.Q3Results:
-		h.results += 1
 	case protocol.Q4Results:
 		if r.EOF {
 			h.results += 1
 		}
-	case protocol.Q5Results:
+	default:
 		h.results += 1
 	}
 	h.ch <- result

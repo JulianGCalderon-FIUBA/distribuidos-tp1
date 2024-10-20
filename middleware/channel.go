@@ -19,7 +19,10 @@ func (c *Channel) Send(msg any, exchange, key string) error {
 	}
 	err = c.Ch.Publish(exchange, key, false, false, amqp.Publishing{
 		ContentType: "",
-		Body:        buf,
+		Headers: amqp.Table{
+			"clientID": c.ClientID,
+		},
+		Body: buf,
 	})
 	if err != nil {
 		return err

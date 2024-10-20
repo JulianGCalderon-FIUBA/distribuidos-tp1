@@ -4,7 +4,6 @@ import (
 	"container/heap"
 	"context"
 	"distribuidos/tp1/middleware"
-	"distribuidos/tp1/middleware/joiner"
 	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/utils"
 	"encoding/gob"
@@ -43,11 +42,20 @@ func getConfig() (config, error) {
 }
 
 type handler struct {
-	topN      int
-	topNGames middleware.GameHeap
+	output     string
+	topN       int
+	topNGames  middleware.GameHeap
+	partitions int
 }
 
-func (h *handler) Aggregate(_ *middleware.Channel, partial []middleware.GameStat) error {
+func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte) error {
+	partial, err := middleware.Deserialize[[]middleware.GameStat](data)
+	h.partitions--
+
+	if err != nil {
+		return err
+	}
+
 	for _, g := range partial {
 		if h.topNGames.Len() < h.topN {
 			heap.Push(&h.topNGames, g)
@@ -57,10 +65,14 @@ func (h *handler) Aggregate(_ *middleware.Channel, partial []middleware.GameStat
 		}
 	}
 
+	if h.partitions == 0 {
+		log.Infof("Received all partial results")
+		return h.conclude(ch)
+	}
 	return nil
 }
 
-func (h *handler) Conclude(ch *middleware.Channel) error {
+func (h *handler) conclude(ch *middleware.Channel) error {
 	sortedGames := make([]middleware.GameStat, 0, h.topNGames.Len())
 	for h.topNGames.Len() > 0 {
 		sortedGames = append(sortedGames, heap.Pop(&h.topNGames).(middleware.GameStat))
@@ -70,12 +82,8 @@ func (h *handler) Conclude(ch *middleware.Channel) error {
 		return sortedGames[i].Stat > sortedGames[j].Stat
 	})
 
-	for _, g := range sortedGames {
-		log.Infof("%v: %v", g.Name, g.Stat)
-	}
-
 	result := protocol.Q2Results{TopN: sortedGames}
-	return ch.SendAny(result, "", middleware.Results)
+	return ch.SendAny(result, "", h.output)
 }
 
 func main() {
@@ -83,21 +91,39 @@ func main() {
 	utils.Expect(err, "Failed to read config")
 	gob.Register(protocol.Q2Results{})
 
-	joinCfg := joiner.Config{
-		RabbitIP:   cfg.RabbitIP,
-		Input:      cfg.Input,
-		Output:     middleware.Results,
-		Partitions: cfg.Partitions,
+	conn, ch, err := middleware.Dial(cfg.RabbitIP)
+	utils.Expect(err, "Failed to dial rabbit")
+
+	qInput := middleware.PartialQ2
+	err = middleware.Topology{
+		Queues: []middleware.QueueConfig{
+			{Name: qInput},
+			{Name: middleware.Results},
+		},
+	}.Declare(ch)
+
+	if err != nil {
+		utils.Expect(err, "Failed to declare topology")
 	}
 
-	h := handler{
-		topN:      cfg.TopN,
-		topNGames: make([]middleware.GameStat, 0, cfg.TopN),
+	nConfig := middleware.Config[handler]{
+		Builder: func(clientID int) handler {
+			return handler{
+				output:     middleware.Results,
+				topN:       cfg.TopN,
+				topNGames:  make([]middleware.GameStat, 0, cfg.TopN),
+				partitions: cfg.Partitions,
+			}
+		},
+		Endpoints: map[string]middleware.HandlerFunc[handler]{
+			qInput: (*handler).handlePartialResult,
+		},
 	}
+
+	node, err := middleware.NewNode(nConfig, conn)
+	utils.Expect(err, "Failed to create node")
+
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
-	join, err := joiner.NewJoiner(joinCfg, &h)
-	utils.Expect(err, "Failed to create partitioner")
-
-	err = join.Run(ctx)
-	utils.Expect(err, "Failed to run partitioner")
+	err = node.Run(ctx)
+	utils.Expect(err, "Failed to run node")
 }

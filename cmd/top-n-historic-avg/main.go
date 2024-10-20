@@ -4,9 +4,7 @@ import (
 	"container/heap"
 	"context"
 	"distribuidos/tp1/middleware"
-	"distribuidos/tp1/middleware/aggregator"
 	"distribuidos/tp1/utils"
-	"fmt"
 	"os/signal"
 	"sort"
 	"syscall"
@@ -27,7 +25,6 @@ func getConfig() (config, error) {
 
 	v.SetDefault("RabbitIP", "localhost")
 	v.SetDefault("TopN", "10")
-	v.SetDefault("PartitionId", "1")
 
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")
 	_ = v.BindEnv("TopN", "TOP_N")
@@ -40,11 +37,20 @@ func getConfig() (config, error) {
 }
 
 type handler struct {
-	topN    int
-	results middleware.GameHeap
+	output    string
+	topN      int
+	results   middleware.GameHeap
+	sequencer *utils.Sequencer
 }
 
-func (h handler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middleware.Game]) error {
+func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
+	batch, err := middleware.Deserialize[middleware.Batch[middleware.Game]](data)
+	if err != nil {
+		return err
+	}
+
+	h.sequencer.Mark(batch.BatchID, batch.EOF)
+
 	for _, g := range batch.Data {
 		if h.results.Len() < h.topN {
 			heap.Push(&h.results, middleware.GameStat{
@@ -61,10 +67,17 @@ func (h handler) Aggregate(_ *middleware.Channel, batch middleware.Batch[middlew
 			})
 		}
 	}
+
+	if h.sequencer.EOF() {
+		err := h.conclude(ch)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
-func (h handler) Conclude(ch *middleware.Channel) error {
+func (h *handler) conclude(ch *middleware.Channel) error {
 	sortedGames := make([]middleware.GameStat, 0, h.results.Len())
 	for h.results.Len() > 0 {
 		sortedGames = append(sortedGames, heap.Pop(&h.results).(middleware.GameStat))
@@ -74,7 +87,7 @@ func (h handler) Conclude(ch *middleware.Channel) error {
 		return sortedGames[i].Stat > sortedGames[j].Stat
 	})
 
-	err := ch.Send(sortedGames, "", middleware.PartialQ2)
+	err := ch.Send(sortedGames, "", h.output)
 	if err != nil {
 		return err
 	}
@@ -86,20 +99,40 @@ func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
 
-	qName := fmt.Sprintf("%v-x-%v", cfg.Input, cfg.PartitionId)
-	aggCfg := aggregator.Config{
-		RabbitIP: cfg.RabbitIP,
-		Input:    qName,
+	conn, ch, err := middleware.Dial(cfg.RabbitIP)
+	utils.Expect(err, "Failed to dial rabbit")
+
+	qInput := middleware.Cat(cfg.Input, "x", cfg.PartitionId)
+
+	err = middleware.Topology{
+		Queues: []middleware.QueueConfig{
+			{Name: qInput},
+			{Name: middleware.PartialQ2},
+		},
+	}.Declare(ch)
+
+	if err != nil {
+		utils.Expect(err, "Failed to declare topology")
 	}
 
-	h := handler{
-		topN:    cfg.TopN,
-		results: make(middleware.GameHeap, cfg.TopN),
+	nodeCfg := middleware.Config[handler]{
+		Builder: func(clientID int) handler {
+			return handler{
+				output:    middleware.PartialQ2,
+				topN:      cfg.TopN,
+				results:   make(middleware.GameHeap, cfg.TopN),
+				sequencer: utils.NewSequencer(),
+			}
+		},
+		Endpoints: map[string]middleware.HandlerFunc[handler]{
+			qInput: (*handler).handleBatch,
+		},
 	}
+
+	node, err := middleware.NewNode(nodeCfg, conn)
+	utils.Expect(err, "Failed to create node")
+
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
-	agg, err := aggregator.NewAggregator(aggCfg, h)
-	utils.Expect(err, "Failed to create partitioner")
-
-	err = agg.Run(ctx)
-	utils.Expect(err, "Failed to run partitioner")
+	err = node.Run(ctx)
+	utils.Expect(err, "Failed to run node")
 }

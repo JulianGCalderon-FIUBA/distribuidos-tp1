@@ -5,6 +5,8 @@ import (
 	"fmt"
 )
 
+const CLIENT = 1
+
 const Q1 = 1
 const Q2 = 1
 const Q3 = 1
@@ -71,20 +73,22 @@ func generateGateway() {
 }
 
 func generateClient() {
-	fmt.Println("  client:")
-	fmt.Println("    container_name: client")
-	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /build/client")
-	fmt.Println("    environment:")
-	fmt.Println("      - GATEWAY_CONN_ADDR=gateway:9001")
-	fmt.Println("      - GATEWAY_DATA_ADDR=gateway:9002")
-	fmt.Println("    volumes:")
-	fmt.Println("      - ./.data:/.data")
-	fmt.Println("      - ./.results:/.results")
-	fmt.Println("    networks:")
-	fmt.Println("      - net")
-	fmt.Println("    depends_on:")
-	fmt.Println("      - gateway")
+	for i := 1; i <= CLIENT; i++ {
+		fmt.Printf("  client-%v:\n", i)
+		fmt.Printf("    container_name: client-%v\n", i)
+		fmt.Println("    image: tp1:latest")
+		fmt.Println("    entrypoint: /build/client")
+		fmt.Println("    environment:")
+		fmt.Println("      - GATEWAY_CONN_ADDR=gateway:9001")
+		fmt.Println("      - GATEWAY_DATA_ADDR=gateway:9002")
+		fmt.Println("    volumes:")
+		fmt.Println("      - ./.data:/.data")
+		fmt.Printf("      - ./.results-%v:/.results\n", i)
+		fmt.Println("    networks:")
+		fmt.Println("      - net")
+		fmt.Println("    depends_on:")
+		fmt.Println("      - gateway")
+	}
 }
 
 func generateGenreFilter() {
@@ -178,7 +182,7 @@ func generateQ1() {
 	fmt.Println("  q1-joiner:")
 	fmt.Println("    container_name: q1-joiner")
 	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /games-per-platform-joiner")
+	fmt.Println("    entrypoint: /build/games-per-platform-joiner")
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Printf("      - PARTITIONS=%v\n", Q1)
@@ -206,7 +210,7 @@ func generateQ2() {
 		fmt.Printf("  q2-top-%v:\n", i)
 		fmt.Printf("    container_name: q2-top-%v\n", i)
 		fmt.Println("    image: tp1:latest")
-		fmt.Println("    entrypoint: /top-n-historic-avg")
+		fmt.Println("    entrypoint: /build/top-n-historic-avg")
 		fmt.Println("    environment:")
 		fmt.Println("      - RABBIT_IP=rabbitmq")
 		fmt.Printf("      - PARTITION_ID=%v\n", i)
@@ -220,7 +224,7 @@ func generateQ2() {
 	fmt.Println("  q2-joiner:")
 	fmt.Println("    container_name: q2-joiner")
 	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /top-n-historic-avg-joiner")
+	fmt.Println("    entrypoint: /build/top-n-historic-avg-joiner")
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Printf("      - PARTITIONS=%v\n", Q2)
@@ -293,7 +297,7 @@ func generateQ3() {
 	fmt.Println("  q3-joiner:")
 	fmt.Println("    container_name: q3-joiner")
 	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /top-n-reviews-joiner")
+	fmt.Println("    entrypoint: /build/top-n-reviews-joiner")
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Println("      - TOP_N=5")

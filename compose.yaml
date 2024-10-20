@@ -26,8 +26,8 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-  client:
-    container_name: client
+  client-1:
+    container_name: client-1
     image: tp1:latest
     entrypoint: /build/client
     environment:
@@ -35,7 +35,7 @@ services:
       - GATEWAY_DATA_ADDR=gateway:9002
     volumes:
       - ./.data:/.data
-      - ./.results:/.results
+      - ./.results-1:/.results
     networks:
       - net
     depends_on:
@@ -116,7 +116,7 @@ services:
   q1-joiner:
     container_name: q1-joiner
     image: tp1:latest
-    entrypoint: /games-per-platform-joiner
+    entrypoint: /build/games-per-platform-joiner
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITIONS=1
@@ -140,7 +140,7 @@ services:
   q2-top-1:
     container_name: q2-top-1
     image: tp1:latest
-    entrypoint: /top-n-historic-avg
+    entrypoint: /build/top-n-historic-avg
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=1
@@ -153,7 +153,7 @@ services:
   q2-joiner:
     container_name: q2-joiner
     image: tp1:latest
-    entrypoint: /top-n-historic-avg-joiner
+    entrypoint: /build/top-n-historic-avg-joiner
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITIONS=1
@@ -218,7 +218,7 @@ services:
   q3-joiner:
     container_name: q3-joiner
     image: tp1:latest
-    entrypoint: /top-n-reviews-joiner
+    entrypoint: /build/top-n-reviews-joiner
     environment:
       - RABBIT_IP=rabbitmq
       - TOP_N=5
