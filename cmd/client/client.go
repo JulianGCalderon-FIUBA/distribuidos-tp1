@@ -212,18 +212,18 @@ func (c *client) waitResults() error {
 		case protocol.Q1Results:
 			log.Infof("Received Q1 results: %+v", r)
 			c.results += 1
-			writeResults(r, 1, int(c.id))
+			writeResults(r, 1)
 		case protocol.Q2Results:
 			log.Infof("Received Q2 results: %+v", r)
 			c.results += 1
-			writeResults(r, 2, int(c.id))
+			writeResults(r, 2)
 		case protocol.Q3Results:
 			log.Infof("Received Q3 results: %+v", r)
 			c.results += 1
-			writeResults(r, 3, int(c.id))
+			writeResults(r, 3)
 		case protocol.Q4Results:
 			log.Infof("Received Q4 results: %+v", r)
-			writeResults(r, 4, int(c.id))
+			writeResults(r, 4)
 			if r.EOF {
 				log.Infof("Received Q4 EOF")
 				c.results += 1
@@ -231,7 +231,7 @@ func (c *client) waitResults() error {
 		case protocol.Q5Results:
 			log.Infof("Received Q5 results: %v", len(r.Percentile90))
 			c.results += 1
-			writeResults(r, 5, int(c.id))
+			writeResults(r, 5)
 		}
 
 		if c.results == MAX_RESULTS {
@@ -251,12 +251,12 @@ func getFileSize(filePath string) (uint64, error) {
 	return uint64(file.Size()), nil
 }
 
-func writeResults(result protocol.Results, query int, id int) {
+func writeResults(result protocol.Results, query int) {
 	err := os.MkdirAll(RESULTS_PATH, os.ModePerm)
 	if err != nil {
 		log.Errorf("Failed to create directory for results files: %v", err)
 	}
-	path := fmt.Sprintf("%v/%v-%v.csv", RESULTS_PATH, query, id)
+	path := fmt.Sprintf("%v/%v.csv", RESULTS_PATH, query)
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Errorf("Failed to open results file for query %v: %v", query, err)
