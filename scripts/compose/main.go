@@ -7,13 +7,13 @@ import (
 
 const CLIENT = 3
 
-const Q1 = 1
-const Q2 = 1
-const Q3 = 1
-const Q4 = 1
-const Q5 = 1
+const Q1 = 3
+const Q2 = 3
+const Q3 = 3
+const Q4 = 3
+const Q5 = 3
 
-const LANGUAGE_FILTER = 4
+const LANGUAGE_FILTER = 8
 const DECADE_FILTER = 1
 const GENRE_FITLER = 1
 const SCORE_FILTER = 1
