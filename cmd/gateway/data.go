@@ -12,6 +12,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -52,14 +53,18 @@ func (g *gateway) startDataEndpoint(ctx context.Context) (err error) {
 		return err
 	}
 
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			return err
 		}
 
-		// todo: add wait group
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			err := g.handleClientData(ctx, conn)
 			if err != nil {
 				log.Errorf("Error while handling client: %v", err)
@@ -82,8 +87,12 @@ func (g *gateway) handleClientData(ctx context.Context, rawConn net.Conn) (err e
 		return err
 	}
 
-	// todo: validate client id
 	log.Infof("Client data hello with id: %v", hello.ClientID)
+	g.mu.Lock()
+	if _, ok := g.clients[int(hello.ClientID)]; !ok {
+		return fmt.Errorf("Client ID received is unknown")
+	}
+	g.mu.Unlock()
 
 	err = conn.Send(&protocol.DataAccept{})
 	if err != nil {
@@ -99,8 +108,12 @@ func (g *gateway) handleClientData(ctx context.Context, rawConn net.Conn) (err e
 		ClientID: int(hello.ClientID),
 	}
 
+	wg := &sync.WaitGroup{}
+	wg.Add(2)
+
 	gamesRecv, gamesSend := net.Pipe()
 	go func() {
+		defer wg.Done()
 		err := g.queueGames(gamesRecv, ch)
 		if err != nil {
 			log.Errorf("Error while queuing games: %v", err)
@@ -114,6 +127,7 @@ func (g *gateway) handleClientData(ctx context.Context, rawConn net.Conn) (err e
 
 	reviewsRecv, reviewsSend := net.Pipe()
 	go func() {
+		defer wg.Done()
 		err := g.queueReviews(reviewsRecv, ch)
 		if err != nil {
 			log.Errorf("Error while queuing reviews: %v", err)
@@ -124,6 +138,8 @@ func (g *gateway) handleClientData(ctx context.Context, rawConn net.Conn) (err e
 		return err
 	}
 	reviewsSend.Close()
+
+	wg.Wait()
 
 	return nil
 }

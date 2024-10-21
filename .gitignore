@@ -1,4 +1,4 @@
 bin
 .data
-.results
+.results-*
 .build
