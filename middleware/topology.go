@@ -37,6 +37,12 @@ func (c QueueConfig) Declare(ch *amqp.Channel) error {
 		return err
 	}
 
+	err = ch.Qos(
+		1,     // prefetch count
+		0,     // prefetch size
+		false, // global
+	)
+
 	for exchange, keys := range c.Bindings {
 		for _, key := range keys {
 			err = ch.QueueBind(name.Name, key, exchange, false, nil)
