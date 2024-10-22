@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"slices"
 )
@@ -12,13 +13,13 @@ import (
 const GAMES = 1000
 
 func main() {
-	gamesIds := make([]string, 0)
+	gamesIds := make(map[string]struct{})
 
-	gamesIds = writeGames(gamesIds)
+	writeGames(gamesIds)
 	writeReviews(gamesIds)
 }
 
-func writeGames(gamesIds []string) []string {
+func writeGames(gamesIds map[string]struct{}) {
 	fullGames, err := os.Open(".data/games.csv")
 	if err != nil {
 		fmt.Printf("Error opening games file: %v", err)
@@ -66,14 +67,13 @@ func writeGames(gamesIds []string) []string {
 		}
 
 		id := record[0]
-		gamesIds = append(gamesIds, id)
+		gamesIds[id] = struct{}{}
 	}
-
-	return gamesIds
 }
 
-func writeReviews(gamesIds []string) {
+func writeReviews(gamesIds map[string]struct{}) {
 
+	ids := slices.Collect(maps.Keys(gamesIds))
 	fullReviews, err := os.Open(".data/reviews.csv")
 	if err != nil {
 		fmt.Printf("Error opening reviews file: %v", err)
@@ -110,7 +110,7 @@ func writeReviews(gamesIds []string) {
 			fmt.Printf("Failed to read record: %v", err)
 		}
 
-		if slices.Contains(gamesIds, record[0]) {
+		if slices.Contains(ids, record[0]) {
 			err = w.Write(record)
 			if err != nil {
 				fmt.Printf("Failed to write record: %v", err)
