@@ -36,6 +36,17 @@ func writeGames(gamesIds []string) []string {
 	w := csv.NewWriter(reduced)
 	line := 0
 
+	// write header
+	record, err := r.Read()
+	if err != nil {
+		fmt.Printf("Failed to read record: %v", err)
+	}
+	err = w.Write(record)
+	if err != nil {
+		fmt.Printf("Failed to write record: %v", err)
+	}
+	w.Flush()
+
 	for line < GAMES {
 		record, err := r.Read()
 		if err != nil {
