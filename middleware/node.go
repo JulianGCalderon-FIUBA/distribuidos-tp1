@@ -73,6 +73,11 @@ func (n *Node[T]) Run(ctx context.Context) error {
 
 func (n *Node[T]) processDelivery(d Delivery) error {
 	clientID := int(d.Headers["clientID"].(int32))
+	finish := d.Headers["finish"].(bool)
+	if finish {
+		n.cleanResources(clientID)
+		return d.Ack(false)
+	}
 
 	h, ok := n.clients[clientID]
 	if !ok {
@@ -96,6 +101,11 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 	}
 
 	return d.Ack(false)
+}
+
+func (n *Node[t]) cleanResources(clientID int) {
+	log.Infof("Cleaning resources for client %v", clientID)
+	delete(n.clients, clientID)
 }
 
 type Delivery struct {

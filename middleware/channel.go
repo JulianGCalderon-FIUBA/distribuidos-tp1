@@ -21,6 +21,24 @@ func (c *Channel) Send(msg any, exchange, key string) error {
 		ContentType: "",
 		Headers: amqp.Table{
 			"clientID": c.ClientID,
+			"finish": false,
+		},
+		Body: buf,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Channel) SendFinish(exchange, key string) error {
+	buf := []byte{}
+	err := c.Ch.Publish(exchange, key, false, false, amqp.Publishing{
+		ContentType: "",
+		Headers: amqp.Table{
+			"clientID": c.ClientID,
+			"finish": true,
 		},
 		Body: buf,
 	})
