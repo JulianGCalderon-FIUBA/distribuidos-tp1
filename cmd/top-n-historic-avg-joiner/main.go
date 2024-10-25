@@ -42,6 +42,7 @@ func getConfig() (config, error) {
 }
 
 type handler struct {
+	input      string
 	output     string
 	topN       int
 	topNGames  middleware.GameHeap
@@ -83,7 +84,12 @@ func (h *handler) conclude(ch *middleware.Channel) error {
 	})
 
 	result := protocol.Q2Results{TopN: sortedGames}
-	return ch.SendAny(result, "", h.output)
+	err := ch.SendAny(result, "", h.output)
+	if err != nil {
+		return err
+	}
+
+	return ch.SendFinish("", h.input)
 }
 
 func main() {
@@ -109,6 +115,7 @@ func main() {
 	nConfig := middleware.Config[handler]{
 		Builder: func(clientID int) handler {
 			return handler{
+				input:      qInput,
 				output:     middleware.Results,
 				topN:       cfg.TopN,
 				topNGames:  make([]middleware.GameStat, 0, cfg.TopN),

@@ -44,6 +44,7 @@ const (
 )
 
 type handler struct {
+	input      string
 	output     string
 	count      map[Platform]int
 	partitions int
@@ -79,7 +80,12 @@ func (h *handler) conclude(ch *middleware.Channel) error {
 		Mac:     h.count[Mac],
 	}
 
-	return ch.SendAny(result, "", middleware.Results)
+	err := ch.SendAny(result, "", h.output)
+	if err != nil {
+		return err
+	}
+
+	return ch.SendFinish("", h.input)
 }
 
 func main() {
@@ -105,6 +111,7 @@ func main() {
 	nConfig := middleware.Config[handler]{
 		Builder: func(clientID int) handler {
 			return handler{
+				input:      qInput,
 				output:     middleware.Results,
 				count:      make(map[Platform]int, 0),
 				partitions: cfg.Partitions,

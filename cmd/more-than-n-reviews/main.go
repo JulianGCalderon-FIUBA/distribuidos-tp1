@@ -34,6 +34,8 @@ func getConfig() (config, error) {
 }
 
 type handler struct {
+	input     string
+	output    string
 	N         int
 	results   map[uint64]middleware.GameStat
 	sequencer *utils.Sequencer
@@ -71,12 +73,12 @@ func (h *handler) conclude(ch *middleware.Channel) error {
 			EOF:   i == len(results)-1,
 		}
 
-		err := ch.SendAny(p, "", middleware.Results)
+		err := ch.SendAny(p, "", h.output)
 		if err != nil {
 			return err
 		}
 	}
-	return nil
+	return ch.SendFinish("", h.input)
 }
 
 func main() {
@@ -87,9 +89,10 @@ func main() {
 	conn, ch, err := middleware.Dial(cfg.RabbitIP)
 	utils.Expect(err, "Failed to dial rabbit")
 
+	qInput := middleware.GroupedQ4Filter
 	err = middleware.Topology{
 		Queues: []middleware.QueueConfig{
-			{Name: middleware.GroupedQ4Filter},
+			{Name: qInput},
 			{Name: middleware.Results},
 		},
 	}.Declare(ch)
@@ -98,6 +101,8 @@ func main() {
 	nodeCfg := middleware.Config[handler]{
 		Builder: func(clientID int) handler {
 			return handler{
+				input:     qInput,
+				output:    middleware.Results,
 				N:         cfg.N,
 				results:   make(map[uint64]middleware.GameStat),
 				sequencer: utils.NewSequencer(),
