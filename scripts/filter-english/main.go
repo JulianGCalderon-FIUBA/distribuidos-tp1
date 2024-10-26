@@ -113,6 +113,8 @@ func main() {
 		}()
 	}
 
+	// We wait until all filter threads have finished
+	// before closing the channel, ensuring no data is lost
 	go func() {
 		wg.Wait()
 		close(output)
