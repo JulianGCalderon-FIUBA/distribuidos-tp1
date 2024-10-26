@@ -37,6 +37,7 @@ func getConfig() (config, error) {
 }
 
 type handler struct {
+	input     string
 	output    string
 	sorted    []middleware.GameStat
 	N         int
@@ -71,7 +72,11 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 		top := h.sorted[index:]
 		slices.Reverse(top)
 
-		return ch.Send(top, "", h.output)
+		err := ch.Send(top, "", h.output)
+		if err != nil {
+			return err
+		}
+		return ch.SendFinish("", h.input)
 	}
 
 	return nil
@@ -85,10 +90,10 @@ func main() {
 	conn, ch, err := middleware.Dial(cfg.RabbitIP)
 	utils.Expect(err, "Failed to dial rabbit")
 
-	input := middleware.Cat(middleware.GroupedQ3, cfg.PartitionID)
+	qInput := middleware.Cat(middleware.GroupedQ3, cfg.PartitionID)
 	err = middleware.Topology{
 		Queues: []middleware.QueueConfig{
-			{Name: input},
+			{Name: qInput},
 			{Name: middleware.PartialQ3},
 		},
 	}.Declare(ch)
@@ -97,6 +102,7 @@ func main() {
 	nodeCfg := middleware.Config[handler]{
 		Builder: func(clientID int) handler {
 			return handler{
+				input:     qInput,
 				output:    middleware.PartialQ3,
 				sorted:    make([]middleware.GameStat, 0),
 				N:         cfg.N,
@@ -104,7 +110,7 @@ func main() {
 			}
 		},
 		Endpoints: map[string]middleware.HandlerFunc[handler]{
-			input: (*handler).handleBatch,
+			qInput: (*handler).handleBatch,
 		},
 	}
 

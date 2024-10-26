@@ -42,6 +42,7 @@ const (
 )
 
 type handler struct {
+	input     string
 	output    string
 	count     map[Platform]int
 	sequencer *utils.Sequencer
@@ -73,7 +74,12 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 			log.Infof("Found %v games with %v support", v, string(k))
 		}
 
-		return ch.Send(h.count, "", h.output)
+		err := ch.Send(h.count, "", h.output)
+		if err != nil {
+			return err
+		}
+	
+		return ch.SendFinish("", h.input)
 	}
 
 	return nil
@@ -98,6 +104,7 @@ func main() {
 	nodeCfg := middleware.Config[handler]{
 		Builder: func(clientID int) handler {
 			return handler{
+				input:     qName,
 				count:     make(map[Platform]int),
 				output:    middleware.PartialQ1,
 				sequencer: utils.NewSequencer(),

@@ -50,6 +50,7 @@ type handler struct {
 	gameSequencer   *utils.Sequencer
 	reviewSequencer *utils.Sequencer
 	batchSize       int
+	input           string
 	output          string
 }
 
@@ -140,7 +141,7 @@ func (h *handler) Conclude(ch *middleware.Channel) error {
 		batch.BatchID += 1
 	}
 
-	return nil
+	return ch.SendFinish("", h.input)
 }
 
 func main() {
@@ -170,6 +171,7 @@ func main() {
 				gameSequencer:   utils.NewSequencer(),
 				reviewSequencer: utils.NewSequencer(),
 				batchSize:       cfg.BatchSize,
+				input:           gameInput, // podria ser reviewInput, solo importa que sea una queue a la que le llegan mensajes a este nodo
 				output:          output,
 			}
 		},

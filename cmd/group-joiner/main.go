@@ -38,6 +38,7 @@ func getConfig() (config, error) {
 }
 
 type handler struct {
+	input           string
 	output          string
 	lastBatchId     int
 	eofReceived     int
@@ -79,7 +80,11 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte, partition int
 
 	if h.eofReceived == h.totalPartitions {
 		b := middleware.Batch[middleware.GameStat]{EOF: true}
-		return ch.Send(b, "", h.output)
+		err := ch.Send(b, "", h.output)
+		if err != nil {
+			return err
+		}
+		return ch.SendFinish("", h.input)
 	}
 
 	return nil
@@ -96,12 +101,12 @@ func main() {
 	endpoints := make(map[string]middleware.HandlerFunc[handler], 0)
 
 	for i := 1; i <= cfg.Partitions; i++ {
-		qname := middleware.Cat(cfg.Input, i)
+		qName := middleware.Cat(cfg.Input, i)
 		qcfg := middleware.QueueConfig{
-			Name: qname,
+			Name: qName,
 		}
 		queues = append(queues, qcfg)
-		endpoints[qname] = buildHandler(i)
+		endpoints[qName] = buildHandler(i)
 	}
 
 	output := middleware.QueueConfig{Name: cfg.Output}
@@ -120,6 +125,7 @@ func main() {
 				sequencer[i] = utils.NewSequencer()
 			}
 			return handler{
+				input:           middleware.Cat(cfg.Input, 1),
 				output:          cfg.Output,
 				lastBatchId:     0,
 				eofReceived:     0,

@@ -106,6 +106,7 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 func (n *Node[t]) cleanResources(clientID int) {
 	log.Infof("Cleaning resources for client %v", clientID)
 	delete(n.clients, clientID)
+	
 }
 
 type Delivery struct {
