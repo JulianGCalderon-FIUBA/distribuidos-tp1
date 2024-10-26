@@ -1,4 +1,5 @@
 import pandas as pd
+import os
 
 from pandas import DataFrame
 
@@ -17,6 +18,8 @@ games_shooter = games[games["Genres"].str.contains("action")]
 print("Games Shooter:", games_shooter.shape[0])
 games_indie_2010: DataFrame = games_indie[games_indie["Release date"].str.contains("201")] # type: ignore
 print("Games Indie 2010:", games_indie_2010.shape[0])
+
+os.mkdir(".py-results")
 
 # Q1
 
