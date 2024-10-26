@@ -5,9 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"maps"
 	"os"
-	"slices"
 )
 
 const GAMES = 1000
@@ -33,7 +31,7 @@ func writeGames(gamesIds map[string]struct{}) {
 	defer reduced.Close()
 
 	r := csv.NewReader(fullGames)
-	r.FieldsPerRecord = 40
+	r.FieldsPerRecord = -1
 	w := csv.NewWriter(reduced)
 	line := 0
 
@@ -73,7 +71,6 @@ func writeGames(gamesIds map[string]struct{}) {
 
 func writeReviews(gamesIds map[string]struct{}) {
 
-	ids := slices.Collect(maps.Keys(gamesIds))
 	fullReviews, err := os.Open(".data/reviews.csv")
 	if err != nil {
 		fmt.Printf("Error opening reviews file: %v", err)
@@ -87,7 +84,7 @@ func writeReviews(gamesIds map[string]struct{}) {
 	defer reduced.Close()
 
 	r := csv.NewReader(fullReviews)
-	r.FieldsPerRecord = 5
+	r.FieldsPerRecord = -1
 	w := csv.NewWriter(reduced)
 
 	// write header
@@ -110,7 +107,7 @@ func writeReviews(gamesIds map[string]struct{}) {
 			fmt.Printf("Failed to read record: %v", err)
 		}
 
-		if slices.Contains(ids, record[0]) {
+		if _, ok := gamesIds[record[0]]; ok {
 			err = w.Write(record)
 			if err != nil {
 				fmt.Printf("Failed to write record: %v", err)
