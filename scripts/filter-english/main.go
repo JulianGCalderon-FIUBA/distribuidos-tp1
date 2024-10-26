@@ -10,46 +10,45 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"sync"
 
 	lingua "github.com/pemistahl/lingua-go"
 )
 
-func isEnglish(text string) bool {
+const MAX_THREADS = 8
+
+func run(input, output chan []string) {
+	log.Println("Starting language filter")
+
 	languages := []lingua.Language{
 		lingua.English,
 		lingua.Spanish,
 	}
-
 	detector := lingua.NewLanguageDetectorBuilder().
 		FromLanguages(languages...).
 		Build()
 
-	lang, _ := detector.DetectLanguageOf(text)
-
-	return lang == lingua.English
-}
-
-func main() {
-	if len(os.Args) < 3 {
-		log.Fatal("Not enough arguments")
+	for record := range input {
+		review, err := reviewFromFullRecord(record)
+		if err != nil {
+			continue
+		}
+		lang, _ := detector.DetectLanguageOf(review.Text)
+		if lang == lingua.English {
+			output <- record
+		}
 	}
 
-	inputArg := os.Args[1]
-	outputArg := os.Args[2]
+	log.Println("Finished language filter")
+}
 
-	inputFile, err := os.Open(inputArg)
-	utils.Expect(err, "failed to open file")
-	outputFile, err := os.Create(outputArg)
-	utils.Expect(err, "failed to open file")
+func read(filePath string, output chan []string) {
+	log.Println("Starting reader")
 
-	reader := csv.NewReader(inputFile)
+	file, err := os.Open(filePath)
+	utils.Expect(err, "failed to open file")
+	reader := csv.NewReader(file)
 	reader.FieldsPerRecord = -1
-	writer := csv.NewWriter(outputFile)
-
-	header, err := reader.Read()
-	utils.Expect(err, "failed to read file")
-	err = writer.Write(header)
-	utils.Expect(err, "failed to write file")
 
 	for {
 		record, err := reader.Read()
@@ -61,18 +60,65 @@ func main() {
 		}
 		utils.Expect(err, "failed to read file")
 
-		review, err := reviewFromFullRecord(record)
-		if err != nil {
-			continue
-		}
+		output <- record
+	}
 
-		if isEnglish(review.Text) {
-			err = writer.Write(record)
-			utils.Expect(err, "failed to write file")
-		}
+	log.Println("Finished reader")
+
+	close(output)
+}
+
+func write(filePath string, input chan []string) {
+	log.Println("Starting writer")
+
+	file, err := os.Create(filePath)
+	utils.Expect(err, "failed to open file")
+	writer := csv.NewWriter(file)
+
+	for record := range input {
+		err = writer.Write(record)
+		utils.Expect(err, "failed to write file")
 	}
 
 	writer.Flush()
+	utils.Expect(writer.Error(), "failed to flush file")
+
+	log.Println("Finished writer")
+}
+
+func main() {
+	if len(os.Args) < 3 {
+		log.Fatal("Not enough arguments")
+	}
+
+	inputArg := os.Args[1]
+	outputArg := os.Args[2]
+
+	input := make(chan []string)
+	output := make(chan []string)
+
+	wg := &sync.WaitGroup{}
+
+	wg.Add(1)
+	go func() {
+		read(inputArg, input)
+		wg.Done()
+	}()
+
+	wg.Add(MAX_THREADS)
+	for range MAX_THREADS {
+		go func() {
+			run(input, output)
+			wg.Done()
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(output)
+	}()
+
+	write(outputArg, output)
 }
 
 func reviewFromFullRecord(record []string) (review middleware.Review, err error) {
