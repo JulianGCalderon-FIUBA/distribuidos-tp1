@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"context"
+	"maps"
+	"slices"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -85,9 +87,13 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 		h = n.config.Builder(clientID)
 		n.clients[clientID] = h
 	}
+
+	qInput := slices.Collect(maps.Keys(n.config.Endpoints))[0]
+
 	ch := &Channel{
 		Ch:       n.ch,
 		ClientID: clientID,
+		Input: qInput,
 	}
 
 	err := n.config.Endpoints[d.Queue](&h, ch, d.Body)
@@ -106,7 +112,6 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 func (n *Node[T]) cleanResources(clientID int) {
 	log.Infof("Cleaning resources for client %v", clientID)
 	delete(n.clients, clientID)
-	// deberia borrar informacion de n.Config para ese clientID?
 }
 
 type Delivery struct {
