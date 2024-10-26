@@ -50,10 +50,8 @@ reviews_negative: DataFrame = reviews[reviews["review_score"] == -1] # type: ign
 print("Reviews Negative:", reviews_negative.shape[0])
 
 # We use another dataset, which was filtered in Go
-reviews_ingles = pd.read_csv('.data/reviews-english.csv')
-reviews_ingles = reviews_ingles.filter(reviews_columns, axis="columns").dropna()
-reviews_ingles['review_text'] = reviews_ingles['review_text'].astype(str)
-reviews_negative_ingles: DataFrame = reviews_ingles[reviews_ingles["review_score"] == -1] # type: ignore
+reviews_negative_ingles = pd.read_csv('.data/reviews-english-negative.csv')
+reviews_negative_ingles = reviews_negative_ingles.filter(reviews_columns, axis="columns").dropna()
 print("Reviews Negative Ingles:", reviews_negative_ingles.shape[0])
 
 # utils
