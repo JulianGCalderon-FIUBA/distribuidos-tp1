@@ -36,3 +36,20 @@ Luego ejecutar:
 ./cmd/detect-language/diff.sh
 ```
 
+## Comparacion de resultados
+
+Para comparar los resultados, primero hay que obtener los valores de referencia. Tenemos un script de Python que los resuelve, pero necesitamos usar el mismo detector de lenguaje, para asegurar que los resultados sean los mismo. Para eso, ejecutamos:
+```bash
+go run ./scripts/filter-english/main.go .data/reviews.csv .data/reviews-english.csv
+```
+
+Luego, resolvemos las consultas localmente, ejecutando:
+```bash
+python ./scripts/solve.py
+```
+Este guardara los resultados correctos en `.py-results/`
+
+Para compararlos, ejecutamos:
+```bash
+./scripts/compare.py .results/ .py-results/
+```
