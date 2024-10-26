@@ -25,6 +25,7 @@ if diff --color=always \
   "$REFERENCE/1.csv"
 then
   echo "OK!"
+  cat "$ACTUAL/1.csv"
 else
   FAILURE=1
 fi
@@ -36,6 +37,7 @@ if diff --color=always \
   "$REFERENCE/2.csv"
 then
   echo "OK!"
+  cat "$ACTUAL/2.csv"
 else
   FAILURE=1
 fi
@@ -47,6 +49,7 @@ if diff --color=always \
   "$REFERENCE/3.csv"
 then
   echo "OK!"
+  cat "$ACTUAL/3.csv"
 else
   FAILURE=1
 fi
@@ -58,6 +61,7 @@ if diff --color=always \
   <(sort "$REFERENCE/4.csv")
 then
   echo "OK!"
+  cat "$ACTUAL/4.csv"
 else
   FAILURE=1
 fi
@@ -69,6 +73,8 @@ if diff --color=always \
   <(sort "$REFERENCE/5.csv")
 then
   echo "OK!"
+  echo "Output is too long, showing first lines:"
+  head "$ACTUAL/5.csv"
 else
   FAILURE=1
 fi
