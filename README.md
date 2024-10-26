@@ -40,7 +40,7 @@ Luego ejecutar:
 
 Para comparar los resultados, primero hay que obtener los valores de referencia. Tenemos un script de Python que los resuelve, pero necesitamos usar el mismo detector de lenguaje, para asegurar que los resultados sean los mismo. Para eso, ejecutamos:
 ```bash
-go run ./scripts/filter-english/main.go .data/reviews.csv .data/reviews-english.csv
+go run ./scripts/filter-english-negative/main.go .data/reviews.csv .data/reviews-english-negative.csv
 ```
 
 Luego, resolvemos las consultas localmente, ejecutando:
@@ -51,5 +51,5 @@ Este guardara los resultados correctos en `.py-results/`
 
 Para compararlos, ejecutamos:
 ```bash
-./scripts/compare.py .results/ .py-results/
+./scripts/compare.sh .results/ .py-results/
 ```
