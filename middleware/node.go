@@ -103,10 +103,10 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 	return d.Ack(false)
 }
 
-func (n *Node[t]) cleanResources(clientID int) {
+func (n *Node[T]) cleanResources(clientID int) {
 	log.Infof("Cleaning resources for client %v", clientID)
 	delete(n.clients, clientID)
-	
+	// deberia borrar informacion de n.Config para ese clientID?
 }
 
 type Delivery struct {

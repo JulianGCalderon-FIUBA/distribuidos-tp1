@@ -19,6 +19,7 @@ type FilterConfig struct {
 type FilterFunc[T any] func(record T) []string
 
 type filterHandler[T any] struct {
+	input      string
 	output     string
 	clientID   int
 	filter     FilterFunc[T]
@@ -64,6 +65,7 @@ func (h *filterHandler[T]) handle(ch *Channel, data []byte) error {
 		for rk, stats := range h.stats {
 			log.Infof("Sent %v records to key %v", stats, rk)
 		}
+		return ch.SendFinish("", h.input)
 	}
 
 	return nil
@@ -108,6 +110,7 @@ func NewFilter[T any](config FilterConfig, f FilterFunc[T]) (*Node[filterHandler
 			}
 
 			return filterHandler[T]{
+				input:      config.Queue,
 				output:     config.Exchange,
 				clientID:   clientID,
 				filter:     f,
