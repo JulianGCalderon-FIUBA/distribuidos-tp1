@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-const GAMES = 1000
+const GAMES = 10000
 
 func main() {
 	gamesIds := make(map[string]struct{})
