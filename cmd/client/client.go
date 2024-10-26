@@ -259,7 +259,9 @@ func initResultWriter(q protocol.Result) (*csv.Writer, error) {
 		return nil, err
 	}
 	writer := csv.NewWriter(file)
-	err = writer.Write(q.Header())
+	_ = writer.Write(q.Header())
+	writer.Flush()
+	err = writer.Error()
 	return writer, err
 }
 
