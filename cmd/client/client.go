@@ -4,6 +4,7 @@ import (
 	"context"
 	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/utils"
+	"encoding/csv"
 	"errors"
 	"fmt"
 	"io"
@@ -202,36 +203,35 @@ func (c *client) sendFile(filePath string) error {
 }
 
 func (c *client) waitResults() error {
+	writers, err := initResultWriters()
+	if err != nil {
+		return err
+	}
+
 	for {
-		var results protocol.Results
-		err := c.conn.Recv(&results)
+		var r protocol.Result
+		err := c.conn.Recv(&r)
 		if err != nil {
 			return err
 		}
-		switch r := results.(type) {
-		case protocol.Q1Results:
-			log.Infof("Received Q1 results: %+v", r)
-			c.results += 1
-			writeResults(r, 1)
-		case protocol.Q2Results:
-			log.Infof("Received Q2 results: %+v", r)
-			c.results += 1
-			writeResults(r, 2)
-		case protocol.Q3Results:
-			log.Infof("Received Q3 results: %+v", r)
-			c.results += 1
-			writeResults(r, 3)
-		case protocol.Q4Results:
-			log.Infof("Received Q4 results: %+v", r)
-			writeResults(r, 4)
+
+		log.Infof("Received Q%v results", r.Number())
+
+		switch r := r.(type) {
+		case protocol.Q4Result:
 			if r.EOF {
 				log.Infof("Received Q4 EOF")
 				c.results += 1
 			}
-		case protocol.Q5Results:
-			log.Infof("Received Q5 results: %v", len(r.Percentile90))
+		default:
 			c.results += 1
-			writeResults(r, 5)
+		}
+
+		writer := writers[r.Number()-1]
+
+		err = writer.WriteAll(r.ToCSV())
+		if err != nil {
+			return err
 		}
 
 		if c.results == MAX_RESULTS {
@@ -251,22 +251,28 @@ func getFileSize(filePath string) (uint64, error) {
 	return uint64(file.Size()), nil
 }
 
-func writeResults(result protocol.Results, query int) {
-	err := os.MkdirAll(RESULTS_PATH, os.ModePerm)
+func initResultWriter(q protocol.Result) (*csv.Writer, error) {
+	n := q.Number()
+	path := fmt.Sprintf("%v/%v.csv", RESULTS_PATH, n)
+	file, err := os.Create(path)
 	if err != nil {
-		log.Errorf("Failed to create directory for results files: %v", err)
+		return nil, err
 	}
-	path := fmt.Sprintf("%v/%v.csv", RESULTS_PATH, query)
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Errorf("Failed to open results file for query %v: %v", query, err)
-	}
-	defer f.Close()
+	writer := csv.NewWriter(file)
+	err = writer.Write(q.Header())
+	return writer, err
+}
 
-	for _, s := range result.ToStringArray() {
-		n, err := f.WriteString(s)
-		if n != len([]byte(s)) || err != nil {
-			log.Errorf("Failed to write results from query %v: %v", query, err)
+func initResultWriters() ([]*csv.Writer, error) {
+	writers := make([]*csv.Writer, MAX_RESULTS)
+	for i, result := range protocol.AllResultTypes() {
+		writer, err := initResultWriter(result)
+		if err != nil {
+			return nil, err
 		}
+
+		writers[i] = writer
 	}
+
+	return writers, nil
 }

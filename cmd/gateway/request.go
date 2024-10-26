@@ -63,7 +63,7 @@ func (g *gateway) handleClient(ctx context.Context, netConn net.Conn, clientID i
 
 	log.Infof("Received client hello: %v", clientID)
 
-	ch := make(chan protocol.Results)
+	ch := make(chan protocol.Result)
 
 	g.mu.Lock()
 	g.clients[clientID] = ch

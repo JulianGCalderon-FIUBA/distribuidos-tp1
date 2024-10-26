@@ -64,10 +64,8 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 func (h *handler) conclude(ch *middleware.Channel) error {
 	results := slices.Collect(maps.Values(h.results))
 	for i, res := range results {
-		p := protocol.Q4Results{
-			AppID: res.AppID,
-			Name:  res.Name,
-			Count: int(res.Stat),
+		p := protocol.Q4Result{
+			Games: []middleware.GameStat{res},
 			EOF:   i == len(results)-1,
 		}
 
@@ -82,7 +80,7 @@ func (h *handler) conclude(ch *middleware.Channel) error {
 func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
-	gob.Register(protocol.Q4Results{})
+	gob.Register(protocol.Q4Result{})
 
 	conn, ch, err := middleware.Dial(cfg.RabbitIP)
 	utils.Expect(err, "Failed to dial rabbit")

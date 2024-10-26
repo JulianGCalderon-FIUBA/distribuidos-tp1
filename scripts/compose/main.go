@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-const CLIENT = 3
+const CLIENT = 1
 
 const Q1 = 1
 const Q2 = 1

@@ -40,34 +40,6 @@ services:
       - net
     depends_on:
       - gateway
-  client-2:
-    container_name: client-2
-    image: tp1:latest
-    entrypoint: /build/client
-    environment:
-      - GATEWAY_CONN_ADDR=gateway:9001
-      - GATEWAY_DATA_ADDR=gateway:9002
-    volumes:
-      - ./.data:/.data
-      - ./.results-2:/.results
-    networks:
-      - net
-    depends_on:
-      - gateway
-  client-3:
-    container_name: client-3
-    image: tp1:latest
-    entrypoint: /build/client
-    environment:
-      - GATEWAY_CONN_ADDR=gateway:9001
-      - GATEWAY_DATA_ADDR=gateway:9002
-    volumes:
-      - ./.data:/.data
-      - ./.results-3:/.results
-    networks:
-      - net
-    depends_on:
-      - gateway
   genre-filter:
     image: tp1:latest
     entrypoint: /build/filter-genre

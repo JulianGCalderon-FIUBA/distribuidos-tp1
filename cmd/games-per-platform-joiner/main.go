@@ -73,7 +73,7 @@ func (h *handler) conclude(ch *middleware.Channel) error {
 		log.Infof("Found %v games with %v support", v, string(k))
 	}
 
-	result := protocol.Q1Results{
+	result := protocol.Q1Result{
 		Windows: h.count[Windows],
 		Linux:   h.count[Linux],
 		Mac:     h.count[Mac],
@@ -85,7 +85,7 @@ func (h *handler) conclude(ch *middleware.Channel) error {
 func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
-	gob.Register(protocol.Q1Results{})
+	gob.Register(protocol.Q1Result{})
 
 	conn, ch, err := middleware.Dial(cfg.RabbitIP)
 	utils.Expect(err, "Failed to dial rabbit")
