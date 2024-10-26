@@ -20,8 +20,8 @@ section() {
 section 1
 
 if diff --color=always \
-  <(sort "$ACTUAL/1.csv") \
-  <(sort "$REFERENCE/1.csv")
+  "$ACTUAL/1.csv" \
+  "$REFERENCE/1.csv"
 then
   echo "OK!"
 else
