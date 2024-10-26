@@ -21,7 +21,7 @@ func (c *Channel) Send(msg any, exchange, key string) error {
 		ContentType: "",
 		Headers: amqp.Table{
 			"clientID": c.ClientID,
-			"finish": false,
+			"finish":   false,
 		},
 		Body: buf,
 	})
@@ -38,7 +38,7 @@ func (c *Channel) SendFinish(exchange, key string) error {
 		ContentType: "",
 		Headers: amqp.Table{
 			"clientID": c.ClientID,
-			"finish": true,
+			"finish":   true,
 		},
 		Body: buf,
 	})

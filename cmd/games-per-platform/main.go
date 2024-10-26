@@ -78,7 +78,7 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 		if err != nil {
 			return err
 		}
-	
+
 		return ch.SendFinish("", h.input)
 	}
 

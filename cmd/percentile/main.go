@@ -96,8 +96,8 @@ func main() {
 	nodeCfg := middleware.Config[handler]{
 		Builder: func(clientID int) handler {
 			return handler{
-				input: qInput,
-				output: middleware.Results,
+				input:      qInput,
+				output:     middleware.Results,
 				sorted:     make([]middleware.GameStat, 0),
 				percentile: float64(cfg.Percentile),
 				sequencer:  utils.NewSequencer(),
