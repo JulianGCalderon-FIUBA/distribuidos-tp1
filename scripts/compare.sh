@@ -8,6 +8,7 @@ if [ "$#" -ne 2 ]; then
 fi
 ACTUAL=$1
 REFERENCE=$2
+FAILURE=0
 
 section() {
   echo
