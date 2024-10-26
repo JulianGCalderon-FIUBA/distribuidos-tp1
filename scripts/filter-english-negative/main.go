@@ -33,6 +33,9 @@ func run(input, output chan []string) {
 		if err != nil {
 			continue
 		}
+		if review.Score != middleware.NegativeScore {
+			continue
+		}
 		lang, _ := detector.DetectLanguageOf(review.Text)
 		if lang == lingua.English {
 			output <- record
@@ -97,6 +100,12 @@ func main() {
 	input := make(chan []string)
 	output := make(chan []string)
 
+	end := make(chan struct{})
+	go func() {
+		writer(outputArg, output)
+		close(end)
+	}()
+
 	wg := &sync.WaitGroup{}
 
 	wg.Add(1)
@@ -104,6 +113,8 @@ func main() {
 		read(inputArg, input)
 		wg.Done()
 	}()
+
+	output <- <-input
 
 	wg.Add(MAX_THREADS)
 	for range MAX_THREADS {
@@ -120,7 +131,7 @@ func main() {
 		close(output)
 	}()
 
-	writer(outputArg, output)
+	<-end
 }
 
 func reviewFromFullRecord(record []string) (review middleware.Review, err error) {
