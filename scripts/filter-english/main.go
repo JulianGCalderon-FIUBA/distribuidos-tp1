@@ -68,7 +68,7 @@ func read(filePath string, output chan []string) {
 	close(output)
 }
 
-func write(filePath string, input chan []string) {
+func writer(filePath string, input chan []string) {
 	log.Println("Starting writer")
 
 	file, err := os.Create(filePath)
@@ -120,7 +120,7 @@ func main() {
 		close(output)
 	}()
 
-	write(outputArg, output)
+	writer(outputArg, output)
 }
 
 func reviewFromFullRecord(record []string) (review middleware.Review, err error) {
