@@ -26,8 +26,8 @@ except:
 
 # Q1
 
-q1_count = games[["Linux", "Mac", "Windows"]].sum()
-q1_count.to_csv(".py-results/1.csv", header=False, index=True)
+q1_count = games[["Linux", "Mac", "Windows"]].sum().to_frame().transpose()
+q1_count.to_csv(".py-results/1.csv", header=True, index=False)
 
 # Q2
 
