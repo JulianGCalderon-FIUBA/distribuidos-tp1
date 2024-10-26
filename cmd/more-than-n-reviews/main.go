@@ -34,7 +34,6 @@ func getConfig() (config, error) {
 }
 
 type handler struct {
-	input     string
 	output    string
 	N         int
 	results   map[uint64]middleware.GameStat
@@ -78,7 +77,7 @@ func (h *handler) conclude(ch *middleware.Channel) error {
 			return err
 		}
 	}
-	return ch.SendFinish("", h.input)
+	return ch.Finish()
 }
 
 func main() {
@@ -101,7 +100,6 @@ func main() {
 	nodeCfg := middleware.Config[handler]{
 		Builder: func(clientID int) handler {
 			return handler{
-				input:     qInput,
 				output:    middleware.Results,
 				N:         cfg.N,
 				results:   make(map[uint64]middleware.GameStat),

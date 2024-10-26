@@ -65,7 +65,7 @@ func (h *filterHandler[T]) handle(ch *Channel, data []byte) error {
 		for rk, stats := range h.stats {
 			log.Infof("Sent %v records to key %v", stats, rk)
 		}
-		return ch.SendFinish("", h.input)
+		return ch.Finish()
 	}
 
 	return nil

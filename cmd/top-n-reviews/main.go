@@ -37,7 +37,6 @@ func getConfig() (config, error) {
 }
 
 type handler struct {
-	input     string
 	output    string
 	sorted    []middleware.GameStat
 	N         int
@@ -76,7 +75,7 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 		if err != nil {
 			return err
 		}
-		return ch.SendFinish("", h.input)
+		return ch.Finish()
 	}
 
 	return nil
@@ -102,7 +101,6 @@ func main() {
 	nodeCfg := middleware.Config[handler]{
 		Builder: func(clientID int) handler {
 			return handler{
-				input:     qInput,
 				output:    middleware.PartialQ3,
 				sorted:    make([]middleware.GameStat, 0),
 				N:         cfg.N,

@@ -42,7 +42,6 @@ const (
 )
 
 type handler struct {
-	input     string
 	output    string
 	count     map[Platform]int
 	sequencer *utils.Sequencer
@@ -79,7 +78,7 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 			return err
 		}
 
-		return ch.SendFinish("", h.input)
+		return ch.Finish()
 	}
 
 	return nil
@@ -104,7 +103,6 @@ func main() {
 	nodeCfg := middleware.Config[handler]{
 		Builder: func(clientID int) handler {
 			return handler{
-				input:     qName,
 				count:     make(map[Platform]int),
 				output:    middleware.PartialQ1,
 				sequencer: utils.NewSequencer(),

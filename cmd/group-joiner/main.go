@@ -38,7 +38,6 @@ func getConfig() (config, error) {
 }
 
 type handler struct {
-	input           string
 	output          string
 	lastBatchId     int
 	eofReceived     int
@@ -84,7 +83,7 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte, partition int
 		if err != nil {
 			return err
 		}
-		return ch.SendFinish("", h.input)
+		return ch.Finish()
 	}
 
 	return nil
@@ -125,7 +124,6 @@ func main() {
 				sequencer[i] = utils.NewSequencer()
 			}
 			return handler{
-				input:           middleware.Cat(cfg.Input, 1),
 				output:          cfg.Output,
 				lastBatchId:     0,
 				eofReceived:     0,

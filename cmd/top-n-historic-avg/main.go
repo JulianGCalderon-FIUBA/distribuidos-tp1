@@ -37,7 +37,6 @@ func getConfig() (config, error) {
 }
 
 type handler struct {
-	input     string
 	output    string
 	topN      int
 	results   middleware.GameHeap
@@ -75,7 +74,7 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 			return err
 		}
 
-		return ch.SendFinish("", h.input)
+		return ch.Finish()
 	}
 	return nil
 }
@@ -121,7 +120,6 @@ func main() {
 	nodeCfg := middleware.Config[handler]{
 		Builder: func(clientID int) handler {
 			return handler{
-				input:     qInput,
 				output:    middleware.PartialQ2,
 				topN:      cfg.TopN,
 				results:   make(middleware.GameHeap, cfg.TopN),
