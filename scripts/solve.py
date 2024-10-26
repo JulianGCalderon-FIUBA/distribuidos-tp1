@@ -19,7 +19,10 @@ print("Games Shooter:", games_shooter.shape[0])
 games_indie_2010: DataFrame = games_indie[games_indie["Release date"].str.contains("201")] # type: ignore
 print("Games Indie 2010:", games_indie_2010.shape[0])
 
-os.mkdir(".py-results")
+try:
+    os.mkdir(".py-results")
+except:
+    pass
 
 # Q1
 
