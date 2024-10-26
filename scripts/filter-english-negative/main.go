@@ -114,6 +114,7 @@ func main() {
 		wg.Done()
 	}()
 
+	// Write header directly
 	output <- <-input
 
 	wg.Add(MAX_THREADS)
