@@ -293,7 +293,7 @@ func TestGetAll(t *testing.T) {
 		t.Fatalf("Failed init map: %v", err)
 	}
 
-	expected := []*middleware.GameStat{
+	expected := []middleware.GameStat{
 		{
 			AppID: 1,
 			Stat:  1,
@@ -317,7 +317,7 @@ func TestGetAll(t *testing.T) {
 	}
 
 	for _, stat := range expected {
-		err = diskMap.Insert(*stat)
+		err = diskMap.Insert(stat)
 		if err != nil {
 			t.Fatalf("Failed to insert: %v", err)
 		}
