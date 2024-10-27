@@ -123,10 +123,9 @@ func (h *handler) Conclude(ch *middleware.Channel) error {
 	}
 
 	batch := middleware.Batch[middleware.GameStat]{
-		Data:     []middleware.GameStat{},
-		ClientID: 1,
-		BatchID:  0,
-		EOF:      false,
+		Data:    []middleware.GameStat{},
+		BatchID: 0,
+		EOF:     false,
 	}
 
 	games := slices.Collect(maps.Values(h.games))
