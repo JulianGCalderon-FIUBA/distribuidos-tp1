@@ -80,6 +80,7 @@ func (n *Node[T]) Run(ctx context.Context) error {
 				return err
 			}
 		case <-ctx.Done():
+			close(fch)
 			return nil
 		}
 	}
@@ -122,7 +123,10 @@ func (n *Node[T]) processDelivery(d Delivery, fch chan int) error {
 
 func (n *Node[T]) cleanResources(ch chan int) {
 	for {
-		id := <-ch
+		id, ok := <-ch
+		if !ok {
+			return
+		}
 		log.Infof("Cleaning resources for client %v", id)
 
 		n.mu.Lock()
