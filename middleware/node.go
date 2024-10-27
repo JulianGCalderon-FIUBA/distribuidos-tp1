@@ -2,8 +2,7 @@ package middleware
 
 import (
 	"context"
-	"maps"
-	"slices"
+	"sync"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -32,6 +31,7 @@ type Node[T any] struct {
 	config  Config[T]
 	rabbit  *amqp.Connection
 	ch      *amqp.Channel
+	mu      *sync.Mutex
 	clients map[int]T
 }
 
@@ -45,6 +45,7 @@ func NewNode[T any](config Config[T], rabbit *amqp.Connection) (*Node[T], error)
 		config:  config,
 		rabbit:  rabbit,
 		ch:      ch,
+		mu:      &sync.Mutex{},
 		clients: make(map[int]T),
 	}, nil
 }
@@ -53,6 +54,17 @@ func (n *Node[T]) Run(ctx context.Context) error {
 	defer n.rabbit.Close()
 
 	dch := make(chan Delivery)
+	fch := make(chan int)
+
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		n.cleanResources(fch)
+	}()
+
 	for queue := range n.config.Endpoints {
 		err := n.Consume(ctx, queue, dch)
 		if err != nil {
@@ -63,7 +75,7 @@ func (n *Node[T]) Run(ctx context.Context) error {
 	for {
 		select {
 		case d := <-dch:
-			err := n.processDelivery(d)
+			err := n.processDelivery(d, fch)
 			if err != nil {
 				return err
 			}
@@ -73,31 +85,30 @@ func (n *Node[T]) Run(ctx context.Context) error {
 	}
 }
 
-func (n *Node[T]) processDelivery(d Delivery) error {
+func (n *Node[T]) processDelivery(d Delivery, fch chan int) error {
 	clientID := int(d.Headers["clientID"].(int32))
-	finish := d.Headers["finish"].(bool)
-	if finish {
-		n.cleanResources(clientID)
-		return d.Ack(false)
-	}
 
+	n.mu.Lock()
 	h, ok := n.clients[clientID]
+	n.mu.Unlock()
 	if !ok {
 		log.Infof("Building handler for client %v", clientID)
 		h = n.config.Builder(clientID)
+		n.mu.Lock()
 		n.clients[clientID] = h
+		n.mu.Unlock()
 	}
-
-	qInput := slices.Collect(maps.Keys(n.config.Endpoints))[0]
 
 	ch := &Channel{
 		Ch:       n.ch,
 		ClientID: clientID,
-		Input: qInput,
+		Fch:      fch,
 	}
 
 	err := n.config.Endpoints[d.Queue](&h, ch, d.Body)
+	n.mu.Lock()
 	n.clients[clientID] = h
+	n.mu.Unlock()
 	if err != nil {
 		log.Errorf("Failed to handle message %v", err)
 		err = d.Nack(false, false)
@@ -109,9 +120,15 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 	return d.Ack(false)
 }
 
-func (n *Node[T]) cleanResources(clientID int) {
-	log.Infof("Cleaning resources for client %v", clientID)
-	delete(n.clients, clientID)
+func (n *Node[T]) cleanResources(ch chan int) {
+	for {
+		id := <-ch
+		log.Infof("Cleaning resources for client %v", id)
+
+		n.mu.Lock()
+		delete(n.clients, id)
+		n.mu.Unlock()
+	}
 }
 
 type Delivery struct {
