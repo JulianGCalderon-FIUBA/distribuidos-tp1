@@ -78,7 +78,7 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 			return err
 		}
 
-		return ch.Finish()
+		ch.Finish()
 	}
 
 	return nil

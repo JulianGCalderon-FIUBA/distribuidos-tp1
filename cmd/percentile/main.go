@@ -69,7 +69,7 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 			return err
 		}
 
-		return ch.Finish()
+		ch.Finish()
 	}
 	return nil
 }

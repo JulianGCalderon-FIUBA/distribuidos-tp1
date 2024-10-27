@@ -83,7 +83,7 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte, partition int
 		if err != nil {
 			return err
 		}
-		return ch.Finish()
+		ch.Finish()
 	}
 
 	return nil

@@ -77,7 +77,8 @@ func (h *handler) conclude(ch *middleware.Channel) error {
 			return err
 		}
 	}
-	return ch.Finish()
+	ch.Finish()
+	return nil
 }
 
 func main() {
