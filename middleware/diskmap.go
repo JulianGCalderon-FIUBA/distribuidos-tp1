@@ -50,6 +50,30 @@ func (m *DiskMap) Get(id uint64) (*GameStat, error) {
 	}, nil
 }
 
+func (m *DiskMap) GetAll() ([]*GameStat, error) {
+
+	entries, err := os.ReadDir(m.name)
+	if err != nil {
+		return nil, err
+	}
+
+	games := make([]*GameStat, 0)
+
+	for _, e := range entries {
+		n, err := strconv.Atoi(e.Name())
+		if err != nil {
+			return nil, err
+		}
+		g, err := m.Get(uint64(n))
+		if err != nil {
+			return nil, err
+		}
+		games = append(games, g)
+	}
+
+	return games, nil
+}
+
 func (m *DiskMap) Insert(stat GameStat) error {
 	fileName := path.Join(m.name, strconv.Itoa(int(stat.AppID)))
 
