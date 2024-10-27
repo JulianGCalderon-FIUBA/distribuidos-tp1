@@ -285,3 +285,50 @@ func TestAll(t *testing.T) {
 		}
 	}
 }
+
+func TestGetAll(t *testing.T) {
+	os.RemoveAll("tmp_TestUpdate")
+	diskMap, err := middleware.NewDiskMap("tmp_TestUpdate")
+	if err != nil {
+		t.Fatalf("Failed init map: %v", err)
+	}
+
+	expected := []*middleware.GameStat{
+		{
+			AppID: 1,
+			Stat:  1,
+			Name:  "Dungeons & Dragons",
+		},
+		{
+			AppID: 2,
+			Stat:  2,
+			Name:  "Fortnite",
+		},
+		{
+			AppID: 3,
+			Stat:  3,
+			Name:  "Rust",
+		},
+		{
+			AppID: 4,
+			Stat:  4,
+			Name:  "Stardew Valley",
+		},
+	}
+
+	for _, stat := range expected {
+		err = diskMap.Insert(*stat)
+		if err != nil {
+			t.Fatalf("Failed to insert: %v", err)
+		}
+	}
+
+	all, err := diskMap.GetAll()
+	if err != nil {
+		t.Fatalf("Failed to get all: %v", err)
+	}
+
+	if !reflect.DeepEqual(expected, all) {
+		t.Fatalf("Elements should be equal")
+	}
+}
