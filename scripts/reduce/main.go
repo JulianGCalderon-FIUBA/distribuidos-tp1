@@ -1,6 +1,7 @@
 package main
 
 import (
+	"distribuidos/tp1/utils"
 	"encoding/csv"
 	"errors"
 	"fmt"
@@ -24,7 +25,10 @@ func writeGames(gamesIds map[string]struct{}) {
 	}
 	defer fullGames.Close()
 
-	reduced, err := os.OpenFile(".data/games-reduced.csv", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	err = os.MkdirAll(".data-reduced", os.ModePerm)
+	utils.Expect(err, "Failed to create output directory")
+
+	reduced, err := os.Create(".data-reduced/games.csv")
 	if err != nil {
 		fmt.Printf("Failed to open reduced games file: %v\n", err)
 	}
@@ -77,7 +81,10 @@ func writeReviews(gamesIds map[string]struct{}) {
 	}
 	defer fullReviews.Close()
 
-	reduced, err := os.OpenFile(".data/reviews-reduced.csv", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	err = os.MkdirAll(".data-reduced", os.ModePerm)
+	utils.Expect(err, "Failed to create output directory")
+
+	reduced, err := os.Create(".data-reduced/reviews.csv")
 	if err != nil {
 		fmt.Printf("Failed to open reduced reviews file: %v\n", err)
 	}
