@@ -106,7 +106,7 @@ func (n *Node[T]) processDelivery(d Delivery, fch chan int) error {
 	ch := &Channel{
 		Ch:       n.ch,
 		ClientID: clientID,
-		FinishCh:      fch,
+		FinishCh: fch,
 	}
 
 	err := n.config.Endpoints[d.Queue](&h, ch, d.Body)
