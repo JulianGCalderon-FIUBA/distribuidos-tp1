@@ -82,14 +82,14 @@ func (h *handler) conclude(ch *middleware.Channel) error {
 		return sortedGames[i].Stat > sortedGames[j].Stat
 	})
 
-	result := protocol.Q2Results{TopN: sortedGames}
+	result := protocol.Q2Result{TopN: sortedGames}
 	return ch.SendAny(result, "", h.output)
 }
 
 func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
-	gob.Register(protocol.Q2Results{})
+	gob.Register(protocol.Q2Result{})
 
 	conn, ch, err := middleware.Dial(cfg.RabbitIP)
 	utils.Expect(err, "Failed to dial rabbit")

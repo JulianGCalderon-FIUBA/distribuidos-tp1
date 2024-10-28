@@ -39,6 +39,11 @@ func NewNode[T any](config Config[T], rabbit *amqp.Connection) (*Node[T], error)
 		return nil, err
 	}
 
+	err = ch.Qos(1000, 0, false)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Node[T]{
 		config:  config,
 		rabbit:  rabbit,

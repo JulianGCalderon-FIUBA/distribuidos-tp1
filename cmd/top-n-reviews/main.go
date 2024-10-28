@@ -80,7 +80,7 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
-	gob.Register(protocol.Q3Results{})
+	gob.Register(protocol.Q3Result{})
 
 	conn, ch, err := middleware.Dial(cfg.RabbitIP)
 	utils.Expect(err, "Failed to dial rabbit")
