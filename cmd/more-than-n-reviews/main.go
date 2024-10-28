@@ -64,7 +64,7 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 func (h *handler) conclude(ch *middleware.Channel) error {
 	results := slices.Collect(maps.Values(h.results))
 	if len(results) == 0 {
-		p := protocol.Q4Results{
+		p := protocol.Q4Result{
 			EOF: true,
 		}
 
