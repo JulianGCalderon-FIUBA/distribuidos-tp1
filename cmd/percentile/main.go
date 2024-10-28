@@ -59,7 +59,7 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 		n := float64(len(h.sorted))
 		index := max(0, int(math.Ceil(h.percentile/100.0*n))-1)
 		results := h.sorted[index:]
-		p := protocol.Q5Results{
+		p := protocol.Q5Result{
 			Percentile90: results,
 		}
 
@@ -71,7 +71,7 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
-	gob.Register(protocol.Q5Results{})
+	gob.Register(protocol.Q5Result{})
 
 	conn, ch, err := middleware.Dial(cfg.RabbitIP)
 	utils.Expect(err, "Failed to dial rabbit")

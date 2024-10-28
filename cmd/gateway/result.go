@@ -9,12 +9,12 @@ import (
 const MAX_RESULTS = 5
 
 type resultsHandler struct {
-	ch      chan protocol.Results
+	ch      chan protocol.Result
 	results int
 }
 
 func (h *resultsHandler) handle(ch *middleware.Channel, data []byte) error {
-	result, err := middleware.Deserialize[protocol.Results](data)
+	result, err := middleware.Deserialize[protocol.Result](data)
 	if err != nil {
 		return err
 	}
@@ -22,7 +22,7 @@ func (h *resultsHandler) handle(ch *middleware.Channel, data []byte) error {
 	log.Infof("Received results")
 
 	switch r := result.(type) {
-	case protocol.Q4Results:
+	case protocol.Q4Result:
 		if r.EOF {
 			h.results += 1
 		}
