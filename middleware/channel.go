@@ -10,7 +10,7 @@ var log = logging.MustGetLogger("log")
 type Channel struct {
 	Ch       *amqp.Channel
 	ClientID int
-	Fch      chan int
+	FinishCh      chan int
 }
 
 func (c *Channel) Send(msg any, exchange, key string) error {
@@ -33,7 +33,7 @@ func (c *Channel) Send(msg any, exchange, key string) error {
 }
 
 func (c *Channel) Finish() {
-	c.Fch <- c.ClientID
+	c.FinishCh <- c.ClientID
 }
 
 func (c *Channel) SendAny(msg any, exchange, key string) error {

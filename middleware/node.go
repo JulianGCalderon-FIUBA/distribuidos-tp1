@@ -91,19 +91,17 @@ func (n *Node[T]) processDelivery(d Delivery, fch chan int) error {
 
 	n.mu.Lock()
 	h, ok := n.clients[clientID]
-	n.mu.Unlock()
 	if !ok {
 		log.Infof("Building handler for client %v", clientID)
 		h = n.config.Builder(clientID)
-		n.mu.Lock()
 		n.clients[clientID] = h
-		n.mu.Unlock()
 	}
+	n.mu.Unlock()
 
 	ch := &Channel{
 		Ch:       n.ch,
 		ClientID: clientID,
-		Fch:      fch,
+		FinishCh:      fch,
 	}
 
 	err := n.config.Endpoints[d.Queue](&h, ch, d.Body)
