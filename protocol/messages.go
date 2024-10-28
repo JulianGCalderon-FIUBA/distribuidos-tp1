@@ -2,7 +2,7 @@ package protocol
 
 import (
 	"distribuidos/tp1/middleware"
-	"fmt"
+	"strconv"
 )
 
 // Sent by the client to initiate a request
@@ -34,70 +34,81 @@ type Batch struct {
 // Sent by the client to indicate that it has finished sending data
 type Finish struct{}
 
-type Results interface {
-	ToStringArray() []string
+// Results Messages
+
+type Result interface {
+	Header() []string
+	ToCSV() [][]string
+	Number() int
 }
 
-// Results Messages
-type Q1Results struct {
+type Q1Result struct {
 	Windows int
 	Linux   int
 	Mac     int
 }
 
-func (q1 Q1Results) ToStringArray() []string {
-	w := fmt.Sprintf("windows: %v\n", q1.Windows)
-	l := fmt.Sprintf("linux: %v\n", q1.Linux)
-	m := fmt.Sprintf("mac: %v\n", q1.Mac)
-
-	return []string{w, l, m}
-}
-
-type Q2Results struct {
+type Q2Result struct {
 	TopN []middleware.GameStat
 }
 
-func (q2 Q2Results) ToStringArray() []string {
-	res := make([]string, 0)
-	for _, s := range q2.TopN {
-		res = append(res, fmt.Sprintf("%v,%v,%v\n", s.AppID, s.Name, s.Stat))
-	}
-	return res
-}
-
-type Q3Results struct {
+type Q3Result struct {
 	TopN []middleware.GameStat
 }
 
-func (q3 Q3Results) ToStringArray() []string {
-	res := make([]string, 0)
-	for _, s := range q3.TopN {
-		res = append(res, fmt.Sprintf("%v,%v,%v\n", s.AppID, s.Name, s.Stat))
-	}
-	return res
-}
-
-type Q4Results struct {
-	AppID uint64
-	Name  string
-	Count int
+type Q4Result struct {
+	Games []middleware.GameStat
 	EOF   bool
 }
 
-func (q4 Q4Results) ToStringArray() []string {
-	res := make([]string, 0)
-	res = append(res, fmt.Sprintf("%v,%v,%v\n", q4.AppID, q4.Name, q4.Count))
-	return res
-}
-
-type Q5Results struct {
+type Q5Result struct {
 	Percentile90 []middleware.GameStat
+	EOF          bool
 }
 
-func (q5 Q5Results) ToStringArray() []string {
-	res := make([]string, 0)
-	for _, s := range q5.Percentile90 {
-		res = append(res, fmt.Sprintf("%v,%v,%v\n", s.AppID, s.Name, s.Stat))
+func (q Q1Result) Header() []string { return []string{"Linux", "Mac", "Windows"} }
+func (q Q2Result) Header() []string { return []string{"AppID", "Name", "Average playtime forever"} }
+func (q Q3Result) Header() []string { return []string{"AppID", "Name", "Reviews"} }
+func (q Q4Result) Header() []string { return []string{"AppID", "Name", "Reviews"} }
+func (q Q5Result) Header() []string { return []string{"AppID", "Name", "Reviews"} }
+
+func (q Q1Result) Number() int { return 1 }
+func (q Q2Result) Number() int { return 2 }
+func (q Q3Result) Number() int { return 3 }
+func (q Q4Result) Number() int { return 4 }
+func (q Q5Result) Number() int { return 5 }
+
+func (q Q1Result) ToCSV() [][]string {
+	return [][]string{{
+		strconv.Itoa(q.Linux),
+		strconv.Itoa(q.Mac),
+		strconv.Itoa(q.Windows),
+	}}
+}
+
+func (q Q2Result) ToCSV() [][]string { return GameStatsToCSV(q.TopN) }
+func (q Q3Result) ToCSV() [][]string { return GameStatsToCSV(q.TopN) }
+func (q Q4Result) ToCSV() [][]string { return GameStatsToCSV(q.Games) }
+func (q Q5Result) ToCSV() [][]string { return GameStatsToCSV(q.Percentile90) }
+
+func GameStatsToCSV(s []middleware.GameStat) [][]string {
+	res := make([][]string, 0)
+	for _, s := range s {
+		res = append(res, []string{
+			strconv.Itoa(int(s.AppID)),
+			s.Name,
+			strconv.Itoa(int(s.Stat)),
+		})
 	}
 	return res
+}
+
+func AllResultTypes() []Result {
+	return []Result{
+		Q1Result{},
+		Q2Result{},
+		Q3Result{},
+		Q4Result{},
+		Q5Result{},
+	}
 }
