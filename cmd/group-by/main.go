@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"slices"
 	"strconv"
-	"sync"
 	"syscall"
 
 	logging "github.com/op/go-logging"
@@ -53,7 +52,6 @@ type handler struct {
 	reviewSequencer *utils.Sequencer
 	batchSize       int
 	output          string
-	mu              *sync.Mutex
 }
 
 func (h *handler) handleGame(_ *middleware.Channel, data []byte) error {
@@ -65,7 +63,6 @@ func (h *handler) handleGame(_ *middleware.Channel, data []byte) error {
 	h.gameSequencer.Mark(batch.BatchID, batch.EOF)
 
 	for _, g := range batch.Data {
-		h.mu.Lock()
 		saved, err := h.diskMap.Get(g.AppID)
 		if err != nil {
 			return err
@@ -88,7 +85,6 @@ func (h *handler) handleGame(_ *middleware.Channel, data []byte) error {
 			}
 		}
 
-		h.mu.Unlock()
 	}
 
 	if h.gameSequencer.EOF() {
@@ -107,7 +103,6 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 	h.reviewSequencer.Mark(batch.BatchID, batch.EOF)
 
 	for _, r := range batch.Data {
-		h.mu.Lock()
 		saved, err := h.diskMap.Get(r.AppID)
 		if err != nil {
 			return err
@@ -131,7 +126,6 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 			}
 		}
 
-		h.mu.Unlock()
 	}
 
 	if h.reviewSequencer.EOF() {
@@ -143,12 +137,10 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 }
 
 func (h *handler) Conclude(ch *middleware.Channel) error {
-	h.mu.Lock()
 	games, err := h.diskMap.GetAll()
 	if err != nil {
 		return err
 	}
-	h.mu.Unlock()
 
 	games = slices.DeleteFunc(games, func(g middleware.GameStat) bool {
 		return g.Stat == 0 || g.Name == ""
@@ -211,7 +203,6 @@ func main() {
 				reviewSequencer: utils.NewSequencer(),
 				batchSize:       cfg.BatchSize,
 				output:          output,
-				mu:              &sync.Mutex{},
 			}
 		},
 		Endpoints: map[string]middleware.HandlerFunc[handler]{
