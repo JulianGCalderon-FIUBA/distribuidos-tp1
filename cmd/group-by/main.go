@@ -53,7 +53,7 @@ type handler struct {
 	output          string
 }
 
-func (h *handler) handleGame(_ *middleware.Channel, data []byte) error {
+func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 	batch, err := middleware.Deserialize[middleware.Batch[middleware.Game]](data)
 	if err != nil {
 		return err
@@ -80,6 +80,10 @@ func (h *handler) handleGame(_ *middleware.Channel, data []byte) error {
 		clear(h.reviews)
 	}
 
+	if h.gameSequencer.EOF() && h.reviewSequencer.EOF() {
+		return h.Conclude(ch)
+	}
+
 	return nil
 }
 
@@ -102,6 +106,9 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 
 	if h.reviewSequencer.EOF() {
 		log.Infof("Received review EOF")
+	}
+
+	if h.reviewSequencer.EOF() && h.gameSequencer.EOF() {
 		return h.Conclude(ch)
 	}
 
@@ -116,15 +123,20 @@ func (h *handler) Conclude(ch *middleware.Channel) error {
 	}
 
 	batch := middleware.Batch[middleware.GameStat]{
-		Data:     []middleware.GameStat{},
-		ClientID: 1,
-		BatchID:  0,
-		EOF:      false,
+		Data:    []middleware.GameStat{},
+		BatchID: 0,
+		EOF:     false,
 	}
 
 	games := slices.Collect(maps.Values(h.games))
 
+	if len(games) == 0 {
+		batch.EOF = true
+		return ch.Send(batch, "", h.output)
+	}
+
 	for len(games) > 0 {
+
 		currBatchSize := min(h.batchSize, len(games))
 		var batchData []middleware.GameStat
 		games, batchData = games[currBatchSize:], games[:currBatchSize]
