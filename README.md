@@ -1,5 +1,12 @@
 # Distribuidos - TP1
 
+<!--toc:start-->
+- [Configurar cantidad de nodos por query](#configurar-cantidad-de-nodos-por-query)
+- [Ejecucion con Docker](#ejecucion-con-docker)
+- [Comparacion de resultados](#comparacion-de-resultados)
+- [Usar dataset reducido](#usar-dataset-reducido)
+<!--toc:end-->
+
 ## Configurar cantidad de nodos por query
 Para actualizar el archivo `compose.yaml` con la cantidad de nodos deseada, modificar las constantes del script `cmd/compose/main.go` y luego ejecutar el comando:
 ```bash
@@ -45,7 +52,7 @@ go run ./scripts/filter-english-negative/main.go .data/reviews.csv .data/reviews
 
 Luego, resolvemos las consultas localmente, ejecutando:
 ```bash
-python ./scripts/solve.py
+python ./scripts/solve.py .data/ .py-results/
 ```
 Este guardara los resultados correctos en `.py-results/`
 
@@ -53,3 +60,23 @@ Para compararlos, ejecutamos:
 ```bash
 ./scripts/compare.sh .results/ .py-results/
 ```
+
+## Usar dataset reducido
+
+Primero, tenemos que generar un dataset reducido de datos. Para eso, ejecutamos:
+```bash
+go run ./scripts/reduce/main.go
+```
+
+Despues, tenemos que modificar el compose para que use el dataset reducido. Tenemos que cambiar cual carpeta de los datos se bindea al contenedor del cliente. Se puede hacer manualmente, o automaticamente ejecutando:
+```bash
+sed -i 's|./.data:/.data|./.data-reduced:/.data|' ./scripts/compose/main.go # linux
+sed -i '' 's|./.data:/.data|./.data-reduced:/.data|' ./scripts/compose/main.go # osx
+```
+
+Luego, regeneramos el compose:
+```bash
+make write-compose
+```
+
+Luego de ejecutar el sistema, podemos adaptar la seccion de [comparacion de resultados](#comparacion-de-resultados) para utilizar el dataset reducido.
