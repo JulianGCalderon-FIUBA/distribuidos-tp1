@@ -63,28 +63,10 @@ func (h *handler) handleGame(_ *middleware.Channel, data []byte) error {
 	h.gameSequencer.Mark(batch.BatchID, batch.EOF)
 
 	for _, g := range batch.Data {
-		saved, err := h.diskMap.Get(g.AppID)
+		err = h.diskMap.Rename(g.AppID, g.Name)
 		if err != nil {
 			return err
 		}
-
-		if saved != nil {
-			saved.Name = g.Name
-			err = h.diskMap.Insert(*saved)
-			if err != nil {
-				return err
-			}
-		} else {
-			stat := middleware.GameStat{
-				AppID: g.AppID,
-				Name:  g.Name,
-			}
-			err = h.diskMap.Insert(stat)
-			if err != nil {
-				return err
-			}
-		}
-
 	}
 
 	if h.gameSequencer.EOF() {
@@ -102,30 +84,17 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 
 	h.reviewSequencer.Mark(batch.BatchID, batch.EOF)
 
+	reviews := make(map[uint64]uint64)
+
 	for _, r := range batch.Data {
-		saved, err := h.diskMap.Get(r.AppID)
+		reviews[r.AppID] += 1
+	}
+
+	for id, stat := range reviews {
+		err = h.diskMap.Increment(id, stat)
 		if err != nil {
 			return err
 		}
-
-		if saved != nil {
-			saved.Stat += 1
-			err = h.diskMap.Insert(*saved)
-			if err != nil {
-				return err
-			}
-		} else {
-			stat := middleware.GameStat{
-				AppID: r.AppID,
-				Name:  "",
-				Stat:  1,
-			}
-			err = h.diskMap.Insert(stat)
-			if err != nil {
-				return err
-			}
-		}
-
 	}
 
 	if h.reviewSequencer.EOF() {
