@@ -151,10 +151,8 @@ func (h *handler) Conclude(ch *middleware.Channel) error {
 	h.mu.Unlock()
 
 	games = slices.DeleteFunc(games, func(g middleware.GameStat) bool {
-		return g.Stat == 0
+		return g.Stat == 0 || g.Name == ""
 	})
-
-	log.Infof("found %v games with more than 0 reviews", len(games))
 
 	batch := middleware.Batch[middleware.GameStat]{
 		Data:     []middleware.GameStat{},
@@ -203,7 +201,7 @@ func main() {
 
 	nodeCfg := middleware.Config[handler]{
 		Builder: func(clientID int) handler {
-			path := middleware.Cat(cfg.Path, strconv.Itoa(clientID))
+			path := middleware.Cat("group-by", strconv.Itoa(clientID))
 			diskMap, err := middleware.NewDiskMap(path)
 			utils.Expect(err, "Failed to build new disk map")
 
