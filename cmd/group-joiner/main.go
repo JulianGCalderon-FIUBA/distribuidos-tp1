@@ -60,10 +60,9 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte, partition int
 	h.sequencer[partition].Mark(batch.BatchID, batch.EOF)
 
 	b := middleware.Batch[middleware.GameStat]{
-		Data:     batch.Data,
-		ClientID: batch.ClientID,
-		BatchID:  h.lastBatchId,
-		EOF:      false,
+		Data:    batch.Data,
+		BatchID: h.lastBatchId,
+		EOF:     false,
 	}
 
 	err = ch.Send(b, "", h.output)

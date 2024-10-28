@@ -41,10 +41,9 @@ type GameStat struct {
 }
 
 type Batch[T any] struct {
-	Data     []T
-	ClientID int
-	BatchID  int
-	EOF      bool
+	Data    []T
+	BatchID int
+	EOF     bool
 }
 
 func Serialize(v any) ([]byte, error) {

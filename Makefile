@@ -7,9 +7,6 @@ deps:
 build: deps
 	go build -o .build/ ./cmd/...
 
-	# todo: eventualy remove these
-	go build -o bin/top-n-reviews-joiner ./server/joiners/topNReviewsJoiner
-
 .PHONY: build
 
 docker-build:
