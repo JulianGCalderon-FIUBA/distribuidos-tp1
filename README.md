@@ -2,8 +2,8 @@
 
 <!--toc:start-->
 - [Configurar cantidad de nodos por query](#configurar-cantidad-de-nodos-por-query)
-- [Ejecucion con Docker](#ejecucion-con-docker)
-- [Comparacion de resultados](#comparacion-de-resultados)
+- [Ejecución con Docker](#ejecución-con-docker)
+- [Comparación de resultados](#comparación-de-resultados)
 - [Usar dataset reducido](#usar-dataset-reducido)
 <!--toc:end-->
 
@@ -13,7 +13,7 @@ Para actualizar el archivo `compose.yaml` con la cantidad de nodos deseada, modi
 make write-compose
 ```
 
-## Ejecucion con Docker
+## Ejecución con Docker
 
 Para levantar los procesos, ejecutar:
 ```bash
@@ -43,7 +43,7 @@ Luego ejecutar:
 ./cmd/detect-language/diff.sh
 ```
 
-## Comparacion de resultados
+## Comparación de resultados
 
 Para comparar los resultados, primero hay que obtener los valores de referencia. Tenemos un script de Python que los resuelve, pero necesitamos usar el mismo detector de lenguaje, para asegurar que los resultados sean los mismo. Para eso, ejecutamos:
 ```bash
@@ -68,7 +68,7 @@ Primero, tenemos que generar un dataset reducido de datos. Para eso, ejecutamos:
 go run ./scripts/reduce/main.go
 ```
 
-Despues, tenemos que modificar el compose para que use el dataset reducido. Tenemos que cambiar cual carpeta de los datos se bindea al contenedor del cliente. Se puede hacer manualmente, o automaticamente ejecutando:
+Después, tenemos que modificar el compose para que use el dataset reducido. Tenemos que cambiar cuál carpeta de los datos se bindea al contenedor del cliente. Se puede hacer manualmente, o automáticamente ejecutando:
 ```bash
 sed -i 's|./.data:/.data|./.data-reduced:/.data|' ./scripts/compose/main.go # linux
 sed -i '' 's|./.data:/.data|./.data-reduced:/.data|' ./scripts/compose/main.go # osx
@@ -79,4 +79,4 @@ Luego, regeneramos el compose:
 make write-compose
 ```
 
-Luego de ejecutar el sistema, podemos adaptar la seccion de [comparacion de resultados](#comparacion-de-resultados) para utilizar el dataset reducido.
+Luego de ejecutar el sistema, podemos adaptar la sección de [comparación de resultados](#comparación-de-resultados) para utilizar el dataset reducido.
