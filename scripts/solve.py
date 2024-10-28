@@ -1,5 +1,5 @@
 import pandas as pd
-import random
+import os
 
 from pandas import DataFrame
 
@@ -19,16 +19,21 @@ print("Games Shooter:", games_shooter.shape[0])
 games_indie_2010: DataFrame = games_indie[games_indie["Release date"].str.contains("201")] # type: ignore
 print("Games Indie 2010:", games_indie_2010.shape[0])
 
+try:
+    os.mkdir(".py-results")
+except:
+    pass
+
 # Q1
 
-q1_count = games[["Linux", "Mac", "Windows"]].sum()
-q1_count.to_csv(".results/1.py.csv", header=False, index=True)
+q1_count = games[["Linux", "Mac", "Windows"]].sum().to_frame().transpose()
+q1_count.to_csv(".py-results/1.csv", header=True, index=False)
 
 # Q2
 
 q1_games = games_indie_2010.filter(["AppID", "Name", "Average playtime forever"], axis="columns")
 q1_top = q1_games.sort_values("Average playtime forever", ascending=False).head(10)
-q1_top.to_csv(".results/2.py.csv", header=True, index=False)
+q1_top.to_csv(".py-results/2.csv", header=True, index=False)
 
 # reviews
 
@@ -44,19 +49,9 @@ print("Reviews Positive:", reviews_positive.shape[0])
 reviews_negative: DataFrame = reviews[reviews["review_score"] == -1] # type: ignore
 print("Reviews Negative:", reviews_negative.shape[0])
 
-def detect_language(texto):
-    # random for debugging
-    if random.random() < 0.978388118:
-        return "en"
-    else:
-        return "es"
-    # language, _ = langid.classify(texto)
-    # return language
-
-reviews_negative_ingles = reviews_negative.copy()
-reviews_negative_ingles["review_language"] = reviews_negative_ingles['review_text'].apply(detect_language)
-
-reviews_negative_ingles = reviews_negative_ingles[reviews_negative_ingles["review_language"] == "en"]
+# We use another dataset, which was filtered in Go
+reviews_negative_ingles = pd.read_csv('.data/reviews-english-negative.csv')
+reviews_negative_ingles = reviews_negative_ingles.filter(reviews_columns, axis="columns").dropna()
 print("Reviews Negative Ingles:", reviews_negative_ingles.shape[0])
 
 # utils
@@ -73,17 +68,17 @@ def group(games, reviews) -> DataFrame:
 
 q3_grouped = group(games_indie, reviews_positive)
 q3_top = q3_grouped.sort_values("Reviews", ascending=False).head(5)
-q3_top.to_csv(".results/3.py.csv", header=True, index=True)
+q3_top.to_csv(".py-results/3.csv", header=True, index=True)
 
 # Q4
 
 q4_grouped = group(games_shooter, reviews_negative_ingles)
 q4_filtered = q4_grouped[q4_grouped["Reviews"] > 5000]
-q4_filtered.sort_index().to_csv(".results/4.py.csv", header=True, index=True)
+q4_filtered.sort_index().to_csv(".py-results/4.csv", header=True, index=True)
 
 # Q5
 
 q5_grouped = group(games_shooter, reviews_negative)
 percentile = q5_grouped["Reviews"].quantile(0.90)
 q5_top = q5_grouped[q5_grouped["Reviews"] >= percentile]
-q5_top.sort_index().to_csv(".results/5.py.csv", header=True, index=True)
+q5_top.sort_index().to_csv(".py-results/5.csv", header=True, index=True)
