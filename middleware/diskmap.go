@@ -106,6 +106,8 @@ func (m *DiskMap) Increment(id uint64, value uint64) error {
 		return err
 	}
 
+	defer file.Close()
+
 	offset := int64(binary.Size(id))
 	_, err = file.Seek(offset, 0)
 	if err != nil {
@@ -137,6 +139,8 @@ func (m *DiskMap) Rename(id uint64, name string) error {
 	} else if err != nil {
 		return err
 	}
+
+	defer file.Close()
 
 	var header struct {
 		AppId uint64
