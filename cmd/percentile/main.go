@@ -34,6 +34,7 @@ func getConfig() (config, error) {
 }
 
 type handler struct {
+	output     string
 	sorted     []middleware.GameStat
 	percentile float64
 	sequencer  *utils.Sequencer
@@ -63,7 +64,12 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 			Percentile90: results,
 		}
 
-		return ch.SendAny(p, "", middleware.Results)
+		err := ch.SendAny(p, "", h.output)
+		if err != nil {
+			return err
+		}
+
+		ch.Finish()
 	}
 	return nil
 }
@@ -76,9 +82,11 @@ func main() {
 	conn, ch, err := middleware.Dial(cfg.RabbitIP)
 	utils.Expect(err, "Failed to dial rabbit")
 
+	qInput := middleware.GroupedQ5Percentile
+
 	err = middleware.Topology{
 		Queues: []middleware.QueueConfig{
-			{Name: middleware.GroupedQ5Percentile},
+			{Name: qInput},
 			{Name: middleware.Results},
 		},
 	}.Declare(ch)
@@ -87,6 +95,7 @@ func main() {
 	nodeCfg := middleware.Config[handler]{
 		Builder: func(clientID int) handler {
 			return handler{
+				output:     middleware.Results,
 				sorted:     make([]middleware.GameStat, 0),
 				percentile: float64(cfg.Percentile),
 				sequencer:  utils.NewSequencer(),

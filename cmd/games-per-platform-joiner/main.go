@@ -79,7 +79,13 @@ func (h *handler) conclude(ch *middleware.Channel) error {
 		Mac:     h.count[Mac],
 	}
 
-	return ch.SendAny(result, "", middleware.Results)
+	err := ch.SendAny(result, "", h.output)
+	if err != nil {
+		return err
+	}
+
+	ch.Finish()
+	return nil
 }
 
 func main() {
