@@ -106,7 +106,6 @@ func (g *gateway) handleClientData(ctx context.Context, rawConn net.Conn) (err e
 	ch := middleware.Channel{
 		Ch:       rawCh,
 		ClientID: int(hello.ClientID),
-		FinishCh: make(chan int),
 	}
 
 	wg := &sync.WaitGroup{}
