@@ -78,7 +78,11 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte, partition int
 
 	if h.eofReceived == h.totalPartitions {
 		b := middleware.Batch[middleware.GameStat]{EOF: true}
-		return ch.Send(b, "", h.output)
+		err := ch.Send(b, "", h.output)
+		if err != nil {
+			return err
+		}
+		ch.Finish()
 	}
 
 	return nil
@@ -95,12 +99,12 @@ func main() {
 	endpoints := make(map[string]middleware.HandlerFunc[handler], 0)
 
 	for i := 1; i <= cfg.Partitions; i++ {
-		qname := middleware.Cat(cfg.Input, i)
+		qName := middleware.Cat(cfg.Input, i)
 		qcfg := middleware.QueueConfig{
-			Name: qname,
+			Name: qName,
 		}
 		queues = append(queues, qcfg)
-		endpoints[qname] = buildHandler(i)
+		endpoints[qName] = buildHandler(i)
 	}
 
 	output := middleware.QueueConfig{Name: cfg.Output}

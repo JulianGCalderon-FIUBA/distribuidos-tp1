@@ -152,6 +152,7 @@ func (h *handler) Conclude(ch *middleware.Channel) error {
 		batch.BatchID += 1
 	}
 
+	ch.Finish()
 	return nil
 }
 
