@@ -159,3 +159,7 @@ func (m *DiskMap) Rename(id uint64, name string) error {
 	_, err = file.WriteString(name)
 	return err
 }
+
+func (m *DiskMap) Remove() error {
+	return os.RemoveAll(m.name)
+}

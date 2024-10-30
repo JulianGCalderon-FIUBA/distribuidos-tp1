@@ -150,7 +150,7 @@ func (h *handler) Conclude(ch *middleware.Channel) error {
 		batch.BatchID += 1
 	}
 
-	return nil
+	return h.diskMap.Remove()
 }
 
 func main() {
