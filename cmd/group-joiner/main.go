@@ -45,7 +45,7 @@ type handler struct {
 	sequencer       map[int]*utils.Sequencer
 }
 
-func buildHandler(partition int) middleware.HandlerFunc[handler] {
+func buildHandler(partition int) middleware.HandlerFunc[*handler] {
 	return func(h *handler, ch *middleware.Channel, data []byte) error {
 		return h.handleBatch(ch, data, partition)
 	}
@@ -88,6 +88,10 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte, partition int
 	return nil
 }
 
+func (h *handler) Free() error {
+	return nil
+}
+
 func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
@@ -96,7 +100,7 @@ func main() {
 	utils.Expect(err, "Failed to dial rabbit")
 
 	queues := make([]middleware.QueueConfig, 0)
-	endpoints := make(map[string]middleware.HandlerFunc[handler], 0)
+	endpoints := make(map[string]middleware.HandlerFunc[*handler], 0)
 
 	for i := 1; i <= cfg.Partitions; i++ {
 		qName := middleware.Cat(cfg.Input, i)
@@ -116,13 +120,13 @@ func main() {
 	}.Declare(ch)
 	utils.Expect(err, "Failed to declare queues")
 
-	nodeCfg := middleware.Config[handler]{
-		Builder: func(clientID int) handler {
+	nodeCfg := middleware.Config[*handler]{
+		Builder: func(clientID int) *handler {
 			sequencer := make(map[int]*utils.Sequencer)
 			for i := 1; i <= cfg.Partitions; i++ {
 				sequencer[i] = utils.NewSequencer()
 			}
-			return handler{
+			return &handler{
 				output:          cfg.Output,
 				lastBatchId:     0,
 				eofReceived:     0,

@@ -71,7 +71,7 @@ func (h *filterHandler[T]) handle(ch *Channel, data []byte) error {
 	return nil
 }
 
-func NewFilter[T any](config FilterConfig, f FilterFunc[T]) (*Node[filterHandler[T]], error) {
+func NewFilter[T any](config FilterConfig, f FilterFunc[T]) (*Node[*filterHandler[T]], error) {
 	conn, ch, err := Dial(config.RabbitIP)
 	if err != nil {
 		return nil, err
@@ -102,14 +102,14 @@ func NewFilter[T any](config FilterConfig, f FilterFunc[T]) (*Node[filterHandler
 		return nil, err
 	}
 
-	nConfig := Config[filterHandler[T]]{
-		Builder: func(clientID int) filterHandler[T] {
+	nConfig := Config[*filterHandler[T]]{
+		Builder: func(clientID int) *filterHandler[T] {
 			partitions := make(map[string]Batch[T])
 			for key := range config.QueuesByKey {
 				partitions[key] = Batch[T]{}
 			}
 
-			return filterHandler[T]{
+			return &filterHandler[T]{
 				input:      config.Queue,
 				output:     config.Exchange,
 				clientID:   clientID,
@@ -119,7 +119,7 @@ func NewFilter[T any](config FilterConfig, f FilterFunc[T]) (*Node[filterHandler
 				sequencer:  utils.NewSequencer(),
 			}
 		},
-		Endpoints: map[string]HandlerFunc[filterHandler[T]]{
+		Endpoints: map[string]HandlerFunc[*filterHandler[T]]{
 			config.Queue: (*filterHandler[T]).handle,
 		},
 	}
@@ -137,4 +137,8 @@ func transpose(queuesByKey map[string][]string) (keysByQueue map[string][]string
 	}
 
 	return keysByQueue
+}
+
+func (h *filterHandler[T]) Free() error {
+	return nil
 }

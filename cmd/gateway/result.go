@@ -40,13 +40,17 @@ func (h *resultsHandler) handle(ch *middleware.Channel, data []byte) error {
 	return nil
 }
 
+func (h *resultsHandler) Free() error {
+	return nil
+}
+
 func (g *gateway) startResultsEndpoint(ctx context.Context) error {
-	newResultsHandler := func(clientID int) resultsHandler {
+	newResultsHandler := func(clientID int) *resultsHandler {
 		g.mu.Lock()
 		chanResults := g.clients[clientID]
 		g.mu.Unlock()
 
-		return resultsHandler{
+		return &resultsHandler{
 			ch: chanResults,
 		}
 	}
@@ -59,9 +63,9 @@ func (g *gateway) startResultsEndpoint(ctx context.Context) error {
 		return err
 	}
 
-	cfg := middleware.Config[resultsHandler]{
+	cfg := middleware.Config[*resultsHandler]{
 		Builder: newResultsHandler,
-		Endpoints: map[string]middleware.HandlerFunc[resultsHandler]{
+		Endpoints: map[string]middleware.HandlerFunc[*resultsHandler]{
 			middleware.Results: (*resultsHandler).handle,
 		},
 	}

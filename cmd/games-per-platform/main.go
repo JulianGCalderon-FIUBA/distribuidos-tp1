@@ -84,6 +84,10 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 	return nil
 }
 
+func (h *handler) Free() error {
+	return nil
+}
+
 func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
@@ -100,15 +104,15 @@ func main() {
 	}.Declare(ch)
 	utils.Expect(err, "Failed to declare queues")
 
-	nodeCfg := middleware.Config[handler]{
-		Builder: func(clientID int) handler {
-			return handler{
+	nodeCfg := middleware.Config[*handler]{
+		Builder: func(clientID int) *handler {
+			return &handler{
 				count:     make(map[Platform]int),
 				output:    middleware.PartialQ1,
 				sequencer: utils.NewSequencer(),
 			}
 		},
-		Endpoints: map[string]middleware.HandlerFunc[handler]{
+		Endpoints: map[string]middleware.HandlerFunc[*handler]{
 			qName: (*handler).handleGame,
 		},
 	}

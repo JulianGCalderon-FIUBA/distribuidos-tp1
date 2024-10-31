@@ -87,6 +87,10 @@ func (h *handler) conclude(ch *middleware.Channel) error {
 	return nil
 }
 
+func (h *handler) Free() error {
+	return nil
+}
+
 func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
@@ -104,16 +108,16 @@ func main() {
 	}.Declare(ch)
 	utils.Expect(err, "Failed to declare queues")
 
-	nodeCfg := middleware.Config[handler]{
-		Builder: func(clientID int) handler {
-			return handler{
+	nodeCfg := middleware.Config[*handler]{
+		Builder: func(clientID int) *handler {
+			return &handler{
 				output:    middleware.Results,
 				N:         cfg.N,
 				results:   make(map[uint64]middleware.GameStat),
 				sequencer: utils.NewSequencer(),
 			}
 		},
-		Endpoints: map[string]middleware.HandlerFunc[handler]{
+		Endpoints: map[string]middleware.HandlerFunc[*handler]{
 			middleware.GroupedQ4Filter: (*handler).handleBatch,
 		},
 	}
