@@ -11,4 +11,5 @@ RUN CGO_ENABLED=0 go build -o .build/ ./cmd/...
 FROM alpine:latest
 COPY --from=builder /build/.build/ /build
 
+WORKDIR /work
 ENTRYPOINT ["/bin/sh"]
