@@ -50,6 +50,30 @@ func (m *DiskMap) Get(id uint64) (*GameStat, error) {
 	}, nil
 }
 
+func (m *DiskMap) GetAll() ([]GameStat, error) {
+
+	entries, err := os.ReadDir(m.name)
+	if err != nil {
+		return nil, err
+	}
+
+	games := make([]GameStat, 0)
+
+	for _, e := range entries {
+		n, err := strconv.Atoi(e.Name())
+		if err != nil {
+			return nil, err
+		}
+		g, err := m.Get(uint64(n))
+		if err != nil {
+			return nil, err
+		}
+		games = append(games, *g)
+	}
+
+	return games, nil
+}
+
 func (m *DiskMap) Insert(stat GameStat) error {
 	fileName := path.Join(m.name, strconv.Itoa(int(stat.AppID)))
 
@@ -81,6 +105,8 @@ func (m *DiskMap) Increment(id uint64, value uint64) error {
 	} else if err != nil {
 		return err
 	}
+
+	defer file.Close()
 
 	offset := int64(binary.Size(id))
 	_, err = file.Seek(offset, 0)
@@ -114,6 +140,8 @@ func (m *DiskMap) Rename(id uint64, name string) error {
 		return err
 	}
 
+	defer file.Close()
+
 	var header struct {
 		AppId uint64
 		Stat  uint64
@@ -130,4 +158,8 @@ func (m *DiskMap) Rename(id uint64, name string) error {
 
 	_, err = file.WriteString(name)
 	return err
+}
+
+func (m *DiskMap) Remove() error {
+	return os.RemoveAll(m.name)
 }
