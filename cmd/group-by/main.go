@@ -4,9 +4,9 @@ import (
 	"context"
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/utils"
-	"maps"
 	"os/signal"
 	"slices"
+	"strconv"
 	"syscall"
 
 	logging "github.com/op/go-logging"
@@ -45,8 +45,7 @@ func getConfig() (config, error) {
 }
 
 type handler struct {
-	games           map[uint64]middleware.GameStat
-	reviews         map[uint64]int
+	diskMap         *middleware.DiskMap
 	gameSequencer   *utils.Sequencer
 	reviewSequencer *utils.Sequencer
 	batchSize       int
@@ -62,22 +61,14 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 	h.gameSequencer.Mark(batch.BatchID, batch.EOF)
 
 	for _, g := range batch.Data {
-		game := middleware.GameStat{
-			AppID: g.AppID,
-			Name:  g.Name,
-			Stat:  0,
+		err = h.diskMap.Rename(g.AppID, g.Name)
+		if err != nil {
+			return err
 		}
-		if count, ok := h.reviews[g.AppID]; ok {
-			game.Stat = uint64(count)
-			delete(h.reviews, g.AppID)
-		}
-
-		h.games[g.AppID] = game
 	}
 
 	if h.gameSequencer.EOF() {
 		log.Infof("Received game EOF")
-		clear(h.reviews)
 	}
 
 	if h.gameSequencer.EOF() && h.reviewSequencer.EOF() {
@@ -95,12 +86,16 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 
 	h.reviewSequencer.Mark(batch.BatchID, batch.EOF)
 
+	reviews := make(map[uint64]uint64)
+
 	for _, r := range batch.Data {
-		if game, ok := h.games[r.AppID]; ok {
-			game.Stat += 1
-			h.games[r.AppID] = game
-		} else if !h.gameSequencer.EOF() {
-			h.reviews[r.AppID] += 1
+		reviews[r.AppID] += 1
+	}
+
+	for id, stat := range reviews {
+		err = h.diskMap.Increment(id, stat)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -116,19 +111,20 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 }
 
 func (h *handler) Conclude(ch *middleware.Channel) error {
-	for k, v := range h.games {
-		if v.Stat == 0 {
-			delete(h.games, k)
-		}
+	games, err := h.diskMap.GetAll()
+	if err != nil {
+		return err
 	}
+
+	games = slices.DeleteFunc(games, func(g middleware.GameStat) bool {
+		return g.Stat == 0 || g.Name == ""
+	})
 
 	batch := middleware.Batch[middleware.GameStat]{
 		Data:    []middleware.GameStat{},
 		BatchID: 0,
 		EOF:     false,
 	}
-
-	games := slices.Collect(maps.Values(h.games))
 
 	if len(games) == 0 {
 		batch.EOF = true
@@ -152,6 +148,10 @@ func (h *handler) Conclude(ch *middleware.Channel) error {
 		batch.BatchID += 1
 	}
 
+	err = h.diskMap.Remove()
+	if err != nil {
+		return err
+	}
 	ch.Finish()
 	return nil
 }
@@ -177,9 +177,12 @@ func main() {
 
 	nodeCfg := middleware.Config[handler]{
 		Builder: func(clientID int) handler {
+			path := middleware.Cat("group-by", strconv.Itoa(clientID))
+			diskMap, err := middleware.NewDiskMap(path)
+			utils.Expect(err, "Failed to build new disk map")
+
 			return handler{
-				games:           make(map[uint64]middleware.GameStat),
-				reviews:         make(map[uint64]int),
+				diskMap:         diskMap,
 				gameSequencer:   utils.NewSequencer(),
 				reviewSequencer: utils.NewSequencer(),
 				batchSize:       cfg.BatchSize,
