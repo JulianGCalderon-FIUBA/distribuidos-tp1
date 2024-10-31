@@ -73,7 +73,12 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 			log.Infof("Found %v games with %v support", v, string(k))
 		}
 
-		return ch.Send(h.count, "", h.output)
+		err := ch.Send(h.count, "", h.output)
+		if err != nil {
+			return err
+		}
+
+		ch.Finish()
 	}
 
 	return nil

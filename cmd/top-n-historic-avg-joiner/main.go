@@ -83,7 +83,13 @@ func (h *handler) conclude(ch *middleware.Channel) error {
 	})
 
 	result := protocol.Q2Result{TopN: sortedGames}
-	return ch.SendAny(result, "", h.output)
+	err := ch.SendAny(result, "", h.output)
+	if err != nil {
+		return err
+	}
+
+	ch.Finish()
+	return nil
 }
 
 func main() {

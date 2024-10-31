@@ -56,6 +56,7 @@ func (n *Node[T]) Run(ctx context.Context) error {
 	defer n.rabbit.Close()
 
 	dch := make(chan Delivery)
+
 	for queue := range n.config.Endpoints {
 		err := n.Consume(ctx, queue, dch)
 		if err != nil {
@@ -85,13 +86,21 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 		h = n.config.Builder(clientID)
 		n.clients[clientID] = h
 	}
+
 	ch := &Channel{
-		Ch:       n.ch,
-		ClientID: clientID,
+		Ch:         n.ch,
+		ClientID:   clientID,
+		FinishFlag: false,
 	}
 
 	err := n.config.Endpoints[d.Queue](&h, ch, d.Body)
-	n.clients[clientID] = h
+	if ch.FinishFlag {
+		log.Infof("Cleaning resources for client %v", clientID)
+		delete(n.clients, clientID)
+	} else {
+		n.clients[clientID] = h
+	}
+
 	if err != nil {
 		log.Errorf("Failed to handle message %v", err)
 		err = d.Nack(false, false)
