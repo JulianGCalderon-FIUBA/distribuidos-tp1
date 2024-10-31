@@ -22,7 +22,6 @@ type config struct {
 	ReviewInput string
 	Output      string
 	BatchSize   int
-	Path        string
 }
 
 func getConfig() (config, error) {
@@ -38,7 +37,6 @@ func getConfig() (config, error) {
 	_ = v.BindEnv("ReviewInput", "REVIEW_INPUT")
 	_ = v.BindEnv("Output", "OUTPUT")
 	_ = v.BindEnv("BatchSize", "BATCH_SIZE")
-	_ = v.BindEnv("Path", "PATH")
 
 	var c config
 	err := v.Unmarshal(&c)
