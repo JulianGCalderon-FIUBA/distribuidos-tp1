@@ -88,6 +88,10 @@ func (h *handler) conclude(ch *middleware.Channel) error {
 	return nil
 }
 
+func (h *handler) Free() error {
+	return nil
+}
+
 func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
@@ -108,15 +112,15 @@ func main() {
 		utils.Expect(err, "Failed to initialize topology")
 	}
 
-	nConfig := middleware.Config[handler]{
-		Builder: func(clientID int) handler {
-			return handler{
+	nConfig := middleware.Config[*handler]{
+		Builder: func(clientID int) *handler {
+			return &handler{
 				output:     middleware.Results,
 				count:      make(map[Platform]int, 0),
 				partitions: cfg.Partitions,
 			}
 		},
-		Endpoints: map[string]middleware.HandlerFunc[handler]{
+		Endpoints: map[string]middleware.HandlerFunc[*handler]{
 			qInput: (*handler).handlePartialResult,
 		},
 	}

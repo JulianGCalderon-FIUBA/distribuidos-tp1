@@ -34,8 +34,8 @@ services:
       - GATEWAY_CONN_ADDR=gateway:9001
       - GATEWAY_DATA_ADDR=gateway:9002
     volumes:
-      - ./.data:/.data
-      - ./.results-1:/.results
+      - ./.data:/work/.data
+      - ./.results-1:/work/.results
     networks:
       - net
     depends_on:
@@ -48,8 +48,8 @@ services:
       - GATEWAY_CONN_ADDR=gateway:9001
       - GATEWAY_DATA_ADDR=gateway:9002
     volumes:
-      - ./.data:/.data
-      - ./.results-2:/.results
+      - ./.data:/work/.data
+      - ./.results-2:/work/.results
     networks:
       - net
     depends_on:
@@ -62,8 +62,8 @@ services:
       - GATEWAY_CONN_ADDR=gateway:9001
       - GATEWAY_DATA_ADDR=gateway:9002
     volumes:
-      - ./.data:/.data
-      - ./.results-3:/.results
+      - ./.data:/work/.data
+      - ./.results-3:/work/.results
     networks:
       - net
     depends_on:
@@ -227,6 +227,8 @@ services:
       - GAME_INPUT=games-Q3
       - REVIEW_INPUT=reviews-Q3
       - OUTPUT=grouped-Q3-top
+    volumes:
+      - ./.backup/q3-group-1:/work
     networks:
       - net
     depends_on:
@@ -291,6 +293,8 @@ services:
       - GAME_INPUT=games-Q4
       - REVIEW_INPUT=reviews-Q4
       - OUTPUT=grouped-Q4-joiner
+    volumes:
+      - ./.backup/q4-group-1:/work
     networks:
       - net
     depends_on:
@@ -355,6 +359,8 @@ services:
       - GAME_INPUT=games-Q5
       - REVIEW_INPUT=reviews-Q5
       - OUTPUT=grouped-Q5-joiner
+    volumes:
+      - ./.backup/q5-group-1:/work
     networks:
       - net
     depends_on:

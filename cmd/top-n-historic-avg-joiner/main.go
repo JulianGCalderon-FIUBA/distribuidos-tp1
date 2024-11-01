@@ -92,6 +92,10 @@ func (h *handler) conclude(ch *middleware.Channel) error {
 	return nil
 }
 
+func (h *handler) Free() error {
+	return nil
+}
+
 func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
@@ -112,16 +116,16 @@ func main() {
 		utils.Expect(err, "Failed to declare topology")
 	}
 
-	nConfig := middleware.Config[handler]{
-		Builder: func(clientID int) handler {
-			return handler{
+	nConfig := middleware.Config[*handler]{
+		Builder: func(clientID int) *handler {
+			return &handler{
 				output:     middleware.Results,
 				topN:       cfg.TopN,
 				topNGames:  make([]middleware.GameStat, 0, cfg.TopN),
 				partitions: cfg.Partitions,
 			}
 		},
-		Endpoints: map[string]middleware.HandlerFunc[handler]{
+		Endpoints: map[string]middleware.HandlerFunc[*handler]{
 			qInput: (*handler).handlePartialResult,
 		},
 	}
