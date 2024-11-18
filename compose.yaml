@@ -9,7 +9,7 @@ services:
     networks:
       - net
     healthcheck:
-      test: ["CMD", "rabbitmqctl", "status"]
+      test: [ "CMD", "rabbitmqctl", "status" ]
       interval: 5s
       timeout: 5s
       retries: 3
@@ -389,5 +389,12 @@ services:
       - net
     depends_on:
       - gateway
+  restarter:
+    container_name: restarter
+    image: tp1:latest
+    entrypoint: /build/restarter
+    volumes:
+      - ./.node-config.csv:/work/.node-config.csv
+
 networks:
   net:
