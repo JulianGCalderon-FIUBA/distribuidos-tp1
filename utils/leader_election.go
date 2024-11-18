@@ -58,11 +58,10 @@ func (l *LeaderElection) AmILeader() bool {
 }
 
 func (l *LeaderElection) Start() error {
-
 	for {
 		var buf []byte
 
-		_, _, err := l.conn.ReadFromUDP(buf)
+		_, recvAddr, err := l.conn.ReadFromUDP(buf)
 		if err != nil {
 			log.Errorf("Failed to read: %v", err)
 			continue
@@ -81,6 +80,10 @@ func (l *LeaderElection) Start() error {
 		switch msgType {
 		case Election:
 			go func() {
+				err = l.sendAck(recvAddr)
+				if err != nil {
+					log.Errorf("Failed to send ack: %v", err)
+				}
 				err = l.HandleElection(buf)
 				if err != nil {
 					log.Errorf("Failed to handle election message: %v", err)
@@ -88,6 +91,10 @@ func (l *LeaderElection) Start() error {
 			}()
 		case Coordinator:
 			go func() {
+				err = l.sendAck(recvAddr)
+				if err != nil {
+					log.Errorf("Failed to send ack: %v", err)
+				}
 				err = l.HandleCoordinator(buf)
 				if err != nil {
 					log.Errorf("Failed to handle coordinator message: %v", err)
@@ -98,7 +105,6 @@ func (l *LeaderElection) Start() error {
 		case KeepAlive:
 			// to do
 		}
-
 	}
 }
 
@@ -180,8 +186,24 @@ func (l *LeaderElection) send(msg []byte, attempts int) error {
 	}
 }
 
+func (l *LeaderElection) sendAck(prevNeighbor *net.UDPAddr) error {
+	msg, err := binary.Append(nil, binary.LittleEndian, Ack)
+	if err != nil {
+		return err
+	}
+
+	n, err := l.conn.WriteTo(msg, prevNeighbor)
+	if err != nil {
+		return err
+	}
+	if n != len(msg) {
+		return fmt.Errorf("Could not send full message")
+	}
+	return nil
+}
+
 func encodeCoordinator(leader uint64, ids []uint64) ([]byte, error) {
-	buf, err := binary.Append(nil, binary.LittleEndian, 'C')
+	buf, err := binary.Append(nil, binary.LittleEndian, Coordinator)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -198,7 +220,7 @@ func encodeCoordinator(leader uint64, ids []uint64) ([]byte, error) {
 }
 
 func encodeElection(ids []uint64) ([]byte, error) {
-	buf, err := binary.Append(nil, binary.LittleEndian, 'E')
+	buf, err := binary.Append(nil, binary.LittleEndian, Election)
 	if err != nil {
 		return []byte{}, err
 	}
