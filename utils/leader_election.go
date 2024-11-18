@@ -2,62 +2,182 @@ package utils
 
 import (
 	"encoding/binary"
+	"fmt"
+	"net"
 	"slices"
+	"time"
 )
 
 type LeaderElection struct {
-	id        uint64
-	leader_id uint64
+	id          uint64
+	leaderId    uint64
+	conn        *net.UDPConn
+	nextAddress *net.UDPAddr
+	gotAck      chan bool
 }
 
-func NewLeaderElection(id uint64) *LeaderElection {
-	return &LeaderElection{
-		id:        id,
-		leader_id: id,
+type MsgType rune
+
+const (
+	Election    MsgType = 'E'
+	Coordinator MsgType = 'C'
+	Ack         MsgType = 'A'
+	KeepAlive   MsgType = 'K'
+)
+
+const MAX_ATTEMPTS = 4
+
+func NewLeaderElection(id uint64, address string, nextAddress string) *LeaderElection {
+
+	udpAddr, err := net.ResolveUDPAddr("udp", address)
+	if err != nil {
+		Expect(err, "Did not receive a valid udp address")
 	}
+	nextAddr, err := net.ResolveUDPAddr("udp", nextAddress)
+	if err != nil {
+		Expect(err, "Did not receive a valid udp address for neighbor")
+	}
+
+	conn, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		Expect(err, "Failed to start listening from connection")
+	}
+
+	l := &LeaderElection{
+		id:          id,
+		conn:        conn,
+		nextAddress: nextAddr,
+		gotAck:      make(chan bool),
+	}
+
+	return l
 }
 
 func (l *LeaderElection) AmILeader() bool {
-	return l.id == l.leader_id
+	return l.id == l.leaderId
 }
 
-func (l *LeaderElection) HandleElection(msg []byte) ([]byte, error) {
+func (l *LeaderElection) Start() error {
 
+	for {
+		var buf []byte
+
+		_, _, err := l.conn.ReadFromUDP(buf)
+		if err != nil {
+			log.Errorf("Failed to read: %v", err)
+			continue
+		}
+
+		var msgType MsgType
+
+		n, err := binary.Decode(buf, binary.LittleEndian, msgType)
+		if err != nil {
+			log.Errorf("Failed to decode message type: %v", err)
+			continue
+		}
+
+		buf = buf[n:]
+
+		switch msgType {
+		case Election:
+			go func() {
+				err = l.HandleElection(buf)
+				if err != nil {
+					log.Errorf("Failed to handle election message: %v", err)
+				}
+			}()
+		case Coordinator:
+			go func() {
+				err = l.HandleCoordinator(buf)
+				if err != nil {
+					log.Errorf("Failed to handle coordinator message: %v", err)
+				}
+			}()
+		case Ack:
+			l.HandleAck()
+		case KeepAlive:
+			// to do
+		}
+
+	}
+}
+
+func (l *LeaderElection) HandleElection(msg []byte) error {
 	ids, err := decodeIds(msg)
 	if err != nil {
-		return []byte{}, err
+		return err
 	}
 	if slices.Contains(ids, l.id) {
 		return l.StartCoordinator(ids)
 	}
 	ids = append(ids, l.id)
 
-	return encodeElection(ids)
+	encoded, err := encodeElection(ids)
+	if err != nil {
+		return err
+	}
+
+	return l.send(encoded, 1)
 }
 
-func (l *LeaderElection) StartCoordinator(ids []uint64) ([]byte, error) {
+func (l *LeaderElection) StartCoordinator(ids []uint64) error {
 
 	leader := slices.Max(ids)
-	l.leader_id = leader
+	l.leaderId = leader
 
-	return encodeCoordinator(leader, []uint64{l.id})
+	encoded, err := encodeCoordinator(leader, []uint64{l.id})
+	if err != nil {
+		return err
+	}
+
+	return l.send(encoded, 1)
 }
 
-func (l *LeaderElection) HandleCoordinator(msg []byte) ([]byte, error) {
+func (l *LeaderElection) HandleCoordinator(msg []byte) error {
 
 	leader, ids, err := decodeCoordinator(msg)
 	if err != nil {
-		return []byte{}, err
+		return err
 	}
 
 	if slices.Contains(ids, l.id) {
-		return []byte{}, nil
+		return nil
 	}
 
-	l.leader_id = leader
+	l.leaderId = leader
 	ids = append(ids, l.id)
 
-	return encodeCoordinator(leader, ids)
+	encoded, err := encodeCoordinator(leader, ids)
+	if err != nil {
+		return err
+	}
+	return l.send(encoded, 1)
+}
+
+func (l *LeaderElection) HandleAck() {
+	l.gotAck <- true
+}
+
+func (l *LeaderElection) send(msg []byte, attempts int) error {
+	if attempts == MAX_ATTEMPTS {
+		// levantar nodo vecino
+		return fmt.Errorf("Never got ack")
+	}
+	n, err := l.conn.WriteTo(msg, l.nextAddress)
+	if err != nil {
+		return err
+	}
+	if n != len(msg) {
+		return fmt.Errorf("Could not send full message")
+	}
+	for {
+		select {
+		case <-l.gotAck:
+			return nil
+		case <-time.After(time.Second):
+			return l.send(msg, attempts+1)
+		}
+	}
 }
 
 func encodeCoordinator(leader uint64, ids []uint64) ([]byte, error) {
