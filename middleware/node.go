@@ -2,6 +2,11 @@ package middleware
 
 import (
 	"context"
+	"distribuidos/tp1/utils"
+	"errors"
+	"fmt"
+	"net"
+	"sync"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -11,6 +16,8 @@ type Config[T Handler] struct {
 	Builder HandlerBuilder[T]
 	// Each queue is registered to a particular HandlerFunc
 	Endpoints map[string]HandlerFunc[T]
+
+	Port uint64
 }
 
 type Node[T Handler] struct {
@@ -41,6 +48,14 @@ func NewNode[T Handler](config Config[T], rabbit *amqp.Connection) (*Node[T], er
 
 func (n *Node[T]) Run(ctx context.Context) error {
 	defer n.rabbit.Close()
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		n.sendAlive(ctx)
+	}()
+	defer wg.Wait()
 
 	dch := make(chan Delivery)
 
@@ -100,12 +115,51 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 }
 
 func (n *Node[T]) freeResources(clientID int, h T) {
-	log.Infof("Cleaning resources for client %v", clientID)
+	log.Infof("Freeing resources for client %v", clientID)
 	err := h.Free()
 	if err != nil {
 		log.Errorf("Error freeing handler files: %v", err)
 	}
 	delete(n.clients, clientID)
+}
+
+func (n *Node[T]) sendAlive(ctx context.Context) {
+	addr := net.UDPAddr{
+		Port: int(n.config.Port),
+		IP:   net.ParseIP("0.0.0.0"),
+	}
+
+	conn, err := net.ListenUDP("udp", &addr)
+	if err != nil {
+		log.Errorf("failed to start listener on port %d: %w", n.config.Port, err)
+	}
+
+	log.Infof("Listening at %v", addr.String())
+
+	closer := utils.SpawnCloser(ctx, conn)
+	defer func() {
+		closeErr := closer.Close()
+		err = errors.Join(err, closeErr)
+	}()
+
+	for {
+		buf := make([]byte, 1024)
+		nRead, raddr, err := conn.ReadFromUDP(buf)
+		if err != nil {
+			log.Errorf("Read error: %v", err)
+			return
+		}
+
+		msg := buf[:nRead]
+		log.Infof("Received from %v: %s", raddr, msg)
+
+		go func(conn *net.UDPConn, raddr *net.UDPAddr, msg []byte) {
+			_, err := conn.WriteToUDP([]byte("ACK"), raddr)
+			if err != nil {
+				fmt.Printf("Write err: %v", err)
+			}
+		}(conn, raddr, msg)
+	}
 }
 
 type Delivery struct {
