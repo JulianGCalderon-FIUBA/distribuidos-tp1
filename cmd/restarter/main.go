@@ -2,14 +2,9 @@ package main
 
 import (
 	"distribuidos/tp1/utils"
-	"net"
 
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
-
-var log = logging.MustGetLogger("log")
-var nextAddr, _ = net.ResolveUDPAddr("udp", "127.0.0.1:9001")
 
 type config struct {
 	Id          uint64
@@ -41,5 +36,4 @@ func main() {
 
 	err = l.Start()
 	utils.Expect(err, "Failed to start leader election")
-
 }
