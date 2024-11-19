@@ -282,7 +282,7 @@ func (l *LeaderElection) sendAck(prevNeighbor *net.UDPAddr, msgId uint64) error 
 		return err
 	}
 
-	n, err := l.conn.WriteTo(msg, prevNeighbor)
+	n, err := l.conn.WriteToUDP(msg, prevNeighbor)
 	if err != nil {
 		return err
 	}
