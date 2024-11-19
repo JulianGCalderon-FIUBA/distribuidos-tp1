@@ -1,5 +1,15 @@
 name: tp1
 services:
+  restarter-0:
+    container_name: restarter-0
+    image: tp1:latest
+    entrypoint: /build/restarter
+    environment:
+      - ID=0
+      - ADDRESS=restarter-0:14300
+      - NEIGHBOR_ADDRESS=restarter-1:14301
+    networks:
+      - net
   restarter-1:
     container_name: restarter-1
     image: tp1:latest
@@ -28,16 +38,6 @@ services:
       - ID=3
       - ADDRESS=restarter-3:14303
       - NEIGHBOR_ADDRESS=restarter-0:14300
-    networks:
-      - net
-  restarter-4:
-    container_name: restarter-4
-    image: tp1:latest
-    entrypoint: /build/restarter
-    environment:
-      - ID=4
-      - ADDRESS=restarter-4:14304
-      - NEIGHBOR_ADDRESS=restarter-1:14301
     networks:
       - net
 networks:

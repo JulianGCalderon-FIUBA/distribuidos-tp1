@@ -458,7 +458,7 @@ func generateQ5() {
 }
 
 func generateRestarter() {
-	for i := 1; i <= RESTARTER; i++ {
+	for i := 0; i < RESTARTER; i++ {
 		next := (i + 1) % RESTARTER
 		fmt.Printf("  restarter-%v:\n", i)
 		fmt.Printf("    container_name: restarter-%v\n", i)
