@@ -92,23 +92,6 @@ func (l *LeaderElection) Start() error {
 
 		header := MsgHeader{}
 
-		/* n, err := binary.Decode(buf, binary.LittleEndian, &header.ty)
-		if err != nil {
-			log.Errorf("Failed to decode message header: %v", err)
-			continue
-		}
-
-		buf = buf[n:]
-
-		n, err = binary.Decode(buf, binary.LittleEndian, &header.id)
-		if err != nil {
-			log.Errorf("Failed to decode message header: %v", err)
-			continue
-		}
-
-		buf = buf[n:]
-		*/
-
 		n, err := binary.Decode(buf, binary.LittleEndian, &header)
 		if err != nil {
 			log.Errorf("Failed to decode header: %v", err)
@@ -245,14 +228,7 @@ func (l *LeaderElection) send(msg []byte, attempts int, msgType MsgType) error {
 	if err != nil {
 		return err
 	}
-	/* buf, err := binary.Append(nil, binary.LittleEndian, header.ty)
-	if err != nil {
-		return err
-	}
-	buf, err = binary.Append(buf, binary.LittleEndian, header.id)
-	if err != nil {
-		return err
-	} */
+
 	msg = append(buf, msg...)
 	n, err := l.conn.WriteToUDP(msg, l.neighborAddr)
 	if err != nil {
@@ -290,15 +266,6 @@ func (l *LeaderElection) sendAck(prevNeighbor *net.UDPAddr, msgId uint64) error 
 	if err != nil {
 		return err
 	}
-
-	/* msg, err := binary.Append(nil, binary.LittleEndian, header.ty)
-	if err != nil {
-		return err
-	}
-	msg, err = binary.Append(msg, binary.LittleEndian, header.id)
-	if err != nil {
-		return err
-	} */
 
 	n, err := l.conn.WriteToUDP(msg, prevNeighbor)
 	if err != nil {
