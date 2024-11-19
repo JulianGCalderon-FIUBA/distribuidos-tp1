@@ -459,7 +459,6 @@ func generateQ5() {
 
 func generateRestarter() {
 	for i := 0; i < RESTARTER; i++ {
-		next := (i + 1) % RESTARTER
 		fmt.Printf("  restarter-%v:\n", i)
 		fmt.Printf("    container_name: restarter-%v\n", i)
 		fmt.Println("    image: tp1:latest")
@@ -467,7 +466,7 @@ func generateRestarter() {
 		fmt.Println("    environment:")
 		fmt.Printf("      - ID=%v\n", i)
 		fmt.Printf("      - ADDRESS=restarter-%v:1430%v\n", i, i)
-		fmt.Printf("      - NEIGHBOR_ADDRESS=restarter-%v:1430%v\n", next, next)
+		fmt.Printf("      - REPLICAS=%v\n", RESTARTER)
 		fmt.Println("    networks:")
 		fmt.Println("      - net")
 	}

@@ -7,7 +7,7 @@ services:
     environment:
       - ID=0
       - ADDRESS=restarter-0:14300
-      - NEIGHBOR_ADDRESS=restarter-1:14301
+      - REPLICAS=4
     networks:
       - net
   restarter-1:
@@ -17,7 +17,7 @@ services:
     environment:
       - ID=1
       - ADDRESS=restarter-1:14301
-      - NEIGHBOR_ADDRESS=restarter-2:14302
+      - REPLICAS=4
     networks:
       - net
   restarter-2:
@@ -27,7 +27,7 @@ services:
     environment:
       - ID=2
       - ADDRESS=restarter-2:14302
-      - NEIGHBOR_ADDRESS=restarter-3:14303
+      - REPLICAS=4
     networks:
       - net
   restarter-3:
@@ -37,7 +37,7 @@ services:
     environment:
       - ID=3
       - ADDRESS=restarter-3:14303
-      - NEIGHBOR_ADDRESS=restarter-0:14300
+      - REPLICAS=4
     networks:
       - net
 networks:
