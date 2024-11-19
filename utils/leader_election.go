@@ -33,8 +33,8 @@ const (
 )
 
 type MsgHeader struct {
-	ty MsgType
-	id uint64
+	Ty MsgType
+	Id uint64
 }
 
 const MAX_ATTEMPTS = 4
@@ -90,9 +90,9 @@ func (l *LeaderElection) Start() error {
 			continue
 		}
 
-		header := &MsgHeader{}
+		header := MsgHeader{}
 
-		n, err := binary.Decode(buf, binary.LittleEndian, &header.ty)
+		/* n, err := binary.Decode(buf, binary.LittleEndian, &header.ty)
 		if err != nil {
 			log.Errorf("Failed to decode message header: %v", err)
 			continue
@@ -107,15 +107,24 @@ func (l *LeaderElection) Start() error {
 		}
 
 		buf = buf[n:]
+		*/
 
-		switch header.ty {
+		n, err := binary.Decode(buf, binary.LittleEndian, &header)
+		if err != nil {
+			log.Errorf("Failed to decode header: %v", err)
+			continue
+		}
+
+		buf = buf[n:]
+
+		switch header.Ty {
 		case Ack:
-			l.HandleAck(header.id)
+			l.HandleAck(header.Id)
 		case Coordinator:
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				err = l.sendAck(recvAddr, header.id)
+				err = l.sendAck(recvAddr, header.Id)
 				if err != nil {
 					log.Errorf("Failed to send ack: %v", err)
 				}
@@ -128,7 +137,7 @@ func (l *LeaderElection) Start() error {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				err = l.sendAck(recvAddr, header.id)
+				err = l.sendAck(recvAddr, header.Id)
 				if err != nil {
 					log.Errorf("Failed to send ack: %v", err)
 				}
@@ -138,7 +147,7 @@ func (l *LeaderElection) Start() error {
 				}
 			}()
 		case KeepAlive:
-			err = l.sendAck(recvAddr, header.id)
+			err = l.sendAck(recvAddr, header.Id)
 			if err != nil {
 				log.Errorf("Failed to send ack: %v", err)
 			}
@@ -232,14 +241,18 @@ func (l *LeaderElection) send(msg []byte, attempts int, msgType MsgType) error {
 	}
 
 	header := l.newHeader(msgType)
-	buf, err := binary.Append(nil, binary.LittleEndian, header.ty)
+	buf, err := binary.Append(nil, binary.LittleEndian, header)
+	if err != nil {
+		return err
+	}
+	/* buf, err := binary.Append(nil, binary.LittleEndian, header.ty)
 	if err != nil {
 		return err
 	}
 	buf, err = binary.Append(buf, binary.LittleEndian, header.id)
 	if err != nil {
 		return err
-	}
+	} */
 	msg = append(buf, msg...)
 	n, err := l.conn.WriteToUDP(msg, l.neighborAddr)
 	if err != nil {
@@ -251,12 +264,12 @@ func (l *LeaderElection) send(msg []byte, attempts int, msgType MsgType) error {
 
 	for {
 		l.mu.Lock()
-		ch := l.gotAckMap[header.id]
+		ch := l.gotAckMap[header.Id]
 		l.mu.Unlock()
 		select {
 		case <-ch:
 			l.mu.Lock()
-			delete(l.gotAckMap, header.id)
+			delete(l.gotAckMap, header.Id)
 			l.mu.Unlock()
 			return nil
 		case <-time.After(time.Second):
@@ -269,18 +282,23 @@ func (l *LeaderElection) send(msg []byte, attempts int, msgType MsgType) error {
 func (l *LeaderElection) sendAck(prevNeighbor *net.UDPAddr, msgId uint64) error {
 
 	header := MsgHeader{
-		ty: Ack,
-		id: msgId,
+		Ty: Ack,
+		Id: msgId,
 	}
 
-	msg, err := binary.Append(nil, binary.LittleEndian, header.ty)
+	msg, err := binary.Append(nil, binary.LittleEndian, header)
+	if err != nil {
+		return err
+	}
+
+	/* msg, err := binary.Append(nil, binary.LittleEndian, header.ty)
 	if err != nil {
 		return err
 	}
 	msg, err = binary.Append(msg, binary.LittleEndian, header.id)
 	if err != nil {
 		return err
-	}
+	} */
 
 	n, err := l.conn.WriteToUDP(msg, prevNeighbor)
 	if err != nil {
@@ -370,7 +388,7 @@ func (l *LeaderElection) newHeader(ty MsgType) MsgHeader {
 	l.mu.Unlock()
 
 	return MsgHeader{
-		ty: ty,
-		id: l.lastMsgId,
+		Ty: ty,
+		Id: l.lastMsgId,
 	}
 }
