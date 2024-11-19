@@ -3,8 +3,11 @@ package main
 import (
 	"distribuidos/tp1/utils"
 
+	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
+
+var log = logging.MustGetLogger("log")
 
 type config struct {
 	Id          uint64
@@ -29,18 +32,28 @@ func getConfig() (config, error) {
 
 func main() {
 
-	c, err := getConfig()
+	cfg, err := getConfig()
 	utils.Expect(err, "Failed to get config")
 
-	l := utils.NewLeaderElection(c.Id, c.Address, c.NextAddress)
+	l := utils.NewLeaderElection(cfg.Id, cfg.Address, cfg.NextAddress)
+
+	/* wg := &sync.WaitGroup{}
+	wg.Add(1)
 
 	go func() {
+		defer wg.Done()
 		err = l.Start()
 		utils.Expect(err, "Failed to start leader election")
 	}()
+	wg.Wait()
 	for {
 		l.WaitLeader(true)
+		log.Infof("I am leader (id %v) and I woke up", cfg.Id)
 		// reiniciar nodos
 		l.WaitLeader(false)
-	}
+	} */
+
+	err = l.Start()
+	utils.Expect(err, "Failed to start leader election")
+
 }
