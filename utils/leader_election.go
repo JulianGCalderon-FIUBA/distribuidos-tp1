@@ -41,14 +41,11 @@ const MAX_ATTEMPTS = 4
 
 func NewLeaderElection(id uint64, address string, nextAddress string) *LeaderElection {
 
-	udpAddr, err := net.ResolveUDPAddr("udp", address)
-	if err != nil {
-		Expect(err, "Did not receive a valid udp address")
-	}
-	nextAddr, err := net.ResolveUDPAddr("udp", nextAddress)
-	if err != nil {
-		Expect(err, "Did not receive a valid udp address for neighbor")
-	}
+	udpAddr := GetUDPAddr(address)
+	nextAddr := GetUDPAddr(nextAddress)
+
+	log.Infof("My address is %v", udpAddr)
+	log.Infof("My neighbor address is %v", nextAddr)
 
 	conn, err := net.ListenUDP("udp", udpAddr)
 	if err != nil {
@@ -65,7 +62,7 @@ func NewLeaderElection(id uint64, address string, nextAddress string) *LeaderEle
 		nextAddress:  nextAddr,
 		mu:           &sync.Mutex{},
 		gotAckMap:    make(map[uint64]chan bool),
-		lastMsgId:    id,
+		lastMsgId:    0,
 	}
 
 	return l
@@ -80,7 +77,14 @@ func (l *LeaderElection) WaitLeader(amILeader bool) {
 }
 
 func (l *LeaderElection) Start() error {
-	// start election
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err := l.StartElection()
+		Expect(err, "Failed to start election")
+	}()
+
 	for {
 		var buf []byte
 
@@ -99,11 +103,15 @@ func (l *LeaderElection) Start() error {
 
 		buf = buf[n:]
 
+		log.Infof("Received message %v from %v", header, recvAddr)
+
 		switch header.ty {
 		case Ack:
 			l.HandleAck(header.id)
 		case Coordinator:
+			wg.Add(1)
 			go func() {
+				defer wg.Done()
 				err = l.sendAck(recvAddr, header.id)
 				if err != nil {
 					log.Errorf("Failed to send ack: %v", err)
@@ -114,7 +122,9 @@ func (l *LeaderElection) Start() error {
 				}
 			}()
 		case Election:
+			wg.Add(1)
 			go func() {
+				defer wg.Done()
 				err = l.sendAck(recvAddr, header.id)
 				if err != nil {
 					log.Errorf("Failed to send ack: %v", err)
@@ -134,6 +144,7 @@ func (l *LeaderElection) Start() error {
 }
 
 func (l *LeaderElection) StartElection() error {
+	log.Infof("Starting election")
 	ids := []uint64{l.id}
 
 	encoded, err := l.encodeElection(ids)
@@ -145,6 +156,7 @@ func (l *LeaderElection) StartElection() error {
 }
 
 func (l *LeaderElection) HandleElection(msg []byte) error {
+	log.Infof("Received Election message")
 	ids, err := decodeIds(msg)
 	if err != nil {
 		return err
@@ -163,7 +175,7 @@ func (l *LeaderElection) HandleElection(msg []byte) error {
 }
 
 func (l *LeaderElection) StartCoordinator(ids []uint64) error {
-
+	log.Infof("Starting coordinator")
 	leader := slices.Max(ids)
 	l.leaderId = leader
 
@@ -176,6 +188,7 @@ func (l *LeaderElection) StartCoordinator(ids []uint64) error {
 }
 
 func (l *LeaderElection) HandleCoordinator(msg []byte) error {
+	log.Infof("Received Coordinator message")
 
 	leader, ids, err := decodeCoordinator(msg)
 	if err != nil {
@@ -192,6 +205,8 @@ func (l *LeaderElection) HandleCoordinator(msg []byte) error {
 
 	l.condLeaderId.Signal()
 
+	log.Infof("Leader is %v", leader)
+
 	ids = append(ids, l.id)
 
 	encoded, err := l.encodeCoordinator(leader, ids)
@@ -202,6 +217,7 @@ func (l *LeaderElection) HandleCoordinator(msg []byte) error {
 }
 
 func (l *LeaderElection) HandleAck(msgId uint64) {
+	log.Infof("Received ack for message %v", msgId)
 	l.mu.Lock()
 	l.gotAckMap[msgId] <- true
 	l.mu.Unlock()
@@ -214,12 +230,14 @@ func (l *LeaderElection) send(msg []byte, attempts int, msgType MsgType) error {
 	}
 
 	header := l.newHeader(msgType)
-	buf, err := binary.Append(nil, binary.LittleEndian, header)
+	rs := []rune{rune(header.ty)}
+	buf := []byte(string(rs))
+	buf, err := binary.Append(buf, binary.LittleEndian, header.id)
 	if err != nil {
 		return err
 	}
 	msg = append(buf, msg...)
-
+	log.Infof("Sending message %vto %v", header, l.nextAddress)
 	n, err := l.conn.WriteTo(msg, l.nextAddress)
 	if err != nil {
 		return err
@@ -293,7 +311,7 @@ func encodeIds(ids []uint64, buf []byte) ([]byte, error) {
 	}
 
 	for id := range ids {
-		buf, err = binary.Append(buf, binary.LittleEndian, id)
+		buf, err = binary.Append(buf, binary.LittleEndian, uint64(id))
 		if err != nil {
 			return []byte{}, err
 		}
