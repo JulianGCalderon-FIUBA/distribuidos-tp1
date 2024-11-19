@@ -34,6 +34,13 @@ func main() {
 
 	l := utils.NewLeaderElection(c.Id, c.Address, c.NextAddress)
 
-	err = l.Start()
-	utils.Expect(err, "Failed to start leader election")
+	go func() {
+		err = l.Start()
+		utils.Expect(err, "Failed to start leader election")
+	}()
+	for {
+		l.WaitLeader(true)
+		// reiniciar nodos
+		l.WaitLeader(false)
+	}
 }
