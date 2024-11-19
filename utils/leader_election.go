@@ -5,25 +5,37 @@ import (
 	"fmt"
 	"net"
 	"slices"
+	"sync"
 	"time"
 )
 
 type LeaderElection struct {
-	id          uint64
-	leaderId    uint64
+	id uint64
+
+	condLeaderId *sync.Cond
+	leaderId     uint64
+
 	conn        *net.UDPConn
 	nextAddress *net.UDPAddr
-	gotAck      chan bool
+
+	mu        *sync.Mutex
+	gotAckMap map[uint64]chan bool
+	lastMsgId uint64
 }
 
 type MsgType rune
 
 const (
-	Election    MsgType = 'E'
-	Coordinator MsgType = 'C'
 	Ack         MsgType = 'A'
+	Coordinator MsgType = 'C'
+	Election    MsgType = 'E'
 	KeepAlive   MsgType = 'K'
 )
+
+type MsgHeader struct {
+	ty MsgType
+	id uint64
+}
 
 const MAX_ATTEMPTS = 4
 
@@ -43,21 +55,32 @@ func NewLeaderElection(id uint64, address string, nextAddress string) *LeaderEle
 		Expect(err, "Failed to start listening from connection")
 	}
 
+	var mu sync.Mutex
+	cond := sync.NewCond(&mu)
+
 	l := &LeaderElection{
-		id:          id,
-		conn:        conn,
-		nextAddress: nextAddr,
-		gotAck:      make(chan bool),
+		id:           id,
+		condLeaderId: cond,
+		conn:         conn,
+		nextAddress:  nextAddr,
+		mu:           &sync.Mutex{},
+		gotAckMap:    make(map[uint64]chan bool),
+		lastMsgId:    id,
 	}
 
 	return l
 }
 
-func (l *LeaderElection) AmILeader() bool {
-	return l.id == l.leaderId
+func (l *LeaderElection) WaitLeader(amILeader bool) {
+	l.condLeaderId.L.Lock()
+	defer l.condLeaderId.L.Unlock()
+	for amILeader == (l.id != l.leaderId) {
+		l.condLeaderId.Wait()
+	}
 }
 
 func (l *LeaderElection) Start() error {
+	// start election
 	for {
 		var buf []byte
 
@@ -67,9 +90,8 @@ func (l *LeaderElection) Start() error {
 			continue
 		}
 
-		var msgType MsgType
-
-		n, err := binary.Decode(buf, binary.LittleEndian, msgType)
+		var header MsgHeader
+		n, err := binary.Decode(buf, binary.LittleEndian, header)
 		if err != nil {
 			log.Errorf("Failed to decode message type: %v", err)
 			continue
@@ -77,21 +99,12 @@ func (l *LeaderElection) Start() error {
 
 		buf = buf[n:]
 
-		switch msgType {
-		case Election:
-			go func() {
-				err = l.sendAck(recvAddr)
-				if err != nil {
-					log.Errorf("Failed to send ack: %v", err)
-				}
-				err = l.HandleElection(buf)
-				if err != nil {
-					log.Errorf("Failed to handle election message: %v", err)
-				}
-			}()
+		switch header.ty {
+		case Ack:
+			l.HandleAck(header.id)
 		case Coordinator:
 			go func() {
-				err = l.sendAck(recvAddr)
+				err = l.sendAck(recvAddr, header.id)
 				if err != nil {
 					log.Errorf("Failed to send ack: %v", err)
 				}
@@ -100,12 +113,35 @@ func (l *LeaderElection) Start() error {
 					log.Errorf("Failed to handle coordinator message: %v", err)
 				}
 			}()
-		case Ack:
-			l.HandleAck()
+		case Election:
+			go func() {
+				err = l.sendAck(recvAddr, header.id)
+				if err != nil {
+					log.Errorf("Failed to send ack: %v", err)
+				}
+				err = l.HandleElection(buf)
+				if err != nil {
+					log.Errorf("Failed to handle election message: %v", err)
+				}
+			}()
 		case KeepAlive:
-			// to do
+			err = l.sendAck(recvAddr, header.id)
+			if err != nil {
+				log.Errorf("Failed to send ack: %v", err)
+			}
 		}
 	}
+}
+
+func (l *LeaderElection) StartElection() error {
+	ids := []uint64{l.id}
+
+	encoded, err := l.encodeElection(ids)
+	if err != nil {
+		return err
+	}
+
+	return l.send(encoded, 1, Election)
 }
 
 func (l *LeaderElection) HandleElection(msg []byte) error {
@@ -118,12 +154,12 @@ func (l *LeaderElection) HandleElection(msg []byte) error {
 	}
 	ids = append(ids, l.id)
 
-	encoded, err := encodeElection(ids)
+	encoded, err := l.encodeElection(ids)
 	if err != nil {
 		return err
 	}
 
-	return l.send(encoded, 1)
+	return l.send(encoded, 1, Election)
 }
 
 func (l *LeaderElection) StartCoordinator(ids []uint64) error {
@@ -131,12 +167,12 @@ func (l *LeaderElection) StartCoordinator(ids []uint64) error {
 	leader := slices.Max(ids)
 	l.leaderId = leader
 
-	encoded, err := encodeCoordinator(leader, []uint64{l.id})
+	encoded, err := l.encodeCoordinator(leader, []uint64{l.id})
 	if err != nil {
 		return err
 	}
 
-	return l.send(encoded, 1)
+	return l.send(encoded, 1, Coordinator)
 }
 
 func (l *LeaderElection) HandleCoordinator(msg []byte) error {
@@ -150,25 +186,40 @@ func (l *LeaderElection) HandleCoordinator(msg []byte) error {
 		return nil
 	}
 
+	l.condLeaderId.L.Lock()
 	l.leaderId = leader
+	l.condLeaderId.L.Unlock()
+
+	l.condLeaderId.Signal()
+
 	ids = append(ids, l.id)
 
-	encoded, err := encodeCoordinator(leader, ids)
+	encoded, err := l.encodeCoordinator(leader, ids)
 	if err != nil {
 		return err
 	}
-	return l.send(encoded, 1)
+	return l.send(encoded, 1, Coordinator)
 }
 
-func (l *LeaderElection) HandleAck() {
-	l.gotAck <- true
+func (l *LeaderElection) HandleAck(msgId uint64) {
+	l.mu.Lock()
+	l.gotAckMap[msgId] <- true
+	l.mu.Unlock()
 }
 
-func (l *LeaderElection) send(msg []byte, attempts int) error {
+func (l *LeaderElection) send(msg []byte, attempts int, msgType MsgType) error {
 	if attempts == MAX_ATTEMPTS {
 		// levantar nodo vecino
 		return fmt.Errorf("Never got ack")
 	}
+
+	header := l.newHeader(msgType)
+	buf, err := binary.Append(nil, binary.LittleEndian, header)
+	if err != nil {
+		return err
+	}
+	msg = append(buf, msg...)
+
 	n, err := l.conn.WriteTo(msg, l.nextAddress)
 	if err != nil {
 		return err
@@ -176,18 +227,31 @@ func (l *LeaderElection) send(msg []byte, attempts int) error {
 	if n != len(msg) {
 		return fmt.Errorf("Could not send full message")
 	}
+
 	for {
+		l.mu.Lock()
+		defer l.mu.Unlock()
+		ch := l.gotAckMap[header.id]
 		select {
-		case <-l.gotAck:
+		case <-ch:
+			delete(l.gotAckMap, header.id)
 			return nil
 		case <-time.After(time.Second):
-			return l.send(msg, attempts+1)
+			return l.send(msg, attempts+1, msgType)
+		default:
+			l.mu.Unlock()
 		}
 	}
 }
 
-func (l *LeaderElection) sendAck(prevNeighbor *net.UDPAddr) error {
-	msg, err := binary.Append(nil, binary.LittleEndian, Ack)
+func (l *LeaderElection) sendAck(prevNeighbor *net.UDPAddr, msgId uint64) error {
+
+	header := MsgHeader{
+		ty: Ack,
+		id: msgId,
+	}
+
+	msg, err := binary.Append(nil, binary.LittleEndian, header)
 	if err != nil {
 		return err
 	}
@@ -202,12 +266,9 @@ func (l *LeaderElection) sendAck(prevNeighbor *net.UDPAddr) error {
 	return nil
 }
 
-func encodeCoordinator(leader uint64, ids []uint64) ([]byte, error) {
-	buf, err := binary.Append(nil, binary.LittleEndian, Coordinator)
-	if err != nil {
-		return []byte{}, err
-	}
-	buf, err = binary.Append(buf, binary.LittleEndian, leader)
+func (l *LeaderElection) encodeCoordinator(leader uint64, ids []uint64) ([]byte, error) {
+
+	buf, err := binary.Append(nil, binary.LittleEndian, leader)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -219,12 +280,8 @@ func encodeCoordinator(leader uint64, ids []uint64) ([]byte, error) {
 	return msg, nil
 }
 
-func encodeElection(ids []uint64) ([]byte, error) {
-	buf, err := binary.Append(nil, binary.LittleEndian, Election)
-	if err != nil {
-		return []byte{}, err
-	}
-
+func (l *LeaderElection) encodeElection(ids []uint64) ([]byte, error) {
+	buf := make([]byte, 0)
 	return encodeIds(ids, buf)
 }
 
@@ -280,4 +337,16 @@ func decodeCoordinator(msg []byte) (uint64, []uint64, error) {
 	}
 
 	return leader, ids, err
+}
+
+func (l *LeaderElection) newHeader(ty MsgType) MsgHeader {
+	l.mu.Lock()
+	l.lastMsgId += 1
+	l.gotAckMap[l.lastMsgId] = make(chan bool)
+	l.mu.Unlock()
+
+	return MsgHeader{
+		ty: ty,
+		id: l.lastMsgId,
+	}
 }
