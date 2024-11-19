@@ -15,8 +15,8 @@ type LeaderElection struct {
 	condLeaderId *sync.Cond
 	leaderId     uint64
 
-	conn        *net.UDPConn
-	nextAddress *net.UDPAddr
+	conn         *net.UDPConn
+	neighborAddr *net.UDPAddr
 
 	mu        *sync.Mutex
 	gotAckMap map[uint64]chan bool
@@ -41,16 +41,13 @@ const MAX_ATTEMPTS = 4
 
 func NewLeaderElection(id uint64, address string, nextAddress string) *LeaderElection {
 
-	udpAddr := GetUDPAddr(address)
-	nextAddr := GetUDPAddr(nextAddress)
-
-	log.Infof("My address is %v", udpAddr)
-	log.Infof("My neighbor address is %v", nextAddr)
+	udpAddr, err := net.ResolveUDPAddr("udp", address)
+	Expect(err, "Did not receive a valid address")
+	nextAddr, err := net.ResolveUDPAddr("udp", nextAddress)
+	Expect(err, "Did not receive a valid address")
 
 	conn, err := net.ListenUDP("udp", udpAddr)
-	if err != nil {
-		Expect(err, "Failed to start listening from connection")
-	}
+	Expect(err, "Failed to start listening from connection")
 
 	var mu sync.Mutex
 	cond := sync.NewCond(&mu)
@@ -59,7 +56,7 @@ func NewLeaderElection(id uint64, address string, nextAddress string) *LeaderEle
 		id:           id,
 		condLeaderId: cond,
 		conn:         conn,
-		nextAddress:  nextAddr,
+		neighborAddr: nextAddr,
 		mu:           &sync.Mutex{},
 		gotAckMap:    make(map[uint64]chan bool),
 		lastMsgId:    0,
@@ -86,24 +83,30 @@ func (l *LeaderElection) Start() error {
 	}()
 
 	for {
-		buf := make([]byte, 0)
-		log.Infof("Reading")
+		buf := make([]byte, 1024)
 		_, recvAddr, err := l.conn.ReadFromUDP(buf)
 		if err != nil {
 			log.Errorf("Failed to read: %v", err)
 			continue
 		}
 
-		var header MsgHeader
-		n, err := binary.Decode(buf, binary.LittleEndian, header)
+		header := &MsgHeader{}
+
+		n, err := binary.Decode(buf, binary.LittleEndian, &header.ty)
 		if err != nil {
-			log.Errorf("Failed to decode message type: %v", err)
+			log.Errorf("Failed to decode message header: %v", err)
 			continue
 		}
 
 		buf = buf[n:]
 
-		log.Infof("Received message %v from %v", header, recvAddr)
+		n, err = binary.Decode(buf, binary.LittleEndian, &header.id)
+		if err != nil {
+			log.Errorf("Failed to decode message header: %v", err)
+			continue
+		}
+
+		buf = buf[n:]
 
 		switch header.ty {
 		case Ack:
@@ -170,7 +173,6 @@ func (l *LeaderElection) HandleElection(msg []byte) error {
 	if err != nil {
 		return err
 	}
-
 	return l.send(encoded, 1, Election)
 }
 
@@ -230,15 +232,16 @@ func (l *LeaderElection) send(msg []byte, attempts int, msgType MsgType) error {
 	}
 
 	header := l.newHeader(msgType)
-	rs := []rune{rune(header.ty)}
-	buf := []byte(string(rs))
-	buf, err := binary.Append(buf, binary.LittleEndian, header.id)
+	buf, err := binary.Append(nil, binary.LittleEndian, header.ty)
+	if err != nil {
+		return err
+	}
+	buf, err = binary.Append(buf, binary.LittleEndian, header.id)
 	if err != nil {
 		return err
 	}
 	msg = append(buf, msg...)
-	log.Infof("Sending message %vto %v", header, l.nextAddress)
-	n, err := l.conn.WriteTo(msg, l.nextAddress)
+	n, err := l.conn.WriteToUDP(msg, l.neighborAddr)
 	if err != nil {
 		return err
 	}
@@ -248,16 +251,17 @@ func (l *LeaderElection) send(msg []byte, attempts int, msgType MsgType) error {
 
 	for {
 		l.mu.Lock()
-		defer l.mu.Unlock()
 		ch := l.gotAckMap[header.id]
+		l.mu.Unlock()
 		select {
 		case <-ch:
+			l.mu.Lock()
 			delete(l.gotAckMap, header.id)
+			l.mu.Unlock()
 			return nil
 		case <-time.After(time.Second):
+			log.Infof("Timeout, trying to send again")
 			return l.send(msg, attempts+1, msgType)
-		default:
-			l.mu.Unlock()
 		}
 	}
 }
@@ -269,7 +273,11 @@ func (l *LeaderElection) sendAck(prevNeighbor *net.UDPAddr, msgId uint64) error 
 		id: msgId,
 	}
 
-	msg, err := binary.Append(nil, binary.LittleEndian, header)
+	msg, err := binary.Append(nil, binary.LittleEndian, header.ty)
+	if err != nil {
+		return err
+	}
+	msg, err = binary.Append(msg, binary.LittleEndian, header.id)
 	if err != nil {
 		return err
 	}
@@ -285,7 +293,6 @@ func (l *LeaderElection) sendAck(prevNeighbor *net.UDPAddr, msgId uint64) error 
 }
 
 func (l *LeaderElection) encodeCoordinator(leader uint64, ids []uint64) ([]byte, error) {
-
 	buf, err := binary.Append(nil, binary.LittleEndian, leader)
 	if err != nil {
 		return []byte{}, err
@@ -299,8 +306,7 @@ func (l *LeaderElection) encodeCoordinator(leader uint64, ids []uint64) ([]byte,
 }
 
 func (l *LeaderElection) encodeElection(ids []uint64) ([]byte, error) {
-	buf := make([]byte, 0)
-	return encodeIds(ids, buf)
+	return encodeIds(ids, nil)
 }
 
 func encodeIds(ids []uint64, buf []byte) ([]byte, error) {
@@ -310,8 +316,8 @@ func encodeIds(ids []uint64, buf []byte) ([]byte, error) {
 		return []byte{}, err
 	}
 
-	for id := range ids {
-		buf, err = binary.Append(buf, binary.LittleEndian, uint64(id))
+	for i := 0; i < len(ids); i++ {
+		buf, err = binary.Append(buf, binary.LittleEndian, uint64(ids[i]))
 		if err != nil {
 			return []byte{}, err
 		}
@@ -320,17 +326,17 @@ func encodeIds(ids []uint64, buf []byte) ([]byte, error) {
 }
 
 func decodeIds(msg []byte) ([]uint64, error) {
-	ids := make([]uint64, 0)
 	var seen uint64
-	n, err := binary.Decode(msg, binary.LittleEndian, seen)
+	n, err := binary.Decode(msg, binary.LittleEndian, &seen)
 	if err != nil {
 		return []uint64{}, err
 	}
-
 	msg = msg[n:]
+	ids := make([]uint64, 0)
+
 	for i := uint64(0); i < seen; i++ {
 		var id uint64
-		n, err := binary.Decode(msg, binary.LittleEndian, id)
+		n, err := binary.Decode(msg, binary.LittleEndian, &id)
 		if err != nil {
 			return []uint64{}, err
 		}
@@ -343,7 +349,7 @@ func decodeIds(msg []byte) ([]uint64, error) {
 
 func decodeCoordinator(msg []byte) (uint64, []uint64, error) {
 	var leader uint64
-	n, err := binary.Decode(msg, binary.LittleEndian, leader)
+	n, err := binary.Decode(msg, binary.LittleEndian, &leader)
 	if err != nil {
 		return 0, []uint64{}, err
 	}
