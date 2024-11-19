@@ -10,13 +10,14 @@ import (
 )
 
 type LeaderElection struct {
-	id uint64
+	id       uint64
+	replicas uint64
 
 	condLeaderId *sync.Cond
 	leaderId     uint64
+	hasLeader    bool
 
-	conn         *net.UDPConn
-	neighborAddr *net.UDPAddr
+	conn *net.UDPConn
 
 	mu        *sync.Mutex
 	gotAckMap map[uint64]chan bool
@@ -39,11 +40,9 @@ type MsgHeader struct {
 
 const MAX_ATTEMPTS = 4
 
-func NewLeaderElection(id uint64, address string, nextAddress string) *LeaderElection {
+func NewLeaderElection(id uint64, address string, replicas uint64) *LeaderElection {
 
 	udpAddr, err := net.ResolveUDPAddr("udp", address)
-	Expect(err, "Did not receive a valid address")
-	nextAddr, err := net.ResolveUDPAddr("udp", nextAddress)
 	Expect(err, "Did not receive a valid address")
 
 	conn, err := net.ListenUDP("udp", udpAddr)
@@ -54,9 +53,9 @@ func NewLeaderElection(id uint64, address string, nextAddress string) *LeaderEle
 
 	l := &LeaderElection{
 		id:           id,
+		replicas:     replicas,
 		condLeaderId: cond,
 		conn:         conn,
-		neighborAddr: nextAddr,
 		mu:           &sync.Mutex{},
 		gotAckMap:    make(map[uint64]chan bool),
 		lastMsgId:    0,
@@ -68,9 +67,14 @@ func NewLeaderElection(id uint64, address string, nextAddress string) *LeaderEle
 func (l *LeaderElection) WaitLeader(amILeader bool) {
 	l.condLeaderId.L.Lock()
 	defer l.condLeaderId.L.Unlock()
-	for amILeader == (l.id != l.leaderId) {
+	for amILeader != l.amILeader() {
 		l.condLeaderId.Wait()
 	}
+}
+
+// requires lock
+func (l *LeaderElection) amILeader() bool {
+	return (l.id == l.leaderId) && l.hasLeader
 }
 
 func (l *LeaderElection) Start() error {
@@ -195,6 +199,7 @@ func (l *LeaderElection) HandleCoordinator(msg []byte) error {
 
 	l.condLeaderId.L.Lock()
 	l.leaderId = leader
+	l.hasLeader = true
 	l.condLeaderId.L.Unlock()
 
 	l.condLeaderId.Signal()
@@ -213,8 +218,9 @@ func (l *LeaderElection) HandleCoordinator(msg []byte) error {
 func (l *LeaderElection) HandleAck(msgId uint64) {
 	log.Infof("Received ack for message %v", msgId)
 	l.mu.Lock()
-	l.gotAckMap[msgId] <- true
+	ch := l.gotAckMap[msgId]
 	l.mu.Unlock()
+	ch <- true
 }
 
 func (l *LeaderElection) send(msg []byte, attempts int, msgType MsgType) error {
@@ -228,9 +234,14 @@ func (l *LeaderElection) send(msg []byte, attempts int, msgType MsgType) error {
 	if err != nil {
 		return err
 	}
-
 	msg = append(buf, msg...)
-	n, err := l.conn.WriteToUDP(msg, l.neighborAddr)
+
+	neighborAddr, err := GetUDPAddr((l.id + 1) % l.replicas)
+	if err != nil {
+		return err
+	}
+
+	n, err := l.conn.WriteToUDP(msg, neighborAddr)
 	if err != nil {
 		return err
 	}
@@ -249,7 +260,7 @@ func (l *LeaderElection) send(msg []byte, attempts int, msgType MsgType) error {
 			l.mu.Unlock()
 			return nil
 		case <-time.After(time.Second):
-			log.Infof("Timeout, trying to send again")
+			log.Infof("Timeout, trying to send again message %v", header.Id)
 			return l.send(msg, attempts+1, msgType)
 		}
 	}
