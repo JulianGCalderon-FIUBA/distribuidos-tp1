@@ -86,8 +86,8 @@ func (l *LeaderElection) Start() error {
 	}()
 
 	for {
-		var buf []byte
-
+		buf := make([]byte, 0)
+		log.Infof("Reading")
 		_, recvAddr, err := l.conn.ReadFromUDP(buf)
 		if err != nil {
 			log.Errorf("Failed to read: %v", err)
