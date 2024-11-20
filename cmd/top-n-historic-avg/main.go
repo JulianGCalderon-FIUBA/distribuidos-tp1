@@ -97,6 +97,10 @@ func (h *handler) conclude(ch *middleware.Channel) error {
 	return nil
 }
 
+func (h *handler) Free() error {
+	return nil
+}
+
 func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
@@ -117,16 +121,16 @@ func main() {
 		utils.Expect(err, "Failed to declare topology")
 	}
 
-	nodeCfg := middleware.Config[handler]{
-		Builder: func(clientID int) handler {
-			return handler{
+	nodeCfg := middleware.Config[*handler]{
+		Builder: func(clientID int) *handler {
+			return &handler{
 				output:    middleware.PartialQ2,
 				topN:      cfg.TopN,
 				results:   make(middleware.GameHeap, cfg.TopN),
 				sequencer: utils.NewSequencer(),
 			}
 		},
-		Endpoints: map[string]middleware.HandlerFunc[handler]{
+		Endpoints: map[string]middleware.HandlerFunc[*handler]{
 			qInput: (*handler).handleBatch,
 		},
 	}

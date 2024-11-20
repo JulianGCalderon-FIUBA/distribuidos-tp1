@@ -6,34 +6,21 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-// Each client should be handled completely independent. Therefore,
-// our middleware can hide this detail to the business layer.
-// As some handlers require to keep state, we can't use the same instance for
-// each client. Therefore, we need a HandlerBuilder function that creates
-// a new handler when a new client comes.
-type HandlerBuilder[T any] func(clientID int) T
-
-// Some nodes need to listen from multiple queues. To allow this, we define
-// HandlerFunc, which represents the handling of a message of a particular
-// queue. If the user needs to handle multiple queues, it must define
-// multiple HandlerFuncs
-type HandlerFunc[T any] func(h *T, ch *Channel, data []byte) error
-
-type Config[T any] struct {
+type Config[T Handler] struct {
 	// For each client, the builder is called to initialize a new builder
 	Builder HandlerBuilder[T]
 	// Each queue is registered to a particular HandlerFunc
 	Endpoints map[string]HandlerFunc[T]
 }
 
-type Node[T any] struct {
+type Node[T Handler] struct {
 	config  Config[T]
 	rabbit  *amqp.Connection
 	ch      *amqp.Channel
 	clients map[int]T
 }
 
-func NewNode[T any](config Config[T], rabbit *amqp.Connection) (*Node[T], error) {
+func NewNode[T Handler](config Config[T], rabbit *amqp.Connection) (*Node[T], error) {
 	ch, err := rabbit.Channel()
 	if err != nil {
 		return nil, err
@@ -72,6 +59,9 @@ func (n *Node[T]) Run(ctx context.Context) error {
 				return err
 			}
 		case <-ctx.Done():
+			for clientId, h := range n.clients {
+				n.freeResources(clientId, h)
+			}
 			return nil
 		}
 	}
@@ -93,12 +83,9 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 		FinishFlag: false,
 	}
 
-	err := n.config.Endpoints[d.Queue](&h, ch, d.Body)
+	err := n.config.Endpoints[d.Queue](h, ch, d.Body)
 	if ch.FinishFlag {
-		log.Infof("Cleaning resources for client %v", clientID)
-		delete(n.clients, clientID)
-	} else {
-		n.clients[clientID] = h
+		n.freeResources(clientID, h)
 	}
 
 	if err != nil {
@@ -110,6 +97,15 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 	}
 
 	return d.Ack(false)
+}
+
+func (n *Node[T]) freeResources(clientID int, h T) {
+	log.Infof("Cleaning resources for client %v", clientID)
+	err := h.Free()
+	if err != nil {
+		log.Errorf("Error freeing handler files: %v", err)
+	}
+	delete(n.clients, clientID)
 }
 
 type Delivery struct {

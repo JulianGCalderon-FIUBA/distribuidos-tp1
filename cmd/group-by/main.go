@@ -72,7 +72,7 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 	}
 
 	if h.gameSequencer.EOF() && h.reviewSequencer.EOF() {
-		return h.Conclude(ch)
+		return h.conclude(ch)
 	}
 
 	return nil
@@ -104,13 +104,13 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 	}
 
 	if h.reviewSequencer.EOF() && h.gameSequencer.EOF() {
-		return h.Conclude(ch)
+		return h.conclude(ch)
 	}
 
 	return nil
 }
 
-func (h *handler) Conclude(ch *middleware.Channel) error {
+func (h *handler) conclude(ch *middleware.Channel) error {
 	games, err := h.diskMap.GetAll()
 	if err != nil {
 		return err
@@ -148,12 +148,12 @@ func (h *handler) Conclude(ch *middleware.Channel) error {
 		batch.BatchID += 1
 	}
 
-	err = h.diskMap.Remove()
-	if err != nil {
-		return err
-	}
 	ch.Finish()
 	return nil
+}
+
+func (h *handler) Free() error {
+	return h.diskMap.Remove()
 }
 
 func main() {
@@ -175,13 +175,13 @@ func main() {
 	}.Declare(ch)
 	utils.Expect(err, "Failed to declare queues")
 
-	nodeCfg := middleware.Config[handler]{
-		Builder: func(clientID int) handler {
+	nodeCfg := middleware.Config[*handler]{
+		Builder: func(clientID int) *handler {
 			path := middleware.Cat("group-by", strconv.Itoa(clientID))
 			diskMap, err := middleware.NewDiskMap(path)
 			utils.Expect(err, "Failed to build new disk map")
 
-			return handler{
+			return &handler{
 				diskMap:         diskMap,
 				gameSequencer:   utils.NewSequencer(),
 				reviewSequencer: utils.NewSequencer(),
@@ -189,7 +189,7 @@ func main() {
 				output:          output,
 			}
 		},
-		Endpoints: map[string]middleware.HandlerFunc[handler]{
+		Endpoints: map[string]middleware.HandlerFunc[*handler]{
 			gameInput:   (*handler).handleGame,
 			reviewInput: (*handler).handleReview,
 		},
