@@ -39,6 +39,7 @@ type MsgHeader struct {
 }
 
 const MAX_ATTEMPTS = 4
+const MAX_PACKAGE_SIZE = 1024
 
 func NewLeaderElection(id uint64, address string, replicas uint64) *LeaderElection {
 
@@ -87,7 +88,7 @@ func (l *LeaderElection) Start() error {
 	}()
 
 	for {
-		buf := make([]byte, 1024)
+		buf := make([]byte, MAX_PACKAGE_SIZE)
 		_, recvAddr, err := l.conn.ReadFromUDP(buf)
 		if err != nil {
 			log.Errorf("Failed to read: %v", err)
