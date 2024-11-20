@@ -24,7 +24,7 @@ type LeaderElection struct {
 	lastMsgId uint64
 }
 
-type MsgType rune
+type MsgType uint8
 
 const (
 	Ack         MsgType = 'A'
