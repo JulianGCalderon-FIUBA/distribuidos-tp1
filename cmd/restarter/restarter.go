@@ -122,6 +122,7 @@ func (r *restarter) readFromSocket() {
 	for {
 		buf := make([]byte, MAX_PACKAGE_SIZE)
 		_, _, err := r.conn.ReadFromUDP(buf)
+		log.Infof("Recevied something")
 		if err != nil {
 			log.Errorf("Failed to read: %v", err)
 			continue

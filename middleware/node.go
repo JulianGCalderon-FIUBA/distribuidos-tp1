@@ -3,13 +3,16 @@ package middleware
 import (
 	"context"
 	"distribuidos/tp1/utils"
+	"encoding/binary"
 	"errors"
-	"fmt"
 	"net"
+	"strings"
 	"sync"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
+
+const MAX_PACKAGE_SIZE = 1024
 
 type Config[T Handler] struct {
 	// For each client, the builder is called to initialize a new builder
@@ -124,13 +127,13 @@ func (n *Node[T]) freeResources(clientID int, h T) {
 }
 
 func (n *Node[T]) sendAlive(ctx context.Context) {
-	udpAddr, err := net.ResolveUDPAddr("udp4", n.config.Address)
+	udpAddr, err := net.ResolveUDPAddr("udp", n.config.Address)
 	if err != nil {
 		log.Errorf("Failed to resolve address: %v", err)
 		return
 	}
 
-	conn, err := net.ListenUDP("udp4", udpAddr)
+	conn, err := net.ListenUDP("udp", udpAddr)
 	if err != nil {
 		log.Errorf("failed to start listener on address %d: %w", n.config.Address, err)
 	}
@@ -144,22 +147,46 @@ func (n *Node[T]) sendAlive(ctx context.Context) {
 	}()
 
 	for {
-		buf := make([]byte, 1024)
-		nRead, raddr, err := conn.ReadFromUDP(buf)
+		buf := make([]byte, MAX_PACKAGE_SIZE)
+		_, rAddr, err := conn.ReadFromUDP(buf)
 
 		if err != nil {
 			log.Errorf("Read error: %v", err)
 			return
 		}
 
-		msg := buf[:nRead]
-		log.Infof("Received from %v: %s", raddr, msg)
+		header := utils.MsgHeader{}
 
-		_, err = conn.WriteToUDP([]byte("ACK"), raddr)
+		_, err = binary.Decode(buf, binary.LittleEndian, &header)
 		if err != nil {
-			fmt.Printf("Write err: %v", err)
+			log.Errorf("Failed to decode header: %v", err)
+			continue
+		}
+		log.Infof("Received KeepAlive from: %v", rAddr)
+
+		err = n.send(conn, rAddr)
+		if err != nil {
+			log.Errorf("Failed to send ACK: %v", err)
 		}
 	}
+}
+
+func (n *Node[T]) send(conn *net.UDPConn, rAddr *net.UDPAddr) error {
+	nodeName := strings.Split(n.config.Address, ":")[0]
+	msg, err := binary.Append(nil, binary.LittleEndian, utils.MsgHeader{Ty: utils.Ack})
+	if err != nil {
+		return err
+	}
+
+	msg = append(msg, nodeName...)
+
+	_, err = conn.WriteToUDP(msg, rAddr)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("Sent Ack")
+	return nil
 }
 
 type Delivery struct {
