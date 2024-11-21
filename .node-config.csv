@@ -1,7 +1,8 @@
 name,port
 genre-filter-1,7000
-genre-filter-2,7000
 decade-filter-1,7000
+review-filter-1,7000
+language-filter-1,7000
 q1-partitioner,7000
 q1-count-1,7000
 q1-joiner,7000

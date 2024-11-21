@@ -20,8 +20,8 @@ const Q4 = 1
 const Q5 = 1
 
 const LANGUAGE_FILTER = 1
-const DECADE_FILTER = 2
-const GENRE_FITLER = 2
+const DECADE_FILTER = 1
+const GENRE_FITLER = 1
 const SCORE_FILTER = 1
 
 const RESTARTER = 1
@@ -163,52 +163,64 @@ func generateGenreFilter() {
 }
 
 func generateDecadeFilter() {
-	fmt.Println("  decade-filter:")
-	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /build/filter-decade")
-	fmt.Println("    environment:")
-	fmt.Println("      - RABBIT_IP=rabbitmq")
-	fmt.Println("      - DECADE=2010")
-	fmt.Println("      - ADDRESS=decade-filter-1:7000")
-	fmt.Println("    networks:")
-	fmt.Println("      - net")
-	fmt.Println("    depends_on:")
-	fmt.Println("      - gateway")
-	fmt.Println("    deploy:")
-	fmt.Println("      mode: replicated")
-	fmt.Printf("      replicas: %v\n", DECADE_FILTER)
+	for i := 1; i <= DECADE_FILTER; i++ {
+		fmt.Printf("  decade-filter-%v:\n", i)
+		fmt.Printf("    container_name: decade-filter-%v\n", i)
+		fmt.Println("    image: tp1:latest")
+		fmt.Println("    entrypoint: /build/filter-decade")
+		fmt.Println("    environment:")
+		fmt.Println("      - RABBIT_IP=rabbitmq")
+		fmt.Println("      - DECADE=2010")
+		fmt.Printf("      - ADDRESS=decade-filter-%v:7000\n", i)
+		fmt.Println("    networks:")
+		fmt.Println("      - net")
+		fmt.Println("    depends_on:")
+		fmt.Println("      - gateway")
+		// fmt.Println("    deploy:")
+		// fmt.Println("      mode: replicated")
+		// fmt.Printf("      replicas: %v\n", DECADE_FILTER)
+		addNodeConfig(fmt.Sprintf("decade-filter-%v", i), "7000")
+	}
 }
 
 func generateScoreFilter() {
-	fmt.Println("  review-filter:")
-	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /build/filter-score")
-	fmt.Println("    environment:")
-	fmt.Println("      - RABBIT_IP=rabbitmq")
-	fmt.Println("      - ADDRESS=review-filter-1:7000")
-	fmt.Println("    networks:")
-	fmt.Println("      - net")
-	fmt.Println("    depends_on:")
-	fmt.Println("      - gateway")
-	fmt.Println("    deploy:")
-	fmt.Println("      mode: replicated")
-	fmt.Printf("      replicas: %v\n", SCORE_FILTER)
+	for i := 1; i <= SCORE_FILTER; i++ {
+		fmt.Printf("  review-filter-%v:\n", i)
+		fmt.Printf("    container_name: review-filter-%v\n", i)
+		fmt.Println("    image: tp1:latest")
+		fmt.Println("    entrypoint: /build/filter-score")
+		fmt.Println("    environment:")
+		fmt.Println("      - RABBIT_IP=rabbitmq")
+		fmt.Printf("      - ADDRESS=review-filter-%v:7000\n", i)
+		fmt.Println("    networks:")
+		fmt.Println("      - net")
+		fmt.Println("    depends_on:")
+		fmt.Println("      - gateway")
+		// fmt.Println("    deploy:")
+		// fmt.Println("      mode: replicated")
+		// fmt.Printf("      replicas: %v\n", SCORE_FILTER)
+		addNodeConfig(fmt.Sprintf("review-filter-%v", i), "7000")
+	}
 }
 
 func generateLanguageFilter() {
-	fmt.Println("  language-filter:")
-	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /build/filter-language")
-	fmt.Println("    environment:")
-	fmt.Println("      - RABBIT_IP=rabbitmq")
-	fmt.Println("      - ADDRESS=language-filter-1:7000")
-	fmt.Println("    networks:")
-	fmt.Println("      - net")
-	fmt.Println("    depends_on:")
-	fmt.Println("      - gateway")
-	fmt.Println("    deploy:")
-	fmt.Println("      mode: replicated")
-	fmt.Printf("      replicas: %v\n", LANGUAGE_FILTER)
+	for i := 1; i <= LANGUAGE_FILTER; i++ {
+		fmt.Printf("  language-filter-%v:\n", i)
+		fmt.Printf("    container_name: language-filter-%v\n", i)
+		fmt.Println("    image: tp1:latest")
+		fmt.Println("    entrypoint: /build/filter-language")
+		fmt.Println("    environment:")
+		fmt.Println("      - RABBIT_IP=rabbitmq")
+		fmt.Printf("      - ADDRESS=language-filter-%v:7000\n", i)
+		fmt.Println("    networks:")
+		fmt.Println("      - net")
+		fmt.Println("    depends_on:")
+		fmt.Println("      - gateway")
+		// fmt.Println("    deploy:")
+		// fmt.Println("      mode: replicated")
+		// fmt.Printf("      replicas: %v\n", LANGUAGE_FILTER)
+		addNodeConfig(fmt.Sprintf("language-filter-%v", i), "7000")
+	}
 }
 
 func generateQ1() {
@@ -539,6 +551,8 @@ func generateRestarter() {
 		fmt.Println("      - ./.node-config.csv:/work/.node-config.csv")
 		fmt.Println("    networks:")
 		fmt.Println("      - net")
+		fmt.Println("    depends_on:")
+		fmt.Println("      - gateway")
 	}
 }
 
