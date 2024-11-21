@@ -14,6 +14,8 @@ type FilterConfig struct {
 	Exchange string
 	// Queues binded to each key
 	QueuesByKey map[string][]string
+	// Port where node will be listening
+	Address string
 }
 
 type FilterFunc[T any] func(record T) []string
@@ -122,6 +124,7 @@ func NewFilter[T any](config FilterConfig, f FilterFunc[T]) (*Node[*filterHandle
 		Endpoints: map[string]HandlerFunc[*filterHandler[T]]{
 			config.Queue: (*filterHandler[T]).handle,
 		},
+		Address: config.Address,
 	}
 
 	return NewNode(nConfig, conn)

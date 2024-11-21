@@ -17,7 +17,7 @@ type Config[T Handler] struct {
 	// Each queue is registered to a particular HandlerFunc
 	Endpoints map[string]HandlerFunc[T]
 
-	Port uint64
+	Address string
 }
 
 type Node[T Handler] struct {
@@ -124,17 +124,18 @@ func (n *Node[T]) freeResources(clientID int, h T) {
 }
 
 func (n *Node[T]) sendAlive(ctx context.Context) {
-	addr := net.UDPAddr{
-		Port: int(n.config.Port),
-		IP:   net.ParseIP("0.0.0.0"),
-	}
-
-	conn, err := net.ListenUDP("udp", &addr)
+	udpAddr, err := net.ResolveUDPAddr("udp4", n.config.Address)
 	if err != nil {
-		log.Errorf("failed to start listener on port %d: %w", n.config.Port, err)
+		log.Errorf("Failed to resolve address: %v", err)
+		return
 	}
 
-	log.Infof("Listening at %v", addr.String())
+	conn, err := net.ListenUDP("udp4", udpAddr)
+	if err != nil {
+		log.Errorf("failed to start listener on address %d: %w", n.config.Address, err)
+	}
+
+	log.Infof("Listening in %v", udpAddr)
 
 	closer := utils.SpawnCloser(ctx, conn)
 	defer func() {
@@ -145,6 +146,7 @@ func (n *Node[T]) sendAlive(ctx context.Context) {
 	for {
 		buf := make([]byte, 1024)
 		nRead, raddr, err := conn.ReadFromUDP(buf)
+
 		if err != nil {
 			log.Errorf("Read error: %v", err)
 			return
@@ -153,12 +155,10 @@ func (n *Node[T]) sendAlive(ctx context.Context) {
 		msg := buf[:nRead]
 		log.Infof("Received from %v: %s", raddr, msg)
 
-		go func(conn *net.UDPConn, raddr *net.UDPAddr, msg []byte) {
-			_, err := conn.WriteToUDP([]byte("ACK"), raddr)
-			if err != nil {
-				fmt.Printf("Write err: %v", err)
-			}
-		}(conn, raddr, msg)
+		_, err = conn.WriteToUDP([]byte("ACK"), raddr)
+		if err != nil {
+			fmt.Printf("Write err: %v", err)
+		}
 	}
 }
 

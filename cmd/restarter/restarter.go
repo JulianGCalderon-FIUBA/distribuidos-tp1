@@ -11,16 +11,16 @@ import (
 	"os"
 	"strconv"
 	"sync"
-	"time"
 )
 
 const CONFIG_PATH = ".node-config.csv"
 
 type restarter struct {
-	nodes map[string]uint64
+	address string
+	nodes   map[string]uint64
 }
 
-func newRestarter() (*restarter, error) {
+func newRestarter(config config) (*restarter, error) {
 	file, err := os.Open(CONFIG_PATH)
 	if err != nil {
 		return nil, err
@@ -57,58 +57,72 @@ func newRestarter() (*restarter, error) {
 	}
 
 	return &restarter{
-		nodes: nodes,
+		address: config.Address,
+		nodes:   nodes,
 	}, nil
 }
 
 func (r *restarter) start(ctx context.Context) error {
-	time.Sleep(500 * time.Millisecond)
-	log.Infof("Starting connections")
-	wg := &sync.WaitGroup{}
-
-	for _, port := range r.nodes {
-		udpAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("127.0.0.1:%d", port))
-		if err != nil {
-			return fmt.Errorf("failed to get udp address")
-		}
-
-		conn, err := net.DialUDP("udp", nil, udpAddr)
-		if err != nil {
-			return fmt.Errorf("failed to connect to %s: %w", udpAddr, err)
-		}
-
-		wg.Add(1)
-		go func(conn net.Conn) {
-			defer wg.Done()
-
-			closer := utils.SpawnCloser(ctx, conn)
-			defer func() {
-				closeErr := closer.Close()
-				err = errors.Join(err, closeErr)
-			}()
-
-			if err := r.monitorNode(conn); err != nil {
-				fmt.Printf("Error monitoring node %s: %v\n", conn.RemoteAddr().String(), err)
-			}
-		}(conn)
+	udpAddr, err := net.ResolveUDPAddr("udp", r.address)
+	if err != nil {
+		return fmt.Errorf("failed to resolve address %w:", err)
 	}
+	conn, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		return fmt.Errorf("failed to connect to %s: %w", r.address, err)
+	}
+
+	closer := utils.SpawnCloser(ctx, conn)
+	defer func() {
+		closeErr := closer.Close()
+		err = errors.Join(err, closeErr)
+	}()
+
+	wg := &sync.WaitGroup{}
+	// for node, port := range r.nodes {
+	// nodeAddr := fmt.Sprintf("%v:%d", node, port)
+
+	udpAddr, err = net.ResolveUDPAddr("udp", "genre-filter-1:7000")
+	if err != nil {
+		return err
+	}
+	log.Infof("Monitoring node %v", udpAddr)
+	_, err = conn.WriteToUDP([]byte("Hello node!!\n"), udpAddr)
+	if err != nil {
+		log.Errorf("Write error: %v", err)
+		return err
+	}
+
+	// go func(conn *net.UDPConn) {
+	// 	err = r.monitorNode(conn, nodeAddr)
+	// 	if err != nil {
+	// 		log.Errorf("Error monitoring node: %v", err)
+	// 	}
+	// }(conn)
+	// }
 
 	defer wg.Wait()
 	return nil
 }
 
-func (r *restarter) monitorNode(conn net.Conn) error {
-	_, err := conn.Write([]byte("Hello node!!\n"))
+func (r *restarter) monitorNode(conn *net.UDPConn, nodeName string) error {
+	udpAddr, err := net.ResolveUDPAddr("udp", nodeName)
 	if err != nil {
-		log.Errorf("Error writing connection: %v", err)
+		return err
+	}
+	log.Infof("Monitoring node %v", udpAddr)
+	_, err = conn.WriteToUDP([]byte("Hello node!!\n"), udpAddr)
+	if err != nil {
+		log.Errorf("Write error: %v", err)
 		return err
 	}
 
 	buf := make([]byte, 1024)
 	for {
-		nRead, err := conn.Read(buf)
+		nRead, raddr, err := conn.ReadFromUDP(buf)
+
 		if err != nil {
-			log.Errorf("Error reading from connection: %v", err)
+			log.Errorf("Read error: %v", err)
 			return err
 		}
 
@@ -116,9 +130,9 @@ func (r *restarter) monitorNode(conn net.Conn) error {
 		log.Infof("Received: %s", msg)
 
 		aliveMsg := "ALIVE"
-		_, err = conn.Write([]byte(aliveMsg))
+		_, err = conn.WriteToUDP([]byte(aliveMsg), raddr)
 		if err != nil {
-			log.Errorf("Error sending ACK: %v", err)
+			log.Errorf("Error sending message: %v", err)
 		}
 	}
 }

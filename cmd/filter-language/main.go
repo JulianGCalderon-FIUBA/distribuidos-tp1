@@ -17,6 +17,7 @@ var log = logging.MustGetLogger("log")
 
 type config struct {
 	RabbitIP string
+	Address  string
 }
 
 func getConfig() (config, error) {
@@ -25,6 +26,7 @@ func getConfig() (config, error) {
 	v.SetDefault("RabbitIP", "localhost")
 
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")
+	_ = v.BindEnv("Address", "ADDRESS")
 
 	var c config
 	err := v.Unmarshal(&c)
@@ -75,6 +77,7 @@ func main() {
 				middleware.ReviewsQ4,
 			},
 		},
+		Address: cfg.Address,
 	}
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 	p, err := middleware.NewFilter(filterCfg, h.Filter)
