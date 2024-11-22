@@ -2,7 +2,6 @@ package leaderelection
 
 import (
 	"distribuidos/tp1/utils"
-	"encoding/binary"
 	"fmt"
 	"net"
 	"slices"
@@ -86,17 +85,10 @@ func (l *LeaderElection) Start() error {
 			continue
 		}
 
-		header := MsgHeader{}
+		var msg Message
+		header, msg, err := msg.DecodeWithHeader(buf)
 
-		n, err := binary.Decode(buf, binary.LittleEndian, &header)
-		if err != nil {
-			log.Errorf("Failed to decode header: %v", err)
-			continue
-		}
-
-		buf = buf[n:]
-
-		switch header.Ty {
+		switch msg.Type() {
 		case Ack:
 			l.HandleAck(header.Id)
 		case Coordinator:
@@ -107,7 +99,7 @@ func (l *LeaderElection) Start() error {
 				if err != nil {
 					log.Errorf("Failed to send ack: %v", err)
 				}
-				err = l.HandleCoordinator(buf)
+				err = l.HandleCoordinator(msg.(CoordinatorMsg))
 				if err != nil {
 					log.Errorf("Failed to handle coordinator message: %v", err)
 				}
@@ -120,7 +112,7 @@ func (l *LeaderElection) Start() error {
 				if err != nil {
 					log.Errorf("Failed to send ack: %v", err)
 				}
-				err = l.HandleElection(buf)
+				err = l.HandleElection(msg.(ElectionMsg))
 				if err != nil {
 					log.Errorf("Failed to handle election message: %v", err)
 				}
@@ -136,32 +128,19 @@ func (l *LeaderElection) Start() error {
 
 func (l *LeaderElection) StartElection() error {
 	log.Infof("Starting election")
-	ids := []uint64{l.id}
-
-	encoded, err := l.encodeElection(ids)
-	if err != nil {
-		return err
-	}
-
-	return l.send(encoded, 1, Election)
+	e := ElectionMsg{Ids: []uint64{l.id}}
+	return l.send(e, 1)
 }
 
-func (l *LeaderElection) HandleElection(msg []byte) error {
+func (l *LeaderElection) HandleElection(msg ElectionMsg) error {
 	log.Infof("Received Election message")
-	ids, err := decodeIds(msg)
-	if err != nil {
-		return err
-	}
-	if slices.Contains(ids, l.id) {
-		return l.StartCoordinator(ids)
-	}
-	ids = append(ids, l.id)
 
-	encoded, err := l.encodeElection(ids)
-	if err != nil {
-		return err
+	if slices.Contains(msg.Ids, l.id) {
+		return l.StartCoordinator(msg.Ids)
 	}
-	return l.send(encoded, 1, Election)
+	msg.Ids = append(msg.Ids, l.id)
+
+	return l.send(msg, 1)
 }
 
 func (l *LeaderElection) StartCoordinator(ids []uint64) error {
@@ -169,42 +148,31 @@ func (l *LeaderElection) StartCoordinator(ids []uint64) error {
 	leader := slices.Max(ids)
 	l.leaderId = leader
 
-	encoded, err := l.encodeCoordinator(leader, []uint64{l.id})
-	if err != nil {
-		return err
-	}
+	var coor CoordinatorMsg
+	coor.Leader = leader
+	coor.Ids = []uint64{l.id}
 
-	return l.send(encoded, 1, Coordinator)
+	return l.send(coor, 1)
 }
 
-func (l *LeaderElection) HandleCoordinator(msg []byte) error {
+func (l *LeaderElection) HandleCoordinator(msg CoordinatorMsg) error {
 	log.Infof("Received Coordinator message")
 
-	leader, ids, err := decodeCoordinator(msg)
-	if err != nil {
-		return err
-	}
-
-	if slices.Contains(ids, l.id) {
+	if slices.Contains(msg.Ids, l.id) {
 		return nil
 	}
 
 	l.condLeaderId.L.Lock()
-	l.leaderId = leader
+	l.leaderId = msg.Leader
 	l.hasLeader = true
 	l.condLeaderId.L.Unlock()
 
 	l.condLeaderId.Signal()
 
-	log.Infof("Leader is %v", leader)
+	log.Infof("Leader is %v", msg.Leader)
 
-	ids = append(ids, l.id)
-
-	encoded, err := l.encodeCoordinator(leader, ids)
-	if err != nil {
-		return err
-	}
-	return l.send(encoded, 1, Coordinator)
+	msg.Ids = append(msg.Ids, l.id)
+	return l.send(msg, 1)
 }
 
 func (l *LeaderElection) HandleAck(msgId uint64) {
@@ -215,57 +183,53 @@ func (l *LeaderElection) HandleAck(msgId uint64) {
 	ch <- true
 }
 
-func (l *LeaderElection) send(msg []byte, attempts int, msgType MsgType) error {
+func (l *LeaderElection) send(msg Message, attempts int) error {
 	if attempts == MAX_ATTEMPTS {
 		// levantar nodo vecino
 		return fmt.Errorf("Never got ack")
 	}
 
-	header := l.newHeader(msgType)
-	buf, err := binary.Append(nil, binary.LittleEndian, header)
+	msgId := l.getMsgId()
+
+	encoded, err := msg.EncodeWithHeader(msgId)
 	if err != nil {
 		return err
 	}
-	msg = append(buf, msg...)
 
 	neighborAddr, err := utils.GetUDPAddr((l.id + 1) % l.replicas)
 	if err != nil {
 		return err
 	}
 
-	n, err := l.conn.WriteToUDP(msg, neighborAddr)
+	n, err := l.conn.WriteToUDP(encoded, neighborAddr)
 	if err != nil {
 		return err
 	}
-	if n != len(msg) {
+	if n != len(encoded) {
 		return fmt.Errorf("Could not send full message")
 	}
 
 	for {
 		l.mu.Lock()
-		ch := l.gotAckMap[header.Id]
+		ch := l.gotAckMap[msgId]
 		l.mu.Unlock()
 		select {
 		case <-ch:
 			l.mu.Lock()
-			delete(l.gotAckMap, header.Id)
+			delete(l.gotAckMap, msgId)
 			l.mu.Unlock()
 			return nil
 		case <-time.After(time.Second):
-			log.Infof("Timeout, trying to send again message %v", header.Id)
-			return l.send(msg, attempts+1, msgType)
+			log.Infof("Timeout, trying to send again message %v", msgId)
+			return l.send(msg, attempts+1)
 		}
 	}
 }
 
 func (l *LeaderElection) sendAck(prevNeighbor *net.UDPAddr, msgId uint64) error {
 
-	header := MsgHeader{
-		Ty: Ack,
-		Id: msgId,
-	}
-
-	msg, err := binary.Append(nil, binary.LittleEndian, header)
+	var ack AckMsg
+	msg, err := ack.EncodeWithHeader(msgId)
 	if err != nil {
 		return err
 	}
@@ -280,47 +244,11 @@ func (l *LeaderElection) sendAck(prevNeighbor *net.UDPAddr, msgId uint64) error 
 	return nil
 }
 
-func (l *LeaderElection) encodeCoordinator(leader uint64, ids []uint64) ([]byte, error) {
-	buf, err := binary.Append(nil, binary.LittleEndian, leader)
-	if err != nil {
-		return []byte{}, err
-	}
-
-	msg, err := encodeIds(ids, buf)
-	if err != nil {
-		return []byte{}, err
-	}
-	return msg, nil
-}
-
-func (l *LeaderElection) encodeElection(ids []uint64) ([]byte, error) {
-	return encodeIds(ids, nil)
-}
-
-func decodeCoordinator(msg []byte) (uint64, []uint64, error) {
-	var leader uint64
-	n, err := binary.Decode(msg, binary.LittleEndian, &leader)
-	if err != nil {
-		return 0, []uint64{}, err
-	}
-	msg = msg[n:]
-
-	ids, err := decodeIds(msg)
-	if err != nil {
-		return 0, []uint64{}, err
-	}
-
-	return leader, ids, err
-}
-
-func (l *LeaderElection) newHeader(ty MsgType) MsgHeader {
+func (l *LeaderElection) getMsgId() uint64 {
 	l.mu.Lock()
 	l.lastMsgId += 1
 	l.gotAckMap[l.lastMsgId] = make(chan bool)
 	l.mu.Unlock()
 
-	return MsgHeader{
-		Ty: ty,
-		Id: l.lastMsgId,
-	}
+	return l.lastMsgId
 }
