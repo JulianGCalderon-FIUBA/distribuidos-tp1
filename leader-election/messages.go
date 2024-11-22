@@ -3,9 +3,11 @@ package leaderelection
 import "encoding/binary"
 
 type Message interface {
-	Encode() ([]byte, error)
-	Decode(msg []byte) error
-	Type() uint8
+	Encode(buf []byte) ([]byte, error)
+	Decode(buf []byte) error
+	EncodeWithHeader(msgId uint64) ([]byte, error)
+	DecodeWithHeader(buf []byte) (MsgHeader, error)
+	Type() MsgType
 }
 
 type ElectionMsg struct {
@@ -34,41 +36,112 @@ type MsgHeader struct {
 	Id uint64
 }
 
-func (em ElectionMsg) Encode() ([]byte, error) { return encodeIds(em.Ids, nil) }
-func (cm CoordinatorMsg) Encode() ([]byte, error) {
-	buf, err := binary.Append(nil, binary.LittleEndian, cm.Leader)
+// Encode messages
+func (em ElectionMsg) Encode(buf []byte) ([]byte, error) { return encodeIds(em.Ids, buf) }
+func (cm CoordinatorMsg) Encode(buf []byte) ([]byte, error) {
+	buf, err := binary.Append(buf, binary.LittleEndian, cm.Leader)
 	if err != nil {
 		return []byte{}, err
 	}
 
-	msg, err := encodeIds(cm.Ids, buf)
+	buf, err = encodeIds(cm.Ids, buf)
 	if err != nil {
 		return []byte{}, err
 	}
-	return msg, nil
+	return buf, nil
 }
-func (a AckMsg) Encode() ([]byte, error) { return []byte{}, nil }
+func (am AckMsg) Encode(buf []byte) ([]byte, error) { return []byte{}, nil }
 
-func (em *ElectionMsg) Decode(msg []byte) error {
+// Encode messages with header
+func (em ElectionMsg) EncodeWithHeader(msgId uint64) ([]byte, error) {
+
+	h := MsgHeader{
+		Ty: em.Type(),
+		Id: msgId,
+	}
+
+	buf, err := binary.Append(nil, binary.LittleEndian, h)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	return em.Encode(buf)
+}
+func (cm CoordinatorMsg) EncodeWithHeader(msgId uint64) ([]byte, error) {
+
+	h := MsgHeader{
+		Ty: cm.Type(),
+		Id: msgId,
+	}
+
+	buf, err := binary.Append(nil, binary.LittleEndian, h)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	return cm.Encode(buf)
+}
+func (am AckMsg) EncodeWithHeader(msgId uint64) ([]byte, error) {
+	h := MsgHeader{
+		Ty: am.Type(),
+		Id: msgId,
+	}
+
+	buf, err := binary.Append(nil, binary.LittleEndian, h)
+	return buf, err
+}
+
+// Decode messages
+func (em *ElectionMsg) Decode(buf []byte) error {
 	var err error
-	em.Ids, err = decodeIds(msg)
+	em.Ids, err = decodeIds(buf)
 	return err
 }
-func (cm *CoordinatorMsg) Decode(msg []byte) error {
-	n, err := binary.Decode(msg, binary.LittleEndian, &cm.Leader)
+func (cm *CoordinatorMsg) Decode(buf []byte) error {
+	n, err := binary.Decode(buf, binary.LittleEndian, &cm.Leader)
 	if err != nil {
 		return err
 	}
-	msg = msg[n:]
+	buf = buf[n:]
 
-	cm.Ids, err = decodeIds(msg)
+	cm.Ids, err = decodeIds(buf)
 	return err
 }
-func (a AckMsg) Decode(msg []byte) error { return nil }
+func (a AckMsg) Decode(buf []byte) error { return nil }
 
-func (em ElectionMsg) Type() uint8    { return 'E' }
-func (cm CoordinatorMsg) Type() uint8 { return 'C' }
-func (a AckMsg) Type() uint8          { return 'A' }
+// Decode messages with header
+func (em *ElectionMsg) DecodeWithHeader(buf []byte) (MsgHeader, error) {
+	header := MsgHeader{}
+	n, err := binary.Decode(buf, binary.LittleEndian, &header)
+	if err != nil {
+		return header, err
+	}
+	buf = buf[n:]
+	return header, em.Decode(buf)
+}
+
+func (cm *CoordinatorMsg) DecodeWithHeader(buf []byte) (MsgHeader, error) {
+	header := MsgHeader{}
+	n, err := binary.Decode(buf, binary.LittleEndian, &header)
+	if err != nil {
+		return header, err
+	}
+	buf = buf[n:]
+
+	return header, cm.Decode(buf)
+}
+func (a AckMsg) DecodeWithHeader(buf []byte) (MsgHeader, error) {
+	header := MsgHeader{}
+	_, err := binary.Decode(buf, binary.LittleEndian, &header)
+	if err != nil {
+		return header, err
+	}
+	return header, nil
+}
+
+func (em ElectionMsg) Type() MsgType    { return Election }
+func (cm CoordinatorMsg) Type() MsgType { return Coordinator }
+func (a AckMsg) Type() MsgType          { return Ack }
 
 func encodeIds(ids []uint64, buf []byte) ([]byte, error) {
 	seen := uint64(len(ids))
