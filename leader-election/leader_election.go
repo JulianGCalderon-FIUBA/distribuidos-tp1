@@ -29,20 +29,6 @@ type LeaderElection struct {
 	lastMsgId uint64
 }
 
-type MsgType uint8
-
-const (
-	Ack         MsgType = 'A'
-	Coordinator MsgType = 'C'
-	Election    MsgType = 'E'
-	KeepAlive   MsgType = 'K'
-)
-
-type MsgHeader struct {
-	Ty MsgType
-	Id uint64
-}
-
 const MAX_ATTEMPTS = 4
 const MAX_PACKAGE_SIZE = 1024
 
@@ -309,44 +295,6 @@ func (l *LeaderElection) encodeCoordinator(leader uint64, ids []uint64) ([]byte,
 
 func (l *LeaderElection) encodeElection(ids []uint64) ([]byte, error) {
 	return encodeIds(ids, nil)
-}
-
-func encodeIds(ids []uint64, buf []byte) ([]byte, error) {
-	seen := uint64(len(ids))
-	buf, err := binary.Append(buf, binary.LittleEndian, seen)
-	if err != nil {
-		return []byte{}, err
-	}
-
-	for i := 0; i < len(ids); i++ {
-		buf, err = binary.Append(buf, binary.LittleEndian, uint64(ids[i]))
-		if err != nil {
-			return []byte{}, err
-		}
-	}
-	return buf, nil
-}
-
-func decodeIds(msg []byte) ([]uint64, error) {
-	var seen uint64
-	n, err := binary.Decode(msg, binary.LittleEndian, &seen)
-	if err != nil {
-		return []uint64{}, err
-	}
-	msg = msg[n:]
-	ids := make([]uint64, 0)
-
-	for i := uint64(0); i < seen; i++ {
-		var id uint64
-		n, err := binary.Decode(msg, binary.LittleEndian, &id)
-		if err != nil {
-			return []uint64{}, err
-		}
-		ids = append(ids, id)
-		msg = msg[n:]
-	}
-
-	return ids, nil
 }
 
 func decodeCoordinator(msg []byte) (uint64, []uint64, error) {
