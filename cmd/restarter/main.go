@@ -1,6 +1,7 @@
 package main
 
 import (
+	leaderelection "distribuidos/tp1/leader-election"
 	"distribuidos/tp1/utils"
 	"sync"
 
@@ -37,7 +38,7 @@ func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to get config")
 
-	l := utils.NewLeaderElection(cfg.Id, cfg.Address, cfg.Replicas)
+	l := leaderelection.NewLeaderElection(cfg.Id, cfg.Address, cfg.Replicas)
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)

@@ -1,13 +1,18 @@
-package utils
+package leaderelection
 
 import (
+	"distribuidos/tp1/utils"
 	"encoding/binary"
 	"fmt"
 	"net"
 	"slices"
 	"sync"
 	"time"
+
+	"github.com/op/go-logging"
 )
+
+var log = logging.MustGetLogger("log")
 
 type LeaderElection struct {
 	id       uint64
@@ -44,10 +49,10 @@ const MAX_PACKAGE_SIZE = 1024
 func NewLeaderElection(id uint64, address string, replicas uint64) *LeaderElection {
 
 	udpAddr, err := net.ResolveUDPAddr("udp", address)
-	Expect(err, "Did not receive a valid address")
+	utils.Expect(err, "Did not receive a valid address")
 
 	conn, err := net.ListenUDP("udp", udpAddr)
-	Expect(err, "Failed to start listening from connection")
+	utils.Expect(err, "Failed to start listening from connection")
 
 	var mu sync.Mutex
 	cond := sync.NewCond(&mu)
@@ -84,7 +89,7 @@ func (l *LeaderElection) Start() error {
 	go func() {
 		defer wg.Done()
 		err := l.StartElection()
-		Expect(err, "Failed to start election")
+		utils.Expect(err, "Failed to start election")
 	}()
 
 	for {
@@ -237,7 +242,7 @@ func (l *LeaderElection) send(msg []byte, attempts int, msgType MsgType) error {
 	}
 	msg = append(buf, msg...)
 
-	neighborAddr, err := GetUDPAddr((l.id + 1) % l.replicas)
+	neighborAddr, err := utils.GetUDPAddr((l.id + 1) % l.replicas)
 	if err != nil {
 		return err
 	}
