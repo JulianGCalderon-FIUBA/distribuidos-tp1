@@ -4,9 +4,9 @@ import "encoding/binary"
 
 type Message interface {
 	Encode(buf []byte) ([]byte, error)
-	Decode(buf []byte) error
+	Decode(buf []byte) (Message, error)
 	EncodeWithHeader(msgId uint64) ([]byte, error)
-	DecodeWithHeader(buf []byte) (MsgHeader, error)
+	DecodeWithHeader(buf []byte) (MsgHeader, Message, error)
 	Type() MsgType
 }
 
@@ -92,43 +92,45 @@ func (am AckMsg) EncodeWithHeader(msgId uint64) ([]byte, error) {
 }
 
 // Decode messages
-func (em *ElectionMsg) Decode(buf []byte) error {
+func (em ElectionMsg) Decode(buf []byte) (Message, error) {
 	var err error
 	em.Ids, err = decodeIds(buf)
-	return err
+	return em, err
 }
-func (cm *CoordinatorMsg) Decode(buf []byte) error {
+
+func (cm CoordinatorMsg) Decode(buf []byte) (Message, error) {
 	n, err := binary.Decode(buf, binary.LittleEndian, &cm.Leader)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	buf = buf[n:]
 
 	cm.Ids, err = decodeIds(buf)
-	return err
+	return cm, err
 }
 func (a AckMsg) Decode(buf []byte) error { return nil }
 
 // Decode messages with header
-func (em *ElectionMsg) DecodeWithHeader(buf []byte) (MsgHeader, error) {
+func (em ElectionMsg) DecodeWithHeader(buf []byte) (MsgHeader, Message, error) {
 	header := MsgHeader{}
 	n, err := binary.Decode(buf, binary.LittleEndian, &header)
 	if err != nil {
-		return header, err
+		return header, em, err
 	}
 	buf = buf[n:]
-	return header, em.Decode(buf)
+	msg, err := em.Decode(buf)
+	return header, msg, err
 }
 
-func (cm *CoordinatorMsg) DecodeWithHeader(buf []byte) (MsgHeader, error) {
+func (cm CoordinatorMsg) DecodeWithHeader(buf []byte) (MsgHeader, Message, error) {
 	header := MsgHeader{}
 	n, err := binary.Decode(buf, binary.LittleEndian, &header)
 	if err != nil {
-		return header, err
+		return header, cm, err
 	}
 	buf = buf[n:]
-
-	return header, cm.Decode(buf)
+	msg, err := cm.Decode(buf)
+	return header, msg, err
 }
 func (a AckMsg) DecodeWithHeader(buf []byte) (MsgHeader, error) {
 	header := MsgHeader{}

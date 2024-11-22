@@ -16,8 +16,7 @@ func TestSerializeElection(t *testing.T) {
 		t.Fatalf("Failed to encode election msg: %v", err)
 	}
 
-	recv_e := leaderelection.ElectionMsg{}
-	err = recv_e.Decode(buf)
+	recv_e, err := e.Decode(buf)
 	if err != nil {
 		t.Fatalf("Failed to decode election msg: %v", err)
 	}
@@ -38,8 +37,7 @@ func TestSerializeCoordinator(t *testing.T) {
 		t.Fatalf("Failed to encode coordinator msg: %v", err)
 	}
 
-	recv_c := leaderelection.CoordinatorMsg{}
-	err = recv_c.Decode(buf)
+	recv_c, err := c.Decode(buf)
 	if err != nil {
 		t.Fatalf("Failed to decode coordinator msg: %v", err)
 	}
@@ -63,8 +61,7 @@ func TestSerializeElectionWithHeader(t *testing.T) {
 		t.Fatalf("Failed to encode election msg: %v", err)
 	}
 
-	recv_e := leaderelection.ElectionMsg{}
-	recv_h, err := recv_e.DecodeWithHeader(buf)
+	recv_h, recv_e, err := e.DecodeWithHeader(buf)
 	if err != nil {
 		t.Fatalf("Failed to decode election msg: %v", err)
 	}
@@ -92,8 +89,7 @@ func TestSerializeCoordinatorWithHeader(t *testing.T) {
 		t.Fatalf("Failed to encode coordinator msg: %v", err)
 	}
 
-	recv_c := leaderelection.CoordinatorMsg{}
-	recv_h, err := recv_c.DecodeWithHeader(buf)
+	recv_h, recv_c, err := c.DecodeWithHeader(buf)
 	if err != nil {
 		t.Fatalf("Failed to decode coordinator msg: %v", err)
 	}
