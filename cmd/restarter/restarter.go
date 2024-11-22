@@ -84,30 +84,25 @@ func newRestarter(config config) (*restarter, error) {
 }
 
 func (r *restarter) start(ctx context.Context) error {
-	wg := &sync.WaitGroup{}
+	var err error
+	closer := utils.SpawnCloser(ctx, r.conn)
+	defer func() {
+		closeErr := closer.Close()
+		err = errors.Join(err, closeErr)
+	}()
 
+	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		var err error
-		closer := utils.SpawnCloser(ctx, r.conn)
-		defer func() {
-			closeErr := closer.Close()
-			err = errors.Join(err, closeErr)
-		}()
-		r.readFromSocket()
+		defer wg.Done()
+		r.readFromSocket(ctx)
 	}()
 
 	for name := range r.nodes {
 		wg.Add(1)
 		go func() {
-			var err error
-			closer := utils.SpawnCloser(ctx, r.conn)
-			defer func() {
-				closeErr := closer.Close()
-				err = errors.Join(err, closeErr)
-			}()
-
-			err = r.send(0, name)
+			defer wg.Done()
+			err := r.send(name)
 			if err != nil {
 				log.Errorf("Error monitoring node: %v", err)
 			}
@@ -118,71 +113,76 @@ func (r *restarter) start(ctx context.Context) error {
 	return nil
 }
 
-func (r *restarter) readFromSocket() {
+func (r *restarter) readFromSocket(ctx context.Context) {
 	for {
-		buf := make([]byte, MAX_PACKAGE_SIZE)
-		_, _, err := r.conn.ReadFromUDP(buf)
-		log.Infof("Recevied something")
-		if err != nil {
-			log.Errorf("Failed to read: %v", err)
-			continue
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			buf := make([]byte, MAX_PACKAGE_SIZE)
+			_, _, err := r.conn.ReadFromUDP(buf)
+			if err != nil {
+				log.Errorf("Failed to read: %v", err)
+				break
+			}
+
+			header := utils.MsgHeader{}
+			n, err := binary.Decode(buf, binary.LittleEndian, &header)
+			if err != nil {
+				log.Errorf("Failed to decode header: %v", err)
+				continue
+			}
+
+			nodeName := string(buf[n:])
+			log.Infof("Received ack of node %v", nodeName)
+
+			r.mu.Lock()
+			ch, ok := r.gotAckMap[nodeName]
+			r.mu.Unlock()
+
+			if !ok {
+				log.Errorf("Channel for node %v does not exist", nodeName)
+			} else {
+				ch <- true
+			}
 		}
-
-		header := utils.MsgHeader{}
-
-		n, err := binary.Decode(buf, binary.LittleEndian, &header)
-		if err != nil {
-			log.Errorf("Failed to decode header: %v", err)
-			continue
-		}
-
-		nodeName := string(buf[n:])
-
-		log.Infof("Received ack of node %v", nodeName)
-		r.mu.Lock()
-		ch := r.gotAckMap[nodeName]
-		r.mu.Unlock()
-		ch <- true
 	}
 }
 
-func (r *restarter) send(attempts int, nodeName string) error {
-	if attempts == MAX_ATTEMPTS {
-		// handle crashed node
-		return fmt.Errorf("Never got ack")
-	}
-
-	msg, err := binary.Append(nil, binary.LittleEndian, utils.MsgHeader{Ty: utils.KeepAlive})
-	if err != nil {
-		return err
-	}
-
+func (r *restarter) send(nodeName string) error {
 	udpAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%v:%v", nodeName, r.nodes[nodeName]))
 	if err != nil {
 		return err
 	}
+	var attempts int
+	for attempts < MAX_ATTEMPTS {
+		msg, err := binary.Append(nil, binary.LittleEndian, utils.MsgHeader{Ty: utils.KeepAlive})
+		if err != nil {
+			return err
+		}
 
-	n, err := r.conn.WriteToUDP(msg, udpAddr)
-	if err != nil {
-		return err
-	}
-	if n != len(msg) {
-		return fmt.Errorf("Could not send full message")
-	}
+		n, err := r.conn.WriteToUDP(msg, udpAddr)
+		if err != nil {
+			return err
+		}
+		if n != len(msg) {
+			return fmt.Errorf("Could not send full message")
+		}
 
-	for {
 		r.mu.Lock()
 		ch := r.gotAckMap[nodeName]
 		r.mu.Unlock()
+
 		select {
 		case <-ch:
-			r.mu.Lock()
-			delete(r.gotAckMap, nodeName)
-			r.mu.Unlock()
+			log.Infof("Recevied Ack from node [%v]", nodeName)
 			return nil
 		case <-time.After(time.Second):
 			log.Infof("Timeout, trying to send KeepAlive again")
-			return r.send(attempts+1, nodeName)
+			attempts++
 		}
 	}
+
+	// Handle crashed node
+	return fmt.Errorf("Never got ack")
 }
