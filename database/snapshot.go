@@ -37,7 +37,7 @@ func NewSnapshot(database_path string) (*Snapshot, error) {
 // The file descriptor must be manually closed.
 //
 // Fails if the entry has already been copied
-func (s *Snapshot) Get(k string) (*os.File, error) {
+func (s *Snapshot) Update(k string) (*os.File, error) {
 	src, err := os.Open(path.Join(s.database_path, DATA_DIR, k))
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (s *Snapshot) Get(k string) (*os.File, error) {
 		return nil, err
 	}
 
-	_, err = io.Copy(src, dst)
+	_, err = io.Copy(dst, src)
 	if err != nil {
 		dst.Close()
 		return nil, err
@@ -118,9 +118,7 @@ func (s *Snapshot) commitFile(modified_path string, info fs.DirEntry, err error)
 
 	original_path := path.Join(s.database_path, rel_path)
 
-	os.Rename(modified_path, original_path)
-
-	return nil
+	return os.Rename(modified_path, original_path)
 }
 
 func (s *Snapshot) Abort() error {
