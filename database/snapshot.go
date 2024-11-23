@@ -33,6 +33,16 @@ func NewSnapshot(database_path string) (*Snapshot, error) {
 	}, nil
 }
 
+// loads an existing snapshot
+func loadSnapshot(database_path string) (*Snapshot, error) {
+	snapshot_path := path.Join(database_path, SNAPSHOT_DIR)
+
+	return &Snapshot{
+		database_path: database_path,
+		snapshot_path: snapshot_path,
+	}, nil
+}
+
 // Copies the given entry to the snapshot and returns it's file descriptor.
 // The file descriptor must be manually closed.
 //
@@ -78,21 +88,35 @@ func (s *Snapshot) Create(k string) (*os.File, error) {
 // This operation is fault tolerant. If the process exits during this operation,
 // it will be completed or aborted once the node is restarted.
 func (s *Snapshot) Commit() error {
-	file, err := os.Create(path.Join(s.snapshot_path, COMMIT_FILE))
-	if err != nil {
-		return err
-	}
-	err = file.Close()
+	err := s.RegisterCommit()
 	if err != nil {
 		return err
 	}
 
-	err = filepath.WalkDir(path.Join(s.snapshot_path, DATA_DIR), s.commitFile)
+	return s.ApplyCommit()
+}
+
+func (s *Snapshot) ApplyCommit() error {
+	err := filepath.WalkDir(path.Join(s.snapshot_path, DATA_DIR), s.commitFile)
 	if err != nil {
 		return err
 	}
 
 	err = os.RemoveAll(s.snapshot_path)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Register the commit, but do not apply it.
+// This is unsafe and should only be used for testing
+func (s *Snapshot) RegisterCommit() error {
+	file, err := os.Create(path.Join(s.snapshot_path, COMMIT_FILE))
+	if err != nil {
+		return err
+	}
+	err = file.Close()
 	if err != nil {
 		return err
 	}

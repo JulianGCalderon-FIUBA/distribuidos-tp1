@@ -32,5 +32,11 @@ func LoadDatabase(database_path string) error {
 		return err
 	}
 
-	return nil
+	// if there is a commit file, we apply the snapshot
+	snapshot, err := loadSnapshot(database_path)
+	if err != nil {
+		return err
+	}
+
+	return snapshot.ApplyCommit()
 }
