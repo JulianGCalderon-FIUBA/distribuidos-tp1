@@ -85,21 +85,20 @@ func (l *LeaderElection) Start() error {
 			continue
 		}
 
-		var msg Message
-		header, msg, err := msg.DecodeWithHeader(buf)
+		packet, err := Decode(buf)
 
-		switch msg.Type() {
+		switch msg := packet.Msg.(type) {
 		case Ack:
-			l.HandleAck(header.Id)
+			l.HandleAck(packet.Id)
 		case Coordinator:
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				err = l.sendAck(recvAddr, header.Id)
+				err = l.sendAck(recvAddr, packet.Id)
 				if err != nil {
 					log.Errorf("Failed to send ack: %v", err)
 				}
-				err = l.HandleCoordinator(msg.(CoordinatorMsg))
+				err = l.HandleCoordinator(msg)
 				if err != nil {
 					log.Errorf("Failed to handle coordinator message: %v", err)
 				}
@@ -108,31 +107,32 @@ func (l *LeaderElection) Start() error {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				err = l.sendAck(recvAddr, header.Id)
+				err = l.sendAck(recvAddr, packet.Id)
 				if err != nil {
 					log.Errorf("Failed to send ack: %v", err)
 				}
-				err = l.HandleElection(msg.(ElectionMsg))
+				err = l.HandleElection(msg)
 				if err != nil {
 					log.Errorf("Failed to handle election message: %v", err)
 				}
 			}()
-		case KeepAlive:
-			err = l.sendAck(recvAddr, header.Id)
-			if err != nil {
-				log.Errorf("Failed to send ack: %v", err)
-			}
+			/* case KeepAlive:
+				err = l.sendAck(recvAddr, header.Id)
+				if err != nil {
+					log.Errorf("Failed to send ack: %v", err)
+				}
+			} */
 		}
 	}
 }
 
 func (l *LeaderElection) StartElection() error {
 	log.Infof("Starting election")
-	e := ElectionMsg{Ids: []uint64{l.id}}
+	e := &Election{Ids: []uint64{l.id}}
 	return l.send(e, 1)
 }
 
-func (l *LeaderElection) HandleElection(msg ElectionMsg) error {
+func (l *LeaderElection) HandleElection(msg Election) error {
 	log.Infof("Received Election message")
 
 	if slices.Contains(msg.Ids, l.id) {
@@ -148,14 +148,15 @@ func (l *LeaderElection) StartCoordinator(ids []uint64) error {
 	leader := slices.Max(ids)
 	l.leaderId = leader
 
-	var coor CoordinatorMsg
-	coor.Leader = leader
-	coor.Ids = []uint64{l.id}
+	coor := Coordinator{
+		Leader: leader,
+		Ids:    []uint64{l.id},
+	}
 
 	return l.send(coor, 1)
 }
 
-func (l *LeaderElection) HandleCoordinator(msg CoordinatorMsg) error {
+func (l *LeaderElection) HandleCoordinator(msg Coordinator) error {
 	log.Infof("Received Coordinator message")
 
 	if slices.Contains(msg.Ids, l.id) {
@@ -189,9 +190,12 @@ func (l *LeaderElection) send(msg Message, attempts int) error {
 		return fmt.Errorf("Never got ack")
 	}
 
-	msgId := l.getMsgId()
+	msgId := l.newMsgId()
+	packet := Packet{
+		Id:  msgId,
+		Msg: msg}
 
-	encoded, err := msg.EncodeWithHeader(msgId)
+	encoded, err := packet.Encode()
 	if err != nil {
 		return err
 	}
@@ -228,8 +232,12 @@ func (l *LeaderElection) send(msg Message, attempts int) error {
 
 func (l *LeaderElection) sendAck(prevNeighbor *net.UDPAddr, msgId uint64) error {
 
-	var ack AckMsg
-	msg, err := ack.EncodeWithHeader(msgId)
+	packet := Packet{
+		Id:  msgId,
+		Msg: Ack{},
+	}
+
+	msg, err := packet.Encode()
 	if err != nil {
 		return err
 	}
@@ -244,11 +252,11 @@ func (l *LeaderElection) sendAck(prevNeighbor *net.UDPAddr, msgId uint64) error 
 	return nil
 }
 
-func (l *LeaderElection) getMsgId() uint64 {
+func (l *LeaderElection) newMsgId() uint64 {
 	l.mu.Lock()
 	l.lastMsgId += 1
 	l.gotAckMap[l.lastMsgId] = make(chan bool)
-	l.mu.Unlock()
+	defer l.mu.Unlock()
 
 	return l.lastMsgId
 }
