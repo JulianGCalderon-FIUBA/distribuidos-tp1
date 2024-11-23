@@ -19,10 +19,10 @@ const MAX_ATTEMPTS = 3
 const MAX_PACKAGE_SIZE = 1024
 
 type restarter struct {
-	nodes     map[string]string
-	conn      *net.UDPConn
-	mu        *sync.Mutex
-	gotAckMap map[string]chan bool
+	nodes  map[string]string
+	conn   *net.UDPConn
+	mu     *sync.Mutex
+	ackMap map[string]chan bool
 }
 
 func readNodeConfig() (map[string]string, error) {
@@ -75,11 +75,17 @@ func newRestarter(config config) (*restarter, error) {
 		return nil, err
 	}
 
+	ackMap := make(map[string]chan bool)
+
+	for node := range nodes {
+		ackMap[node] = make(chan bool)
+	}
+
 	return &restarter{
-		nodes:     nodes,
-		conn:      conn,
-		mu:        &sync.Mutex{},
-		gotAckMap: make(map[string]chan bool),
+		nodes:  nodes,
+		conn:   conn,
+		mu:     &sync.Mutex{},
+		ackMap: ackMap,
 	}, nil
 }
 
@@ -137,8 +143,8 @@ func (r *restarter) readFromSocket(ctx context.Context) {
 			log.Infof("Received ack of node %v", nodeName)
 
 			r.mu.Lock()
-			ch, ok := r.gotAckMap[nodeName]
-			r.mu.Unlock()
+			ch, ok := r.ackMap[nodeName]
+			defer r.mu.Unlock()
 
 			if !ok {
 				log.Errorf("Channel for node %v does not exist", nodeName)
@@ -170,7 +176,7 @@ func (r *restarter) send(nodeName string) error {
 		}
 
 		r.mu.Lock()
-		ch := r.gotAckMap[nodeName]
+		ch := r.ackMap[nodeName]
 		r.mu.Unlock()
 
 		select {
