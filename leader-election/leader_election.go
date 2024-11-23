@@ -1,6 +1,7 @@
 package leaderelection
 
 import (
+	"context"
 	"distribuidos/tp1/utils"
 	"errors"
 	"fmt"
@@ -72,82 +73,90 @@ func (l *LeaderElection) amILeader() bool {
 	return (l.id == l.leaderId) && l.hasLeader
 }
 
-func (l *LeaderElection) Start() error {
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		err := l.StartElection()
-		utils.Expect(err, "Failed to start election")
+func (l *LeaderElection) Start(ctx context.Context) error {
+	var err error
+	closer := utils.SpawnCloser(ctx, l.conn)
+	defer func() {
+		closeErr := closer.Close()
+		err = errors.Join(err, closeErr)
 	}()
 
+	go func() {
+		err := l.StartElection(ctx)
+		utils.Expect(err, "Failed to start election")
+	}()
+	l.read(ctx)
+	return nil
+}
+
+func (l *LeaderElection) read(ctx context.Context) {
 	for {
-		buf := make([]byte, MAX_PACKAGE_SIZE)
-		_, recvAddr, err := l.conn.ReadFromUDP(buf)
-		if err != nil {
-			log.Errorf("Failed to read: %v", err)
-			continue
-		}
-
-		packet, err := Decode(buf)
-
-		switch msg := packet.Msg.(type) {
-		case Ack:
-			l.HandleAck(packet.Id)
-		case Coordinator:
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				err = l.sendAck(recvAddr, packet.Id)
-				if err != nil {
-					log.Errorf("Failed to send ack: %v", err)
-				}
-				err = l.HandleCoordinator(msg)
-				if err != nil {
-					log.Errorf("Failed to handle coordinator message: %v", err)
-				}
-			}()
-		case Election:
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				err = l.sendAck(recvAddr, packet.Id)
-				if err != nil {
-					log.Errorf("Failed to send ack: %v", err)
-				}
-				err = l.HandleElection(msg)
-				if err != nil {
-					log.Errorf("Failed to handle election message: %v", err)
-				}
-			}()
-		case KeepAlive:
-			err = l.sendAck(recvAddr, packet.Id)
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			buf := make([]byte, MAX_PACKAGE_SIZE)
+			_, recvAddr, err := l.conn.ReadFromUDP(buf)
 			if err != nil {
-				log.Errorf("Failed to send ack: %v", err)
+				log.Errorf("Failed to read: %v", err)
+				continue
 			}
 
+			packet, err := Decode(buf)
+
+			switch msg := packet.Msg.(type) {
+			case Ack:
+				l.HandleAck(packet.Id)
+			case Coordinator:
+				go func() {
+					err = l.sendAck(recvAddr, packet.Id)
+					if err != nil {
+						log.Errorf("Failed to send ack: %v", err)
+					}
+					err = l.HandleCoordinator(ctx, msg)
+					if err != nil {
+						log.Errorf("Failed to handle coordinator message: %v", err)
+					}
+				}()
+			case Election:
+				go func() {
+					err = l.sendAck(recvAddr, packet.Id)
+					if err != nil {
+						log.Errorf("Failed to send ack: %v", err)
+					}
+					err = l.HandleElection(ctx, msg)
+					if err != nil {
+						log.Errorf("Failed to handle election message: %v", err)
+					}
+				}()
+			case KeepAlive:
+				err = l.sendAck(recvAddr, packet.Id)
+				if err != nil {
+					log.Errorf("Failed to send ack: %v", err)
+				}
+			}
 		}
 	}
 }
 
-func (l *LeaderElection) StartElection() error {
+func (l *LeaderElection) StartElection(ctx context.Context) error {
 	log.Infof("Starting election")
 	e := &Election{Ids: []uint64{l.id}}
-	return l.safe_send(e)
+	return l.safe_send(ctx, e)
 }
 
-func (l *LeaderElection) HandleElection(msg Election) error {
+func (l *LeaderElection) HandleElection(ctx context.Context, msg Election) error {
 	log.Infof("Received Election message")
 
 	if slices.Contains(msg.Ids, l.id) {
-		return l.StartCoordinator(msg.Ids)
+		return l.StartCoordinator(ctx, msg.Ids)
 	}
 	msg.Ids = append(msg.Ids, l.id)
 
-	return l.safe_send(msg)
+	return l.safe_send(ctx, msg)
 }
 
-func (l *LeaderElection) StartCoordinator(ids []uint64) error {
+func (l *LeaderElection) StartCoordinator(ctx context.Context, ids []uint64) error {
 	log.Infof("Starting coordinator")
 	leader := slices.Max(ids)
 	l.leaderId = leader
@@ -157,10 +166,10 @@ func (l *LeaderElection) StartCoordinator(ids []uint64) error {
 		Ids:    []uint64{l.id},
 	}
 
-	return l.safe_send(coor)
+	return l.safe_send(ctx, coor)
 }
 
-func (l *LeaderElection) HandleCoordinator(msg Coordinator) error {
+func (l *LeaderElection) HandleCoordinator(ctx context.Context, msg Coordinator) error {
 	log.Infof("Received Coordinator message")
 
 	if slices.Contains(msg.Ids, l.id) {
@@ -177,7 +186,7 @@ func (l *LeaderElection) HandleCoordinator(msg Coordinator) error {
 	log.Infof("Leader is %v", msg.Leader)
 
 	msg.Ids = append(msg.Ids, l.id)
-	return l.safe_send(msg)
+	return l.safe_send(ctx, msg)
 }
 
 func (l *LeaderElection) HandleAck(msgId uint64) {
@@ -188,7 +197,7 @@ func (l *LeaderElection) HandleAck(msgId uint64) {
 	ch <- true
 }
 
-func (l *LeaderElection) safe_send(msg Message) error {
+func (l *LeaderElection) safe_send(ctx context.Context, msg Message) error {
 	var err error
 	id := l.newMsgId()
 	packet := Packet{
@@ -196,7 +205,7 @@ func (l *LeaderElection) safe_send(msg Message) error {
 		Msg: msg,
 	}
 	for attempts := 0; attempts < MAX_ATTEMPTS; attempts += 1 {
-		err = l.send(packet)
+		err = l.send(ctx, packet)
 		if err == nil {
 			return nil
 		}
@@ -207,7 +216,7 @@ func (l *LeaderElection) safe_send(msg Message) error {
 	return fmt.Errorf("Never got ack")
 }
 
-func (l *LeaderElection) send(p Packet) error {
+func (l *LeaderElection) send(ctx context.Context, p Packet) error {
 	encoded, err := p.Encode()
 	if err != nil {
 		return err
@@ -238,6 +247,8 @@ func (l *LeaderElection) send(p Packet) error {
 	case <-time.After(time.Second):
 		log.Infof("Timeout, trying to send again message %v", p.Id)
 		return os.ErrDeadlineExceeded
+	case <-ctx.Done():
+		return nil
 	}
 }
 

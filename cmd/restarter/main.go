@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
 	leaderelection "distribuidos/tp1/leader-election"
 	"distribuidos/tp1/utils"
+	"os/signal"
+	"syscall"
 
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
@@ -39,16 +42,22 @@ func main() {
 
 	l := leaderelection.NewLeaderElection(cfg.Id, cfg.Address, cfg.Replicas)
 
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
+
 	go func() {
-		err = l.Start()
+		err = l.Start(ctx)
 		utils.Expect(err, "Failed to start leader election")
 	}()
-	for {
-		l.WaitLeader(true)
-		log.Infof("I am leader (id %v) and I woke up", cfg.Id)
-		// start reiniciar en go rutinas
-		l.WaitLeader(false)
-		log.Infof("I am no longer leader (id %v) and I woke up", cfg.Id)
-		// frenar trabajo -> shutdown a las go rutinas
-	}
+	go func() {
+		for {
+			l.WaitLeader(true)
+			log.Infof("I am leader (id %v) and I woke up", cfg.Id)
+			// start reiniciar en go rutinas
+			l.WaitLeader(false)
+			log.Infof("I am no longer leader (id %v) and I woke up", cfg.Id)
+			// frenar trabajo -> shutdown a las go rutinas
+		}
+	}()
+
+	<-ctx.Done()
 }
