@@ -85,7 +85,7 @@ func (l *LeaderElection) Start(ctx context.Context) error {
 	}()
 
 	go func() {
-		err := l.StartElection(ctx)
+		err := l.startElection(ctx)
 		utils.Expect(err, "Failed to start election")
 	}()
 
@@ -117,14 +117,14 @@ func (l *LeaderElection) read(ctx context.Context) {
 
 			switch msg := packet.Msg.(type) {
 			case Ack:
-				l.HandleAck(packet.Id)
+				l.handleAck(packet.Id)
 			case Coordinator:
 				go func() {
 					err = l.sendAck(recvAddr, packet.Id)
 					if err != nil {
 						log.Errorf("Failed to send ack: %v", err)
 					}
-					err = l.HandleCoordinator(ctx, msg)
+					err = l.handleCoordinator(ctx, msg)
 					if err != nil {
 						log.Errorf("Failed to handle coordinator message: %v", err)
 					}
@@ -135,7 +135,7 @@ func (l *LeaderElection) read(ctx context.Context) {
 					if err != nil {
 						log.Errorf("Failed to send ack: %v", err)
 					}
-					err = l.HandleElection(ctx, msg)
+					err = l.handleElection(ctx, msg)
 					if err != nil {
 						log.Errorf("Failed to handle election message: %v", err)
 					}
@@ -165,24 +165,24 @@ func (l *LeaderElection) monitorNeighbor(ctx context.Context) error {
 	return nil
 }
 
-func (l *LeaderElection) StartElection(ctx context.Context) error {
+func (l *LeaderElection) startElection(ctx context.Context) error {
 	log.Infof("Starting election")
 	e := &Election{Ids: []uint64{l.id}}
 	return l.sendToRing(ctx, e)
 }
 
-func (l *LeaderElection) HandleElection(ctx context.Context, msg Election) error {
+func (l *LeaderElection) handleElection(ctx context.Context, msg Election) error {
 	log.Infof("Received Election message")
 
 	if slices.Contains(msg.Ids, l.id) {
-		return l.StartCoordinator(ctx, msg.Ids)
+		return l.startCoordinator(ctx, msg.Ids)
 	}
 	msg.Ids = append(msg.Ids, l.id)
 
 	return l.sendToRing(ctx, msg)
 }
 
-func (l *LeaderElection) StartCoordinator(ctx context.Context, ids []uint64) error {
+func (l *LeaderElection) startCoordinator(ctx context.Context, ids []uint64) error {
 	log.Infof("Starting coordinator")
 	leader := slices.Max(ids)
 	l.leaderId = leader
@@ -195,7 +195,7 @@ func (l *LeaderElection) StartCoordinator(ctx context.Context, ids []uint64) err
 	return l.sendToRing(ctx, coor)
 }
 
-func (l *LeaderElection) HandleCoordinator(ctx context.Context, msg Coordinator) error {
+func (l *LeaderElection) handleCoordinator(ctx context.Context, msg Coordinator) error {
 	log.Infof("Received Coordinator message")
 
 	if slices.Contains(msg.Ids, l.id) {
@@ -215,7 +215,7 @@ func (l *LeaderElection) HandleCoordinator(ctx context.Context, msg Coordinator)
 	return l.sendToRing(ctx, msg)
 }
 
-func (l *LeaderElection) HandleAck(msgId uint64) {
+func (l *LeaderElection) handleAck(msgId uint64) {
 	log.Infof("Received ack for message %v", msgId)
 	l.mu.Lock()
 	ch := l.gotAckMap[msgId]
