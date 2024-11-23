@@ -165,5 +165,26 @@ func Test(t *testing.T) {
 				t.Fatalf("Snapshot should have been erased")
 			}
 		})
+
+		t.Run(fmt.Sprintf("TestNoCommitInterrupt %v", c.name), func(t *testing.T) {
+			db_path := setupDatabase(t, c.data)
+
+			snapshot, err := database.NewSnapshot(db_path)
+			expect(t, err)
+
+			c.transaction(t, snapshot)
+
+			// we load the database to simulate that we have been killed
+			err = database.LoadDatabase(db_path)
+			expect(t, err)
+
+			assertDatabaseContent(t, db_path, c.data)
+
+			exists, err := utils.PathExists(path.Join(db_path, database.SNAPSHOT_DIR))
+			expect(t, err)
+			if exists {
+				t.Fatalf("Snapshot should have been erased")
+			}
+		})
 	}
 }
