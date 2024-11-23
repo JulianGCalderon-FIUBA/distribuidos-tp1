@@ -120,7 +120,7 @@ func (s *Snapshot) Append(k string) (*os.File, error) {
 		return s.Create(k)
 	}
 
-	file, err := os.Create(path.Join(s.snapshot_path, APPENDS_DIR, k))
+	file, err := os.OpenFile(path.Join(s.snapshot_path, APPENDS_DIR, k), os.O_WRONLY|os.O_APPEND|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return nil, err
 	}
