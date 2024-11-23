@@ -11,6 +11,7 @@ import (
 type Snapshot struct {
 	database_path string
 	snapshot_path string
+	files         []*os.File
 }
 
 // directory inside of the database containing the snapshot
@@ -47,7 +48,7 @@ func LoadSnapshot(database_path string) (*Snapshot, error) {
 // The file descriptor must be manually closed.
 //
 // Fails if the entry has already been copied
-func (s *Snapshot) Update(k string) (*os.File, error) {
+func (s *Snapshot) Update(k string) (io.ReadWriteSeeker, error) {
 	src, err := os.Open(path.Join(s.database_path, DATA_DIR, k))
 	if err != nil {
 		return nil, err
@@ -76,12 +77,21 @@ func (s *Snapshot) Update(k string) (*os.File, error) {
 		return nil, err
 	}
 
+	s.files = append(s.files, dst)
+
 	return dst, nil
 }
 
 // Creates a new entry for the given key. It will replace the old entry if it exists
-func (s *Snapshot) Create(k string) (*os.File, error) {
-	return os.Create(path.Join(s.snapshot_path, DATA_DIR, k))
+func (s *Snapshot) Create(k string) (io.ReadWriteSeeker, error) {
+	file, err := os.Create(path.Join(s.snapshot_path, DATA_DIR, k))
+	if err != nil {
+		return nil, err
+	}
+
+	s.files = append(s.files, file)
+
+	return file, err
 }
 
 // Commits all changes to the actual database.
@@ -89,12 +99,28 @@ func (s *Snapshot) Create(k string) (*os.File, error) {
 // This operation is fault tolerant. If it's interrupted, it can be
 // completed afterwards
 func (s *Snapshot) Commit() error {
-	err := s.RegisterCommit()
+	err := s.Close()
+	if err != nil {
+		return err
+	}
+
+	err = s.RegisterCommit()
 	if err != nil {
 		return err
 	}
 
 	return s.ApplyCommit()
+}
+
+func (s *Snapshot) Close() error {
+	for _, f := range s.files {
+		err := f.Close()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *Snapshot) ApplyCommit() error {
@@ -148,5 +174,10 @@ func (s *Snapshot) commitFile(modified_path string, info fs.DirEntry, err error)
 
 // Aborts the changes of the snapshot
 func (s *Snapshot) Abort() error {
+	err := s.Close()
+	if err != nil {
+		return err
+	}
+
 	return os.RemoveAll(s.snapshot_path)
 }

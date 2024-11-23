@@ -94,7 +94,7 @@ func TestTransaction(t *testing.T) {
 				file, err := s.Create("KEY")
 				expect(t, err)
 
-				_, err = file.WriteString("VALUE")
+				_, err = file.Write([]byte("VALUE"))
 				expect(t, err)
 
 				return map[string]string{
@@ -113,7 +113,7 @@ func TestTransaction(t *testing.T) {
 				file, err := s.Update("KEY")
 				expect(t, err)
 
-				_, err = file.WriteString("NEW_VALUE")
+				_, err = file.Write([]byte("NEW_VALUE"))
 				expect(t, err)
 
 				return map[string]string{
@@ -173,6 +173,9 @@ func TestTransaction(t *testing.T) {
 			assertDatabaseContent(t, db_path, c.data)
 
 			assertSnapshotErased(t, db_path)
+
+			err = snapshot.Close()
+			expect(t, err)
 		})
 
 		t.Run(fmt.Sprintf("TestAfterCommitFailure %v", c.name), func(t *testing.T) {
@@ -185,6 +188,9 @@ func TestTransaction(t *testing.T) {
 
 			// we simulate an after commit interrupt by only registering the commit
 			err = snapshot.RegisterCommit()
+			expect(t, err)
+
+			snapshot.Close()
 			expect(t, err)
 
 			// we load the database to simulate that we have been killed
