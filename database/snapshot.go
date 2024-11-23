@@ -44,6 +44,18 @@ func LoadSnapshot(database_path string) (*Snapshot, error) {
 	}, nil
 }
 
+// Creates a new entry for the given key. It will replace the old entry if it exists
+func (s *Snapshot) Create(k string) (io.ReadWriteSeeker, error) {
+	file, err := os.Create(path.Join(s.snapshot_path, DATA_DIR, k))
+	if err != nil {
+		return nil, err
+	}
+
+	s.files = append(s.files, file)
+
+	return file, err
+}
+
 // Copies the given entry to the snapshot and returns it's file descriptor.
 // The file descriptor must be manually closed.
 //
@@ -82,18 +94,6 @@ func (s *Snapshot) Update(k string) (io.ReadWriteSeeker, error) {
 	return dst, nil
 }
 
-// Creates a new entry for the given key. It will replace the old entry if it exists
-func (s *Snapshot) Create(k string) (io.ReadWriteSeeker, error) {
-	file, err := os.Create(path.Join(s.snapshot_path, DATA_DIR, k))
-	if err != nil {
-		return nil, err
-	}
-
-	s.files = append(s.files, file)
-
-	return file, err
-}
-
 // Commits all changes to the actual database.
 //
 // This operation is fault tolerant. If it's interrupted, it can be
@@ -112,6 +112,16 @@ func (s *Snapshot) Commit() error {
 	return s.ApplyCommit()
 }
 
+// Aborts the changes of the snapshot
+func (s *Snapshot) Abort() error {
+	err := s.Close()
+	if err != nil {
+		return err
+	}
+
+	return os.RemoveAll(s.snapshot_path)
+}
+
 func (s *Snapshot) Close() error {
 	for _, f := range s.files {
 		err := f.Close()
@@ -120,19 +130,6 @@ func (s *Snapshot) Close() error {
 		}
 	}
 
-	return nil
-}
-
-func (s *Snapshot) ApplyCommit() error {
-	err := filepath.WalkDir(path.Join(s.snapshot_path, DATA_DIR), s.commitFile)
-	if err != nil {
-		return err
-	}
-
-	err = os.RemoveAll(s.snapshot_path)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -148,6 +145,19 @@ func (s *Snapshot) RegisterCommit() error {
 		return err
 	}
 
+	return nil
+}
+
+func (s *Snapshot) ApplyCommit() error {
+	err := filepath.WalkDir(path.Join(s.snapshot_path, DATA_DIR), s.commitFile)
+	if err != nil {
+		return err
+	}
+
+	err = os.RemoveAll(s.snapshot_path)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -170,14 +180,4 @@ func (s *Snapshot) commitFile(modified_path string, info fs.DirEntry, err error)
 	original_path := path.Join(s.database_path, rel_path)
 
 	return os.Rename(modified_path, original_path)
-}
-
-// Aborts the changes of the snapshot
-func (s *Snapshot) Abort() error {
-	err := s.Close()
-	if err != nil {
-		return err
-	}
-
-	return os.RemoveAll(s.snapshot_path)
 }
