@@ -3,7 +3,6 @@ package main
 import (
 	leaderelection "distribuidos/tp1/leader-election"
 	"distribuidos/tp1/utils"
-	"sync"
 
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
@@ -40,11 +39,7 @@ func main() {
 
 	l := leaderelection.NewLeaderElection(cfg.Id, cfg.Address, cfg.Replicas)
 
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	defer wg.Wait()
 	go func() {
-		defer wg.Done()
 		err = l.Start()
 		utils.Expect(err, "Failed to start leader election")
 	}()
