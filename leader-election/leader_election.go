@@ -2,8 +2,10 @@ package leaderelection
 
 import (
 	"distribuidos/tp1/utils"
+	"errors"
 	"fmt"
 	"net"
+	"os"
 	"slices"
 	"sync"
 	"time"
@@ -131,7 +133,7 @@ func (l *LeaderElection) Start() error {
 func (l *LeaderElection) StartElection() error {
 	log.Infof("Starting election")
 	e := &Election{Ids: []uint64{l.id}}
-	return l.send(e, 1, NO_ID)
+	return l.safe_send(e)
 }
 
 func (l *LeaderElection) HandleElection(msg Election) error {
@@ -142,7 +144,7 @@ func (l *LeaderElection) HandleElection(msg Election) error {
 	}
 	msg.Ids = append(msg.Ids, l.id)
 
-	return l.send(msg, 1, NO_ID)
+	return l.safe_send(msg)
 }
 
 func (l *LeaderElection) StartCoordinator(ids []uint64) error {
@@ -155,7 +157,7 @@ func (l *LeaderElection) StartCoordinator(ids []uint64) error {
 		Ids:    []uint64{l.id},
 	}
 
-	return l.send(coor, 1, NO_ID)
+	return l.safe_send(coor)
 }
 
 func (l *LeaderElection) HandleCoordinator(msg Coordinator) error {
@@ -175,7 +177,7 @@ func (l *LeaderElection) HandleCoordinator(msg Coordinator) error {
 	log.Infof("Leader is %v", msg.Leader)
 
 	msg.Ids = append(msg.Ids, l.id)
-	return l.send(msg, 1, NO_ID)
+	return l.safe_send(msg)
 }
 
 func (l *LeaderElection) HandleAck(msgId uint64) {
@@ -186,24 +188,27 @@ func (l *LeaderElection) HandleAck(msgId uint64) {
 	ch <- true
 }
 
-func (l *LeaderElection) send(msg Message, attempts int, msgId int) error {
-	if attempts == MAX_ATTEMPTS {
-		// levantar nodo vecino
-		return fmt.Errorf("Never got ack")
-	}
-	// esto es para que en el retry no asigne un id nuevo al mismo mensaje, acepto sugerencias de mejoras
-	var id uint64
-	if msgId == NO_ID {
-		id = l.newMsgId()
-	} else {
-		id = uint64(msgId)
-	}
-
+func (l *LeaderElection) safe_send(msg Message) error {
+	var err error
+	id := l.newMsgId()
 	packet := Packet{
 		Id:  id,
-		Msg: msg}
+		Msg: msg,
+	}
+	for attempts := 0; attempts < MAX_ATTEMPTS; attempts += 1 {
+		err = l.send(packet)
+		if err == nil {
+			return nil
+		}
+		if !errors.Is(err, os.ErrDeadlineExceeded) {
+			return err
+		}
+	}
+	return fmt.Errorf("Never got ack")
+}
 
-	encoded, err := packet.Encode()
+func (l *LeaderElection) send(p Packet) error {
+	encoded, err := p.Encode()
 	if err != nil {
 		return err
 	}
@@ -221,20 +226,18 @@ func (l *LeaderElection) send(msg Message, attempts int, msgId int) error {
 		return fmt.Errorf("Could not send full message")
 	}
 
-	for {
+	l.mu.Lock()
+	ch := l.gotAckMap[p.Id]
+	l.mu.Unlock()
+	select {
+	case <-ch:
 		l.mu.Lock()
-		ch := l.gotAckMap[id]
+		delete(l.gotAckMap, p.Id)
 		l.mu.Unlock()
-		select {
-		case <-ch:
-			l.mu.Lock()
-			delete(l.gotAckMap, id)
-			l.mu.Unlock()
-			return nil
-		case <-time.After(time.Second):
-			log.Infof("Timeout, trying to send again message %v", id)
-			return l.send(msg, attempts+1, int(id))
-		}
+		return nil
+	case <-time.After(time.Second):
+		log.Infof("Timeout, trying to send again message %v", p.Id)
+		return os.ErrDeadlineExceeded
 	}
 }
 
