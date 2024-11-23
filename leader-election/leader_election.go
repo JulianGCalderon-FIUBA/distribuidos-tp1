@@ -118,12 +118,12 @@ func (l *LeaderElection) Start() error {
 					log.Errorf("Failed to handle election message: %v", err)
 				}
 			}()
-			/* case KeepAlive:
-				err = l.sendAck(recvAddr, header.Id)
-				if err != nil {
-					log.Errorf("Failed to send ack: %v", err)
-				}
-			} */
+		case KeepAlive:
+			err = l.sendAck(recvAddr, packet.Id)
+			if err != nil {
+				log.Errorf("Failed to send ack: %v", err)
+			}
+
 		}
 	}
 }
