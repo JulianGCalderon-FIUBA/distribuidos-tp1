@@ -33,7 +33,7 @@ func LoadDatabase(database_path string) error {
 	}
 
 	// if there is a commit file, we apply the snapshot
-	snapshot, err := loadSnapshot(database_path)
+	snapshot, err := LoadSnapshot(database_path)
 	if err != nil {
 		return err
 	}

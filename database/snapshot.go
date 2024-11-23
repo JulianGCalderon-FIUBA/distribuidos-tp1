@@ -34,7 +34,7 @@ func NewSnapshot(database_path string) (*Snapshot, error) {
 }
 
 // loads an existing snapshot
-func loadSnapshot(database_path string) (*Snapshot, error) {
+func LoadSnapshot(database_path string) (*Snapshot, error) {
 	snapshot_path := path.Join(database_path, SNAPSHOT_DIR)
 
 	return &Snapshot{
