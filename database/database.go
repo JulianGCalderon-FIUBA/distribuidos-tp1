@@ -8,6 +8,7 @@ import (
 
 // directory inside of the database/snapshot containing the actual data
 const DATA_DIR string = "data"
+const APPENDS_DIR string = "appends"
 
 // creates database at path if it doesn't exist
 func NewDatabase(database_path string) error {
