@@ -79,14 +79,15 @@ func (s *Snapshot) Update(k string) (*os.File, error) {
 	return dst, nil
 }
 
+// Creates a new entry for the given key. It will replace the old entry if it exists
 func (s *Snapshot) Create(k string) (*os.File, error) {
 	return os.Create(path.Join(s.snapshot_path, DATA_DIR, k))
 }
 
 // Commits all changes to the actual database.
 //
-// This operation is fault tolerant. If the process exits during this operation,
-// it will be completed or aborted once the node is restarted.
+// This operation is fault tolerant. If it's interrupted, it can be
+// completed afterwards
 func (s *Snapshot) Commit() error {
 	err := s.RegisterCommit()
 	if err != nil {
@@ -145,6 +146,7 @@ func (s *Snapshot) commitFile(modified_path string, info fs.DirEntry, err error)
 	return os.Rename(modified_path, original_path)
 }
 
+// Aborts the changes of the snapshot
 func (s *Snapshot) Abort() error {
 	return os.RemoveAll(s.snapshot_path)
 }
