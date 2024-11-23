@@ -32,6 +32,8 @@ type LeaderElection struct {
 	mu        *sync.Mutex
 	gotAckMap map[uint64]chan bool
 	lastMsgId uint64
+
+	fallenNeighbor chan uint64
 }
 
 const MAX_ATTEMPTS = 4
@@ -86,6 +88,14 @@ func (l *LeaderElection) Start(ctx context.Context) error {
 		err := l.StartElection(ctx)
 		utils.Expect(err, "Failed to start election")
 	}()
+
+	go func() {
+		err := l.monitorNeighbor(ctx)
+		if err != nil {
+			log.Errorf("Failed to monitor neighbor: %v", err)
+		}
+	}()
+
 	l.read(ctx)
 	return nil
 }
@@ -138,6 +148,21 @@ func (l *LeaderElection) read(ctx context.Context) {
 			}
 		}
 	}
+}
+
+func (l *LeaderElection) monitorNeighbor(ctx context.Context) error {
+	msg := KeepAlive{}
+	err := l.sendToRing(ctx, msg)
+	if err != nil {
+		return err
+	}
+	select {
+	case <-ctx.Done():
+		return nil
+	case <-l.fallenNeighbor: // recibir id para saber a quien levantar
+		// levantar vecino
+	}
+	return nil
 }
 
 func (l *LeaderElection) StartElection(ctx context.Context) error {
@@ -211,6 +236,9 @@ func (l *LeaderElection) sendToRing(ctx context.Context, msg Message) error {
 		}
 		if !errors.Is(err, ErrFallenNode) {
 			return err
+		}
+		if next == l.id+1 {
+			l.fallenNeighbor <- next
 		}
 		next += 1
 	}
