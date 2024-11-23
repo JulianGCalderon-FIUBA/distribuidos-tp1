@@ -87,21 +87,25 @@ type Coordinator struct {
 type Ack struct {
 }
 
+type KeepAlive struct {
+}
+
 // Encode messages
-func (em Election) Encode(buf []byte) ([]byte, error) { return encodeIds(em.Ids, buf) }
-func (cm Coordinator) Encode(buf []byte) ([]byte, error) {
-	buf, err := binary.Append(buf, binary.LittleEndian, cm.Leader)
+func (e Election) Encode(buf []byte) ([]byte, error) { return encodeIds(e.Ids, buf) }
+func (c Coordinator) Encode(buf []byte) ([]byte, error) {
+	buf, err := binary.Append(buf, binary.LittleEndian, c.Leader)
 	if err != nil {
 		return []byte{}, err
 	}
 
-	buf, err = encodeIds(cm.Ids, buf)
+	buf, err = encodeIds(c.Ids, buf)
 	if err != nil {
 		return []byte{}, err
 	}
 	return buf, nil
 }
-func (am Ack) Encode(buf []byte) ([]byte, error) { return buf, nil }
+func (a Ack) Encode(buf []byte) ([]byte, error)       { return buf, nil }
+func (k KeepAlive) Encode(buf []byte) ([]byte, error) { return buf, nil }
 
 // Decode messages
 func DecodeElection(buf []byte) (Election, error) {
@@ -120,11 +124,14 @@ func DecodeCoordinator(buf []byte) (Coordinator, error) {
 	ids, err := decodeIds(buf)
 	return Coordinator{Leader: leader, Ids: ids}, err
 }
-func DecodeAck(buf []byte) (Ack, error) { return Ack{}, nil }
+func DecodeAck(buf []byte) (Ack, error)             { return Ack{}, nil }
+func DecodeKeepAlive(buf []byte) (KeepAlive, error) { return KeepAlive{}, nil }
 
+// Return message type
 func (e Election) Type() MsgType    { return ElectionMsg }
 func (C Coordinator) Type() MsgType { return CoordinatorMsg }
 func (a Ack) Type() MsgType         { return AckMsg }
+func (k KeepAlive) Type() MsgType   { return KeepAliveMsg }
 
 func encodeIds(ids []uint64, buf []byte) ([]byte, error) {
 	seen := uint64(len(ids))
