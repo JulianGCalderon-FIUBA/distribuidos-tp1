@@ -166,7 +166,7 @@ func Test(t *testing.T) {
 			}
 		})
 
-		t.Run(fmt.Sprintf("TestNoCommitInterrupt %v", c.name), func(t *testing.T) {
+		t.Run(fmt.Sprintf("TestBeforeCommitFailure %v", c.name), func(t *testing.T) {
 			db_path := setupDatabase(t, c.data)
 
 			snapshot, err := database.NewSnapshot(db_path)
@@ -187,7 +187,7 @@ func Test(t *testing.T) {
 			}
 		})
 
-		t.Run(fmt.Sprintf("TestAfterCommitInterrupt %v", c.name), func(t *testing.T) {
+		t.Run(fmt.Sprintf("TestAfterCommitFailure %v", c.name), func(t *testing.T) {
 			db_path := setupDatabase(t, c.data)
 
 			snapshot, err := database.NewSnapshot(db_path)
