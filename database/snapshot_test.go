@@ -97,7 +97,9 @@ func Test(t *testing.T) {
 	cases := []TestCase{
 		{
 			name: "Create",
-			data: map[string]string{},
+			data: map[string]string{
+				"OTHER_KEY": "OTHER_VALUE",
+			},
 			transaction: func(t *testing.T, s *database.Snapshot) map[string]string {
 				file, err := s.Create("KEY")
 				expect(t, err)
@@ -114,7 +116,8 @@ func Test(t *testing.T) {
 		{
 			name: "Update",
 			data: map[string]string{
-				"KEY": "VALUE",
+				"KEY":       "VALUE",
+				"OTHER_KEY": "OTHER_VALUE",
 			},
 			transaction: func(t *testing.T, s *database.Snapshot) map[string]string {
 				file, err := s.Update("KEY")
@@ -164,7 +167,7 @@ func Test(t *testing.T) {
 
 			expected_data := maps.Clone(c.data)
 			maps.Copy(expected_data, transaction_data)
-			assertDatabaseContent(t, db_path, transaction_data)
+			assertDatabaseContent(t, db_path, expected_data)
 
 			exists, err := pathExists(path.Join(db_path, database.SNAPSHOT_DIR))
 			expect(t, err)
