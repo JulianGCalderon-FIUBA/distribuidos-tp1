@@ -45,7 +45,7 @@ func LoadSnapshot(database_path string) (*Snapshot, error) {
 }
 
 // Creates a new entry for the given key. It will replace the old entry if it exists
-func (s *Snapshot) Create(k string) (io.ReadWriteSeeker, error) {
+func (s *Snapshot) Create(k string) (*os.File, error) {
 	file, err := os.Create(path.Join(s.snapshot_path, DATA_DIR, k))
 	if err != nil {
 		return nil, err
@@ -60,7 +60,7 @@ func (s *Snapshot) Create(k string) (io.ReadWriteSeeker, error) {
 // The file descriptor must be manually closed.
 //
 // Fails if the entry has already been copied
-func (s *Snapshot) Update(k string) (io.ReadWriteSeeker, error) {
+func (s *Snapshot) Update(k string) (*os.File, error) {
 	src, err := os.Open(path.Join(s.database_path, DATA_DIR, k))
 	if err != nil {
 		return nil, err
@@ -92,6 +92,21 @@ func (s *Snapshot) Update(k string) (io.ReadWriteSeeker, error) {
 	s.files = append(s.files, dst)
 
 	return dst, nil
+}
+
+// Append data to a given value. The file cursor's position should not be manually modified
+func (s *Snapshot) Append(k string) (*os.File, error) {
+	file, err := s.Update(k)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = file.Seek(0, io.SeekEnd)
+	if err != nil {
+		return nil, err
+	}
+
+	return file, err
 }
 
 // Commits all changes to the actual database.
