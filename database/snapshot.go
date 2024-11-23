@@ -52,6 +52,10 @@ func LoadSnapshot(database_path string) (*Snapshot, error) {
 	}, nil
 }
 
+func (s *Snapshot) Get(k string) (*os.File, error) {
+	return os.Open(path.Join(s.database_path, DATA_DIR, k))
+}
+
 // Creates a new entry for the given key. It will replace the old entry if it exists
 func (s *Snapshot) Create(k string) (*os.File, error) {
 	file, err := os.Create(path.Join(s.snapshot_path, DATA_DIR, k))
