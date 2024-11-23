@@ -22,6 +22,8 @@ const SNAPSHOT_DIR string = "snapshot"
 // file inside of the snapshot indicating that it's valid
 const COMMIT_FILE string = "commit"
 
+const APPENDS_DIR string = "appends"
+
 func NewSnapshot(database_path string) (*Snapshot, error) {
 	snapshot_path := path.Join(database_path, SNAPSHOT_DIR)
 
