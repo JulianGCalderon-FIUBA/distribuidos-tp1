@@ -2,6 +2,7 @@ package database_test
 
 import (
 	"distribuidos/tp1/database"
+	"distribuidos/tp1/utils"
 	"fmt"
 	"io/fs"
 	"maps"
@@ -76,17 +77,6 @@ func expect(t *testing.T, err error) {
 	}
 }
 
-func pathExists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return false, err
-}
-
 func Test(t *testing.T) {
 	type TestCase struct {
 		name        string
@@ -147,7 +137,7 @@ func Test(t *testing.T) {
 
 			assertDatabaseContent(t, db_path, c.data)
 
-			exists, err := pathExists(path.Join(db_path, database.SNAPSHOT_DIR))
+			exists, err := utils.PathExists(path.Join(db_path, database.SNAPSHOT_DIR))
 			expect(t, err)
 			if exists {
 				t.Fatalf("Snapshot should have been erased")
@@ -169,7 +159,7 @@ func Test(t *testing.T) {
 			maps.Copy(expected_data, transaction_data)
 			assertDatabaseContent(t, db_path, expected_data)
 
-			exists, err := pathExists(path.Join(db_path, database.SNAPSHOT_DIR))
+			exists, err := utils.PathExists(path.Join(db_path, database.SNAPSHOT_DIR))
 			expect(t, err)
 			if exists {
 				t.Fatalf("Snapshot should have been erased")
