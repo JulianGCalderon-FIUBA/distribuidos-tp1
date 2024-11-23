@@ -3,7 +3,6 @@ package database_test
 import (
 	"distribuidos/tp1/database"
 	"distribuidos/tp1/utils"
-	"fmt"
 	"io/fs"
 	"maps"
 	"os"
@@ -180,84 +179,87 @@ func TestTransaction(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		t.Run(fmt.Sprintf("TestAbort %v", c.name), func(t *testing.T) {
-			db_path := setupDatabase(t, c.data)
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 
-			snapshot, err := database.NewSnapshot(db_path)
-			expect(t, err)
+			t.Run("Abort", func(t *testing.T) {
+				db_path := setupDatabase(t, c.data)
 
-			c.transaction(t, snapshot)
+				snapshot, err := database.NewSnapshot(db_path)
+				expect(t, err)
 
-			err = snapshot.Abort()
-			expect(t, err)
+				c.transaction(t, snapshot)
 
-			assertDatabaseContent(t, db_path, c.data)
+				err = snapshot.Abort()
+				expect(t, err)
 
-			assertSnapshotErased(t, db_path)
-		})
+				assertDatabaseContent(t, db_path, c.data)
 
-		t.Run(fmt.Sprintf("TestCommit %v", c.name), func(t *testing.T) {
-			db_path := setupDatabase(t, c.data)
+				assertSnapshotErased(t, db_path)
+			})
 
-			snapshot, err := database.NewSnapshot(db_path)
-			expect(t, err)
+			t.Run("Commit", func(t *testing.T) {
+				db_path := setupDatabase(t, c.data)
 
-			transaction_data := c.transaction(t, snapshot)
+				snapshot, err := database.NewSnapshot(db_path)
+				expect(t, err)
 
-			err = snapshot.Commit()
-			expect(t, err)
+				transaction_data := c.transaction(t, snapshot)
 
-			expected_data := maps.Clone(c.data)
-			maps.Copy(expected_data, transaction_data)
-			assertDatabaseContent(t, db_path, expected_data)
+				err = snapshot.Commit()
+				expect(t, err)
 
-			assertSnapshotErased(t, db_path)
-		})
+				expected_data := maps.Clone(c.data)
+				maps.Copy(expected_data, transaction_data)
+				assertDatabaseContent(t, db_path, expected_data)
 
-		t.Run(fmt.Sprintf("TestBeforeCommitFailure %v", c.name), func(t *testing.T) {
-			db_path := setupDatabase(t, c.data)
+				assertSnapshotErased(t, db_path)
+			})
 
-			snapshot, err := database.NewSnapshot(db_path)
-			expect(t, err)
+			t.Run("FailureBeforeCommit", func(t *testing.T) {
+				db_path := setupDatabase(t, c.data)
 
-			c.transaction(t, snapshot)
+				snapshot, err := database.NewSnapshot(db_path)
+				expect(t, err)
 
-			// we load the database to simulate that we have been killed
-			err = database.LoadDatabase(db_path)
-			expect(t, err)
+				c.transaction(t, snapshot)
 
-			assertDatabaseContent(t, db_path, c.data)
+				// we load the database to simulate that we have been killed
+				err = database.LoadDatabase(db_path)
+				expect(t, err)
 
-			assertSnapshotErased(t, db_path)
+				assertDatabaseContent(t, db_path, c.data)
 
-			err = snapshot.Close()
-			expect(t, err)
-		})
+				assertSnapshotErased(t, db_path)
 
-		t.Run(fmt.Sprintf("TestAfterCommitFailure %v", c.name), func(t *testing.T) {
-			db_path := setupDatabase(t, c.data)
+				err = snapshot.Close()
+				expect(t, err)
+			})
 
-			snapshot, err := database.NewSnapshot(db_path)
-			expect(t, err)
+			t.Run("FailureAfterCommit", func(t *testing.T) {
+				db_path := setupDatabase(t, c.data)
 
-			transaction_data := c.transaction(t, snapshot)
+				snapshot, err := database.NewSnapshot(db_path)
+				expect(t, err)
 
-			// we simulate an after commit interrupt by only registering the commit
-			err = snapshot.RegisterCommit()
-			expect(t, err)
+				transaction_data := c.transaction(t, snapshot)
 
-			snapshot.Close()
-			expect(t, err)
+				// we simulate an after commit interrupt by only registering the commit
+				snapshot.Close()
+				expect(t, err)
+				err = snapshot.RegisterCommit()
+				expect(t, err)
 
-			// we load the database to simulate that we have been killed
-			err = database.LoadDatabase(db_path)
-			expect(t, err)
+				// we load the database to simulate that we have been killed
+				err = database.LoadDatabase(db_path)
+				expect(t, err)
 
-			expected_data := maps.Clone(c.data)
-			maps.Copy(expected_data, transaction_data)
-			assertDatabaseContent(t, db_path, expected_data)
+				expected_data := maps.Clone(c.data)
+				maps.Copy(expected_data, transaction_data)
+				assertDatabaseContent(t, db_path, expected_data)
 
-			assertSnapshotErased(t, db_path)
+				assertSnapshotErased(t, db_path)
+			})
 		})
 	}
 }

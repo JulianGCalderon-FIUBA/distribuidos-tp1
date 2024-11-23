@@ -122,7 +122,7 @@ func (s *Snapshot) Append(k string) (*os.File, error) {
 		return s.Create(k)
 	}
 
-	file, err := os.OpenFile(path.Join(s.snapshot_path, APPENDS_DIR, k), os.O_WRONLY|os.O_APPEND|os.O_CREATE|os.O_TRUNC, 0666)
+	file, err := os.OpenFile(path.Join(s.snapshot_path, APPENDS_DIR, k), os.O_WRONLY|os.O_APPEND|os.O_CREATE|os.O_EXCL, 0666)
 	if err != nil {
 		return nil, err
 	}
@@ -136,6 +136,10 @@ func (s *Snapshot) Append(k string) (*os.File, error) {
 	s.files = append(s.files, file)
 
 	return file, err
+}
+
+func (s *Snapshot) Delete(k string) (*os.File, error) {
+	panic("unimplemented")
 }
 
 // Commits all changes to the actual database.
@@ -180,11 +184,7 @@ func (s *Snapshot) Close() error {
 // Register the commit, but do not apply it.
 // This is unsafe and should only be used for testing
 func (s *Snapshot) RegisterCommit() error {
-	file, err := os.Create(path.Join(s.snapshot_path, COMMIT_FILE))
-	if err != nil {
-		return err
-	}
-	err = file.Close()
+	err := os.WriteFile(path.Join(s.snapshot_path, COMMIT_FILE), []byte{}, 0666)
 	if err != nil {
 		return err
 	}
