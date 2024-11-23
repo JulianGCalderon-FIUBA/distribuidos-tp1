@@ -140,6 +140,24 @@ func TestTransaction(t *testing.T) {
 				}
 			},
 		},
+
+		{
+			name: "AppendNoFile",
+			data: map[string]string{
+				"OTHER_KEY": "OTHER_VALUE",
+			},
+			transaction: func(t *testing.T, s *database.Snapshot) map[string]string {
+				file, err := s.Append("KEY")
+				expect(t, err)
+
+				_, err = file.WriteString("_NEW")
+				expect(t, err)
+
+				return map[string]string{
+					"KEY": "_NEW",
+				}
+			},
+		},
 	}
 
 	for _, c := range cases {
