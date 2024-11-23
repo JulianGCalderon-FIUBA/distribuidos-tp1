@@ -17,6 +17,7 @@ import (
 const NO_ID int = -1
 
 var log = logging.MustGetLogger("log")
+var ErrFallenNode = errors.New("Never got ack")
 
 type LeaderElection struct {
 	id       uint64
@@ -142,7 +143,7 @@ func (l *LeaderElection) read(ctx context.Context) {
 func (l *LeaderElection) StartElection(ctx context.Context) error {
 	log.Infof("Starting election")
 	e := &Election{Ids: []uint64{l.id}}
-	return l.safe_send(ctx, e)
+	return l.sendToRing(ctx, e)
 }
 
 func (l *LeaderElection) HandleElection(ctx context.Context, msg Election) error {
@@ -153,7 +154,7 @@ func (l *LeaderElection) HandleElection(ctx context.Context, msg Election) error
 	}
 	msg.Ids = append(msg.Ids, l.id)
 
-	return l.safe_send(ctx, msg)
+	return l.sendToRing(ctx, msg)
 }
 
 func (l *LeaderElection) StartCoordinator(ctx context.Context, ids []uint64) error {
@@ -166,7 +167,7 @@ func (l *LeaderElection) StartCoordinator(ctx context.Context, ids []uint64) err
 		Ids:    []uint64{l.id},
 	}
 
-	return l.safe_send(ctx, coor)
+	return l.sendToRing(ctx, coor)
 }
 
 func (l *LeaderElection) HandleCoordinator(ctx context.Context, msg Coordinator) error {
@@ -186,7 +187,7 @@ func (l *LeaderElection) HandleCoordinator(ctx context.Context, msg Coordinator)
 	log.Infof("Leader is %v", msg.Leader)
 
 	msg.Ids = append(msg.Ids, l.id)
-	return l.safe_send(ctx, msg)
+	return l.sendToRing(ctx, msg)
 }
 
 func (l *LeaderElection) HandleAck(msgId uint64) {
@@ -197,15 +198,35 @@ func (l *LeaderElection) HandleAck(msgId uint64) {
 	ch <- true
 }
 
-func (l *LeaderElection) safe_send(ctx context.Context, msg Message) error {
+func (l *LeaderElection) sendToRing(ctx context.Context, msg Message) error {
+	next := l.id + 1
+	for next%l.replicas != l.id {
+		addr, err := utils.GetUDPAddr(next % l.replicas)
+		if err != nil {
+			return err
+		}
+		err = l.safeSend(ctx, msg, addr)
+		if err == nil {
+			return nil
+		}
+		if !errors.Is(err, ErrFallenNode) {
+			return err
+		}
+		next += 1
+	}
+	return nil
+}
+
+func (l *LeaderElection) safeSend(ctx context.Context, msg Message, addr *net.UDPAddr) error {
 	var err error
 	id := l.newMsgId()
 	packet := Packet{
 		Id:  id,
 		Msg: msg,
 	}
+
 	for attempts := 0; attempts < MAX_ATTEMPTS; attempts += 1 {
-		err = l.send(ctx, packet)
+		err = l.send(ctx, packet, addr)
 		if err == nil {
 			return nil
 		}
@@ -213,21 +234,17 @@ func (l *LeaderElection) safe_send(ctx context.Context, msg Message) error {
 			return err
 		}
 	}
-	return fmt.Errorf("Never got ack")
+	log.Errorf("Never got ack for message %v", id)
+	return ErrFallenNode
 }
 
-func (l *LeaderElection) send(ctx context.Context, p Packet) error {
+func (l *LeaderElection) send(ctx context.Context, p Packet, addr *net.UDPAddr) error {
 	encoded, err := p.Encode()
 	if err != nil {
 		return err
 	}
 
-	neighborAddr, err := utils.GetUDPAddr((l.id + 1) % l.replicas)
-	if err != nil {
-		return err
-	}
-
-	n, err := l.conn.WriteToUDP(encoded, neighborAddr)
+	n, err := l.conn.WriteToUDP(encoded, addr)
 	if err != nil {
 		return err
 	}
