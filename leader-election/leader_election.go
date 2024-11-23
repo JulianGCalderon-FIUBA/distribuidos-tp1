@@ -11,6 +11,8 @@ import (
 	"github.com/op/go-logging"
 )
 
+const NO_ID int = -1
+
 var log = logging.MustGetLogger("log")
 
 type LeaderElection struct {
@@ -129,7 +131,7 @@ func (l *LeaderElection) Start() error {
 func (l *LeaderElection) StartElection() error {
 	log.Infof("Starting election")
 	e := &Election{Ids: []uint64{l.id}}
-	return l.send(e, 1)
+	return l.send(e, 1, NO_ID)
 }
 
 func (l *LeaderElection) HandleElection(msg Election) error {
@@ -140,7 +142,7 @@ func (l *LeaderElection) HandleElection(msg Election) error {
 	}
 	msg.Ids = append(msg.Ids, l.id)
 
-	return l.send(msg, 1)
+	return l.send(msg, 1, NO_ID)
 }
 
 func (l *LeaderElection) StartCoordinator(ids []uint64) error {
@@ -153,7 +155,7 @@ func (l *LeaderElection) StartCoordinator(ids []uint64) error {
 		Ids:    []uint64{l.id},
 	}
 
-	return l.send(coor, 1)
+	return l.send(coor, 1, NO_ID)
 }
 
 func (l *LeaderElection) HandleCoordinator(msg Coordinator) error {
@@ -173,7 +175,7 @@ func (l *LeaderElection) HandleCoordinator(msg Coordinator) error {
 	log.Infof("Leader is %v", msg.Leader)
 
 	msg.Ids = append(msg.Ids, l.id)
-	return l.send(msg, 1)
+	return l.send(msg, 1, NO_ID)
 }
 
 func (l *LeaderElection) HandleAck(msgId uint64) {
@@ -184,15 +186,21 @@ func (l *LeaderElection) HandleAck(msgId uint64) {
 	ch <- true
 }
 
-func (l *LeaderElection) send(msg Message, attempts int) error {
+func (l *LeaderElection) send(msg Message, attempts int, msgId int) error {
 	if attempts == MAX_ATTEMPTS {
 		// levantar nodo vecino
 		return fmt.Errorf("Never got ack")
 	}
+	// esto es para que en el retry no asigne un id nuevo al mismo mensaje, acepto sugerencias de mejoras
+	var id uint64
+	if msgId == NO_ID {
+		id = l.newMsgId()
+	} else {
+		id = uint64(msgId)
+	}
 
-	msgId := l.newMsgId()
 	packet := Packet{
-		Id:  msgId,
+		Id:  id,
 		Msg: msg}
 
 	encoded, err := packet.Encode()
@@ -215,17 +223,17 @@ func (l *LeaderElection) send(msg Message, attempts int) error {
 
 	for {
 		l.mu.Lock()
-		ch := l.gotAckMap[msgId]
+		ch := l.gotAckMap[id]
 		l.mu.Unlock()
 		select {
 		case <-ch:
 			l.mu.Lock()
-			delete(l.gotAckMap, msgId)
+			delete(l.gotAckMap, id)
 			l.mu.Unlock()
 			return nil
 		case <-time.After(time.Second):
-			log.Infof("Timeout, trying to send again message %v", msgId)
-			return l.send(msg, attempts+1)
+			log.Infof("Timeout, trying to send again message %v", id)
+			return l.send(msg, attempts+1, int(id))
 		}
 	}
 }
