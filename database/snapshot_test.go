@@ -77,7 +77,7 @@ func expect(t *testing.T, err error) {
 	}
 }
 
-func Test(t *testing.T) {
+func TestTransaction(t *testing.T) {
 	type TestCase struct {
 		name        string
 		data        map[string]string
