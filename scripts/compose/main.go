@@ -22,7 +22,7 @@ const RESTARTER = 4
 
 func main() {
 	generateInit()
-	/* generateRabbit()
+	generateRabbit()
 	generateGateway()
 	generateClient()
 	generateGenreFilter()
@@ -33,7 +33,7 @@ func main() {
 	generateQ2()
 	generateQ3()
 	generateQ4()
-	generateQ5() */
+	generateQ5()
 	generateRestarter()
 	generateNet()
 }
