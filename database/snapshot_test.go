@@ -2,11 +2,72 @@ package database_test
 
 import (
 	"distribuidos/tp1/database"
+	"fmt"
+	"io/fs"
+	"maps"
 	"os"
 	"path"
+	"path/filepath"
 	"slices"
 	"testing"
 )
+
+func setupDatabase(t *testing.T, data map[string]string) string {
+	database_path := t.TempDir()
+
+	err := database.NewDatabase(database_path)
+	expect(t, err)
+
+	for k, v := range data {
+		err = os.WriteFile(path.Join(database_path, database.DATA_DIR, k), []byte(v), 0666)
+		if err != nil {
+			t.Fatalf("failed to write %v: %v", k, err)
+		}
+	}
+
+	return database_path
+}
+
+func assertDatabaseContent(t *testing.T, database_path string, data map[string]string) {
+	t.Helper()
+
+	keys := make(map[string]struct{})
+
+	// find all files
+	err := filepath.WalkDir(path.Join(database_path, database.DATA_DIR), func(p string, d fs.DirEntry, err error) error {
+		if d.IsDir() {
+			return nil
+		}
+		expect(t, err)
+
+		p, err = filepath.Rel(path.Join(database_path, database.DATA_DIR), p)
+		expect(t, err)
+
+		keys[p] = struct{}{}
+
+		return nil
+	})
+	expect(t, err)
+
+	// compare data
+	for k, expected_value := range data {
+		actual_value, err := os.ReadFile(path.Join(database_path, database.DATA_DIR, k))
+		if err != nil {
+			t.Fatalf("missing database value: %v", k)
+		}
+
+		if expected_value != string(actual_value) {
+			t.Fatalf("difference at key %v, expected %v, got %v", k, expected_value, string(actual_value))
+		}
+
+		delete(keys, k)
+	}
+
+	// assert there are no other file
+	if len(keys) > 0 {
+		t.Fatalf("database contains extra values %v", slices.Collect(maps.Keys(keys)))
+	}
+}
 
 func expect(t *testing.T, err error) {
 	t.Helper()
@@ -15,7 +76,7 @@ func expect(t *testing.T, err error) {
 	}
 }
 
-func fileExists(path string) (bool, error) {
+func pathExists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
 		return true, nil
@@ -26,136 +87,90 @@ func fileExists(path string) (bool, error) {
 	return false, err
 }
 
-func TestCommitCreate(t *testing.T) {
-	// SETUP
-
-	database_path := t.TempDir()
-
-	err := database.NewDatabase(database_path)
-	expect(t, err)
-
-	// EXECUTION
-
-	snapshot, err := database.NewSnapshot(database_path)
-	expect(t, err)
-
-	file, err := snapshot.Create("KEY")
-	expect(t, err)
-
-	value := []byte("VALUE")
-
-	_, err = file.Write(value)
-	expect(t, err)
-
-	err = file.Close()
-	expect(t, err)
-
-	err = snapshot.Commit()
-	expect(t, err)
-
-	// VERIFICATION
-
-	commited, err := os.ReadFile(path.Join(database_path, database.DATA_DIR, "KEY"))
-	expect(t, err)
-
-	if !slices.Equal(commited, value) {
-		t.Fatal("Snapshot should have been commited")
+func Test(t *testing.T) {
+	type TestCase struct {
+		name        string
+		data        map[string]string
+		transaction func(t *testing.T, s *database.Snapshot) map[string]string
 	}
 
-	exists, err := fileExists(path.Join())
-	expect(t, err)
+	cases := []TestCase{
+		{
+			name: "Create",
+			data: map[string]string{},
+			transaction: func(t *testing.T, s *database.Snapshot) map[string]string {
+				file, err := s.Create("KEY")
+				expect(t, err)
 
-	if exists {
-		t.Fatal("Snapshot should have been erased")
-	}
-}
+				_, err = file.WriteString("VALUE")
+				expect(t, err)
 
-func TestCommitUpdate(t *testing.T) {
-	// SETUP
+				return map[string]string{
+					"KEY": "VALUE",
+				}
+			},
+		},
 
-	database_path := t.TempDir()
+		{
+			name: "Update",
+			data: map[string]string{
+				"KEY": "VALUE",
+			},
+			transaction: func(t *testing.T, s *database.Snapshot) map[string]string {
+				file, err := s.Update("KEY")
+				expect(t, err)
 
-	err := database.NewDatabase(database_path)
-	expect(t, err)
+				_, err = file.WriteString("NEW_VALUE")
+				expect(t, err)
 
-	old_value := []byte("OLD_VALUE")
-	err = os.WriteFile(path.Join(database_path, database.DATA_DIR, "KEY"), old_value, 0666)
-	expect(t, err)
-
-	// EXECUTION
-
-	snapshot, err := database.NewSnapshot(database_path)
-	expect(t, err)
-
-	file, err := snapshot.Update("KEY")
-	expect(t, err)
-
-	new_value := []byte("NEW_VALUE")
-
-	_, err = file.Write(new_value)
-	expect(t, err)
-
-	err = file.Close()
-	expect(t, err)
-
-	err = snapshot.Commit()
-	expect(t, err)
-
-	// VERIFICATION
-
-	commited, err := os.ReadFile(path.Join(database_path, database.DATA_DIR, "KEY"))
-	expect(t, err)
-
-	if !slices.Equal(commited, new_value) {
-		t.Fatal("Snapshot should have been commited")
+				return map[string]string{
+					"KEY": "NEW_VALUE",
+				}
+			},
+		},
 	}
 
-	exists, err := fileExists(path.Join())
-	expect(t, err)
+	for _, c := range cases {
+		t.Run(fmt.Sprintf("TestAbort %v", c.name), func(t *testing.T) {
+			db_path := setupDatabase(t, c.data)
 
-	if exists {
-		t.Fatal("Snapshot should have been erased")
-	}
-}
+			snapshot, err := database.NewSnapshot(db_path)
+			expect(t, err)
 
-func TestAbort(t *testing.T) {
-	// SETUP
+			c.transaction(t, snapshot)
 
-	database_path := t.TempDir()
+			err = snapshot.Abort()
+			expect(t, err)
 
-	err := database.NewDatabase(database_path)
-	expect(t, err)
+			assertDatabaseContent(t, db_path, c.data)
 
-	// EXECUTION
+			exists, err := pathExists(path.Join(db_path, database.SNAPSHOT_DIR))
+			expect(t, err)
+			if exists {
+				t.Fatalf("Snapshot should have been erased")
+			}
+		})
 
-	snapshot, err := database.NewSnapshot(database_path)
-	expect(t, err)
+		t.Run(fmt.Sprintf("TestCommit %v", c.name), func(t *testing.T) {
+			db_path := setupDatabase(t, c.data)
 
-	file, err := snapshot.Create("KEY")
-	expect(t, err)
+			snapshot, err := database.NewSnapshot(db_path)
+			expect(t, err)
 
-	value := []byte("VALUE")
+			transaction_data := c.transaction(t, snapshot)
 
-	_, err = file.Write(value)
-	expect(t, err)
+			err = snapshot.Commit()
+			expect(t, err)
 
-	err = file.Close()
-	expect(t, err)
+			expected_data := maps.Clone(c.data)
+			maps.Copy(expected_data, transaction_data)
+			assertDatabaseContent(t, db_path, transaction_data)
 
-	err = snapshot.Abort()
-	expect(t, err)
-
-	// VERIFICATION
-
-	exists, err := fileExists(path.Join(database_path, database.DATA_DIR, "KEY"))
-	expect(t, err)
-	if exists {
-		t.Fatal("Snapshot should not have been commited")
-	}
-
-	exists, err = fileExists(path.Join())
-	expect(t, err)
-	if exists {
-		t.Fatal("Snapshot should have been erased")
+			exists, err := pathExists(path.Join(db_path, database.SNAPSHOT_DIR))
+			expect(t, err)
+			if exists {
+				t.Fatalf("Snapshot should have been erased")
+			}
+		})
 	}
 }
