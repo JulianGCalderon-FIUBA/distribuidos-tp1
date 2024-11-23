@@ -137,11 +137,7 @@ func TestTransaction(t *testing.T) {
 
 			assertDatabaseContent(t, db_path, c.data)
 
-			exists, err := utils.PathExists(path.Join(db_path, database.SNAPSHOT_DIR))
-			expect(t, err)
-			if exists {
-				t.Fatalf("Snapshot should have been erased")
-			}
+			assertSnapshotErased(t, db_path)
 		})
 
 		t.Run(fmt.Sprintf("TestCommit %v", c.name), func(t *testing.T) {
@@ -159,11 +155,7 @@ func TestTransaction(t *testing.T) {
 			maps.Copy(expected_data, transaction_data)
 			assertDatabaseContent(t, db_path, expected_data)
 
-			exists, err := utils.PathExists(path.Join(db_path, database.SNAPSHOT_DIR))
-			expect(t, err)
-			if exists {
-				t.Fatalf("Snapshot should have been erased")
-			}
+			assertSnapshotErased(t, db_path)
 		})
 
 		t.Run(fmt.Sprintf("TestBeforeCommitFailure %v", c.name), func(t *testing.T) {
@@ -180,11 +172,7 @@ func TestTransaction(t *testing.T) {
 
 			assertDatabaseContent(t, db_path, c.data)
 
-			exists, err := utils.PathExists(path.Join(db_path, database.SNAPSHOT_DIR))
-			expect(t, err)
-			if exists {
-				t.Fatalf("Snapshot should have been erased")
-			}
+			assertSnapshotErased(t, db_path)
 		})
 
 		t.Run(fmt.Sprintf("TestAfterCommitFailure %v", c.name), func(t *testing.T) {
@@ -207,11 +195,18 @@ func TestTransaction(t *testing.T) {
 			maps.Copy(expected_data, transaction_data)
 			assertDatabaseContent(t, db_path, expected_data)
 
-			exists, err := utils.PathExists(path.Join(db_path, database.SNAPSHOT_DIR))
-			expect(t, err)
-			if exists {
-				t.Fatalf("Snapshot should have been erased")
-			}
+			assertSnapshotErased(t, db_path)
 		})
+	}
+}
+
+func assertSnapshotErased(t *testing.T, db_path string) {
+	t.Helper()
+
+	exists, err := utils.PathExists(path.Join(db_path, database.SNAPSHOT_DIR))
+	expect(t, err)
+
+	if exists {
+		t.Fatalf("Snapshot should have been erased")
 	}
 }
