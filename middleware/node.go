@@ -183,8 +183,6 @@ func (n *Node[T]) send(conn *net.UDPConn, rAddr *net.UDPAddr, msgId uint64) erro
 	if err != nil {
 		return err
 	}
-
-	log.Infof("Sent Ack")
 	return nil
 }
 
