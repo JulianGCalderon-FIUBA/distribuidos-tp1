@@ -215,23 +215,21 @@ func (c *client) waitResults() error {
 			return err
 		}
 
-		log.Infof("Received Q%v results", r.Number())
-
 		switch r := r.(type) {
-		case protocol.Q4Result:
-			if r.EOF {
-				log.Infof("Received Q4 EOF")
+		case protocol.Q4Finish:
+			log.Infof("Received Q4 Finish")
+			c.results += 1
+		default:
+			log.Infof("Received Q%v results", r.Number())
+			if r.Number() != 4 {
 				c.results += 1
 			}
-		default:
-			c.results += 1
-		}
+			writer := writers[r.Number()-1]
 
-		writer := writers[r.Number()-1]
-
-		err = writer.WriteAll(r.ToCSV())
-		if err != nil {
-			return err
+			err = writer.WriteAll(r.ToCSV())
+			if err != nil {
+				return err
+			}
 		}
 
 		if c.results == MAX_RESULTS {
