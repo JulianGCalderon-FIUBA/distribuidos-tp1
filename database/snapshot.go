@@ -1,6 +1,7 @@
 package database
 
 import (
+	"distribuidos/tp1/utils"
 	"encoding/binary"
 	"errors"
 	"io"
@@ -144,6 +145,11 @@ func (s *Snapshot) Append(k string) (*os.File, error) {
 
 func (s *Snapshot) Delete(k string) (*os.File, error) {
 	panic("unimplemented")
+}
+
+func (s *Snapshot) Exists(k string) (bool, error) {
+	return utils.PathExists(path.Join(s.database_path, DATA_DIR, k))
+
 }
 
 // Commits all changes to the actual database.
