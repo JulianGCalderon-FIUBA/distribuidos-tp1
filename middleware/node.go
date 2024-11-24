@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"context"
-	"distribuidos/tp1/restarter_protocol"
+	"distribuidos/tp1/restarter-protocol"
 	"distribuidos/tp1/utils"
 	"errors"
 	"fmt"
@@ -156,7 +156,7 @@ func (n *Node[T]) sendAlive(ctx context.Context) error {
 			return fmt.Errorf("Read error: %v", err)
 		}
 
-		decoded, err := restarter_protocol.Decode(buf)
+		decoded, err := restarter.Decode(buf)
 		if err != nil {
 			return fmt.Errorf("Failed to decode message: %v", err)
 		}
@@ -170,9 +170,9 @@ func (n *Node[T]) sendAlive(ctx context.Context) error {
 }
 
 func (n *Node[T]) send(conn *net.UDPConn, rAddr *net.UDPAddr, msgId uint64) error {
-	packet := restarter_protocol.Packet{
+	packet := restarter.Packet{
 		Id:  msgId,
-		Msg: restarter_protocol.Ack{}}
+		Msg: restarter.Ack{}}
 
 	encoded, err := packet.Encode()
 	if err != nil {

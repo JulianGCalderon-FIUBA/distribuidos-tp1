@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"distribuidos/tp1/utils"
+	"distribuidos/tp1/restarter-protocol"
 	"os/signal"
 	"syscall"
 
@@ -13,7 +14,7 @@ import (
 var log = logging.MustGetLogger("log")
 
 type config struct {
-	Address string 
+	Address string
 }
 
 func getConfig() (config, error) {
@@ -29,15 +30,12 @@ func getConfig() (config, error) {
 func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
-	
-	r, err := newRestarter(cfg)
-	if err != nil {
-		log.Fatalf("Failed to create restarter: %v", err)
-	}
+
+	r := restarter.NewRestarter(cfg.Address)
 
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 
-	err = r.start(ctx)
+	err = r.Start(ctx)
 	if err != nil {
 		log.Fatalf("Failed to run restarter: %v", err)
 	}

@@ -1,4 +1,4 @@
-package restarter_protocol
+package restarter
 
 import "encoding/binary"
 

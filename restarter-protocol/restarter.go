@@ -1,8 +1,7 @@
-package main
+package restarter
 
 import (
 	"context"
-	"distribuidos/tp1/restarter_protocol"
 	"distribuidos/tp1/utils"
 	"encoding/csv"
 	"errors"
@@ -13,15 +12,19 @@ import (
 	"os/exec"
 	"sync"
 	"time"
+
+	"github.com/op/go-logging"
 )
 
 const CONFIG_PATH = ".node-config.csv"
 const MAX_ATTEMPTS = 3
 const MAX_PACKAGE_SIZE = 1024
 
+var log = logging.MustGetLogger("log")
+
 var ErrFallenNode = errors.New("Never got ack")
 
-type restarter struct {
+type Restarter struct {
 	nodes     map[string]string
 	conn      *net.UDPConn
 	mu        *sync.Mutex
@@ -64,31 +67,26 @@ func readNodeConfig() (map[string]string, error) {
 	return nodes, nil
 }
 
-func newRestarter(config config) (*restarter, error) {
+func NewRestarter(address string) *Restarter {
 	nodes, err := readNodeConfig()
-	if err != nil {
-		return nil, err
-	}
+	utils.Expect(err, "Failed to read nodes config")
 
-	udpAddr, err := net.ResolveUDPAddr("udp", config.Address)
-	if err != nil {
-		return nil, err
-	}
+	udpAddr, err := net.ResolveUDPAddr("udp", address)
+	utils.Expect(err, "Did not receive a valid address")
+
 	conn, err := net.ListenUDP("udp", udpAddr)
-	if err != nil {
-		return nil, err
-	}
+	utils.Expect(err, "Failed to start listening from connection")
 
-	return &restarter{
+	return &Restarter{
 		nodes:     nodes,
 		conn:      conn,
 		mu:        &sync.Mutex{},
 		ackMap:    make(map[uint64]chan bool),
 		lastMsgId: 0,
-	}, nil
+	}
 }
 
-func (r *restarter) start(ctx context.Context) error {
+func (r *Restarter) Start(ctx context.Context) error {
 	var err error
 	closer := utils.SpawnCloser(ctx, r.conn)
 	defer func() {
@@ -119,7 +117,7 @@ func (r *restarter) start(ctx context.Context) error {
 	return nil
 }
 
-func (r *restarter) monitorNode(ctx context.Context, nodeName string) error {
+func (r *Restarter) monitorNode(ctx context.Context, nodeName string) error {
 	udpAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%v:%v", nodeName, r.nodes[nodeName]))
 	if err != nil {
 		return fmt.Errorf("Failed to resolve address: %v", err)
@@ -130,7 +128,7 @@ func (r *restarter) monitorNode(ctx context.Context, nodeName string) error {
 		case <-ctx.Done():
 			return nil
 		default:
-			err = r.safeSend(ctx, restarter_protocol.KeepAlive{}, udpAddr)
+			err = r.safeSend(ctx, KeepAlive{}, udpAddr)
 			if err != nil {
 				if errors.Is(err, ErrFallenNode) {
 					err = r.restartNode(ctx, nodeName)
@@ -145,7 +143,7 @@ func (r *restarter) monitorNode(ctx context.Context, nodeName string) error {
 	}
 }
 
-func (r *restarter) readFromSocket() {
+func (r *Restarter) readFromSocket() {
 	for {
 		buf := make([]byte, MAX_PACKAGE_SIZE)
 		_, _, err := r.conn.ReadFromUDP(buf)
@@ -154,24 +152,24 @@ func (r *restarter) readFromSocket() {
 			return
 		}
 
-		packet, err := restarter_protocol.Decode(buf)
+		packet, err := Decode(buf)
 		if err != nil {
 			log.Errorf("Failed to decode packet: %v", err)
 			return
 		}
 
 		switch packet.Msg.(type) {
-		case restarter_protocol.Ack:
+		case Ack:
 			r.handleAck(packet.Id)
 		}
 	}
 }
 
-func (r *restarter) safeSend(ctx context.Context, msg restarter_protocol.Message, addr *net.UDPAddr) error {
+func (r *Restarter) safeSend(ctx context.Context, msg Message, addr *net.UDPAddr) error {
 	var err error
 	msgId := r.newMsgId()
 
-	packet := restarter_protocol.Packet{
+	packet := Packet{
 		Id:  msgId,
 		Msg: msg}
 
@@ -186,7 +184,7 @@ func (r *restarter) safeSend(ctx context.Context, msg restarter_protocol.Message
 	return ErrFallenNode
 }
 
-func (r *restarter) send(ctx context.Context, p restarter_protocol.Packet, addr *net.UDPAddr) error {
+func (r *Restarter) send(ctx context.Context, p Packet, addr *net.UDPAddr) error {
 	encoded, err := p.Encode()
 	if err != nil {
 		return err
@@ -217,7 +215,7 @@ func (r *restarter) send(ctx context.Context, p restarter_protocol.Packet, addr 
 	return nil
 }
 
-func (r *restarter) handleAck(msgId uint64) {
+func (r *Restarter) handleAck(msgId uint64) {
 	r.mu.Lock()
 	ch, ok := r.ackMap[msgId]
 	r.mu.Unlock()
@@ -229,7 +227,7 @@ func (r *restarter) handleAck(msgId uint64) {
 	}
 }
 
-func (r *restarter) newMsgId() uint64 {
+func (r *Restarter) newMsgId() uint64 {
 	r.mu.Lock()
 	r.lastMsgId += 1
 	r.ackMap[r.lastMsgId] = make(chan bool)
@@ -238,7 +236,7 @@ func (r *restarter) newMsgId() uint64 {
 	return r.lastMsgId
 }
 
-func (r *restarter) restartNode(ctx context.Context, containerName string) error {
+func (r *Restarter) restartNode(ctx context.Context, containerName string) error {
 	log.Infof("Restarting [%v]", containerName)
 	time.Sleep(2 * time.Second) // wait if SIGTERM signal triggered
 	cmdStr := fmt.Sprintf("docker restart %v", containerName)
