@@ -49,7 +49,7 @@ const (
 type handler struct {
 	database_path string
 	output        string
-	sequencer     *utils.Sequencer
+	sequencer     *middleware.Sequencer
 }
 
 func (h *handler) handleGame(ch *middleware.Channel, data []byte) (err error) {
@@ -184,7 +184,7 @@ func main() {
 			return &handler{
 				database_path: database_path,
 				output:        middleware.PartialQ1,
-				sequencer:     utils.NewSequencer(),
+				sequencer:     middleware.NewSequencer(),
 			}
 		},
 		Endpoints: map[string]middleware.HandlerFunc[*handler]{

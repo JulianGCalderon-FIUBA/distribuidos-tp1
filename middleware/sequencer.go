@@ -1,4 +1,4 @@
-package utils
+package middleware
 
 type Sequencer struct {
 	missingIDs map[int]struct{}

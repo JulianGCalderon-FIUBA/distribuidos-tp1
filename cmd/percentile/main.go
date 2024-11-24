@@ -37,7 +37,7 @@ type handler struct {
 	output     string
 	sorted     []middleware.GameStat
 	percentile float64
-	sequencer  *utils.Sequencer
+	sequencer  *middleware.Sequencer
 }
 
 func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
@@ -102,7 +102,7 @@ func main() {
 				output:     middleware.Results,
 				sorted:     make([]middleware.GameStat, 0),
 				percentile: float64(cfg.Percentile),
-				sequencer:  utils.NewSequencer(),
+				sequencer:  middleware.NewSequencer(),
 			}
 		},
 		Endpoints: map[string]middleware.HandlerFunc[*handler]{
