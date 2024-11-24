@@ -109,6 +109,10 @@ func (l *LeaderElection) read(ctx context.Context) {
 		}
 
 		packet, err := Decode(buf)
+		if err != nil {
+			log.Errorf("Failed to decode packet: %v", err)
+			continue
+		}
 
 		switch msg := packet.Msg.(type) {
 		case Ack:
