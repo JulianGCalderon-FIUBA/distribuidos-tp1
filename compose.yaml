@@ -34,7 +34,7 @@ services:
       - GATEWAY_CONN_ADDR=gateway:9001
       - GATEWAY_DATA_ADDR=gateway:9002
     volumes:
-      - ./.data:/work/.data
+      - ./.data-reduced:/work/.data
       - ./.results-1:/work/.results
     networks:
       - net
@@ -48,7 +48,7 @@ services:
       - GATEWAY_CONN_ADDR=gateway:9001
       - GATEWAY_DATA_ADDR=gateway:9002
     volumes:
-      - ./.data:/work/.data
+      - ./.data-reduced:/work/.data
       - ./.results-2:/work/.results
     networks:
       - net
@@ -62,7 +62,7 @@ services:
       - GATEWAY_CONN_ADDR=gateway:9001
       - GATEWAY_DATA_ADDR=gateway:9002
     volumes:
-      - ./.data:/work/.data
+      - ./.data-reduced:/work/.data
       - ./.results-3:/work/.results
     networks:
       - net
