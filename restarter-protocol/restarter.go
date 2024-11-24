@@ -98,7 +98,7 @@ func (r *Restarter) Start(ctx context.Context) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		r.readFromSocket()
+		r.read()
 	}()
 
 	for node := range r.nodes {
@@ -107,9 +107,7 @@ func (r *Restarter) Start(ctx context.Context) error {
 			defer wg.Done()
 			time.Sleep(5 * time.Second) // ver como hacer que espere con docker
 			err = r.monitorNode(ctx, nodeName)
-			if err != nil {
-				log.Errorf("Error monitoring node %v: %v", nodeName, err)
-			}
+			utils.Expect(err, "Failed to monitor node")
 		}(node)
 	}
 
@@ -119,9 +117,7 @@ func (r *Restarter) Start(ctx context.Context) error {
 
 func (r *Restarter) monitorNode(ctx context.Context, nodeName string) error {
 	udpAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%v:%v", nodeName, r.nodes[nodeName]))
-	if err != nil {
-		return fmt.Errorf("Failed to resolve address: %v", err)
-	}
+	utils.Expect(err, "Failed to resolve address")
 
 	for {
 		select {
@@ -132,9 +128,7 @@ func (r *Restarter) monitorNode(ctx context.Context, nodeName string) error {
 			if err != nil {
 				if errors.Is(err, ErrFallenNode) {
 					err = r.restartNode(ctx, nodeName)
-					if err != nil {
-						return err
-					}
+					utils.Expect(err, fmt.Sprintf("Failed to restart node %v", nodeName))
 				} else {
 					return fmt.Errorf("Failed to send keep alive: %v", err)
 				}
@@ -143,7 +137,7 @@ func (r *Restarter) monitorNode(ctx context.Context, nodeName string) error {
 	}
 }
 
-func (r *Restarter) readFromSocket() {
+func (r *Restarter) read() {
 	for {
 		buf := make([]byte, MAX_PACKAGE_SIZE)
 		_, _, err := r.conn.ReadFromUDP(buf)
@@ -155,10 +149,10 @@ func (r *Restarter) readFromSocket() {
 		packet, err := Decode(buf)
 		if err != nil {
 			log.Errorf("Failed to decode packet: %v", err)
-			return
+			continue
 		}
 
-		switch packet.Msg.(type) {
+		switch packet.Msg.(type) { // lo dejo asi para ver si se puede reutilizar con la Leader Election
 		case Ack:
 			r.handleAck(packet.Id)
 		}
@@ -217,14 +211,10 @@ func (r *Restarter) send(ctx context.Context, p Packet, addr *net.UDPAddr) error
 
 func (r *Restarter) handleAck(msgId uint64) {
 	r.mu.Lock()
-	ch, ok := r.ackMap[msgId]
+	ch := r.ackMap[msgId]
 	r.mu.Unlock()
 
-	if !ok {
-		log.Errorf("Channel for msg %v does not exist", msgId)
-	} else {
-		ch <- true
-	}
+	ch <- true
 }
 
 func (r *Restarter) newMsgId() uint64 {
@@ -240,11 +230,7 @@ func (r *Restarter) restartNode(ctx context.Context, containerName string) error
 	log.Infof("Restarting [%v]", containerName)
 	time.Sleep(2 * time.Second) // wait if SIGTERM signal triggered
 	cmdStr := fmt.Sprintf("docker restart %v", containerName)
-	out, err := exec.CommandContext(ctx, "/bin/sh", "-c", cmdStr).Output()
+	_, err := exec.CommandContext(ctx, "/bin/sh", "-c", cmdStr).Output()
 
-	log.Infof("Restart output: %s", out)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
