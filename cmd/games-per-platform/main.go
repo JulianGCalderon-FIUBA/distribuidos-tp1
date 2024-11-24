@@ -73,7 +73,14 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) (err error) {
 		return err
 	}
 
-	h.sequencer.Mark(batch.BatchID, batch.EOF)
+	if h.sequencer.Seen(batch.BatchID) {
+		return nil
+	}
+
+	err = h.sequencer.MarkDisk(snapshot, batch.BatchID, batch.EOF)
+	if err != nil {
+		return err
+	}
 
 	var windowsCounter uint64
 	var linuxCounter uint64
@@ -179,12 +186,28 @@ func main() {
 		Builder: func(clientID int) *handler {
 			database_path := middleware.Cat("client", clientID)
 			err := database.LoadDatabase(database_path)
-			utils.Expect(err, "unrecoverable error")
+			if err != nil {
+				return nil
+			}
+
+			sequencer := middleware.NewSequencer2("seq")
+			snapshot, err := database.NewSnapshot(database_path)
+			if err != nil {
+				return nil
+			}
+			err = sequencer.LoadDisk(snapshot)
+			if err != nil {
+				return nil
+			}
+			err = snapshot.Abort()
+			if err != nil {
+				return nil
+			}
 
 			return &handler{
 				database_path: database_path,
 				output:        middleware.PartialQ1,
-				sequencer:     middleware.NewSequencer(),
+				sequencer:     sequencer,
 			}
 		},
 		Endpoints: map[string]middleware.HandlerFunc[*handler]{
