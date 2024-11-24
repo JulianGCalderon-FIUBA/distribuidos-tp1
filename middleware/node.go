@@ -2,11 +2,11 @@ package middleware
 
 import (
 	"context"
+	"distribuidos/tp1/restarter_protocol"
 	"distribuidos/tp1/utils"
-	"encoding/binary"
 	"errors"
+	"fmt"
 	"net"
-	"strings"
 	"sync"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -56,7 +56,10 @@ func (n *Node[T]) Run(ctx context.Context) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		n.sendAlive(ctx)
+		err := n.sendAlive(ctx)
+		if err != nil {
+			log.Errorf("%v", err)
+		}
 	}()
 	defer wg.Wait()
 
@@ -126,16 +129,15 @@ func (n *Node[T]) freeResources(clientID int, h T) {
 	delete(n.clients, clientID)
 }
 
-func (n *Node[T]) sendAlive(ctx context.Context) {
+func (n *Node[T]) sendAlive(ctx context.Context) error {
 	udpAddr, err := net.ResolveUDPAddr("udp", n.config.Address)
 	if err != nil {
-		log.Errorf("Failed to resolve address: %v", err)
-		return
+		return fmt.Errorf("Failed to resolve address: %v", err)
 	}
 
 	conn, err := net.ListenUDP("udp", udpAddr)
 	if err != nil {
-		log.Errorf("failed to start listener on address %d: %w", n.config.Address, err)
+		return fmt.Errorf("failed to start listener on address %v: %v", n.config.Address, err)
 	}
 
 	log.Infof("Listening in %v", udpAddr)
@@ -151,36 +153,33 @@ func (n *Node[T]) sendAlive(ctx context.Context) {
 		_, rAddr, err := conn.ReadFromUDP(buf)
 
 		if err != nil {
-			log.Errorf("Read error: %v", err)
-			return
+			return fmt.Errorf("Read error: %v", err)
 		}
 
-		header := utils.MsgHeader{}
-
-		_, err = binary.Decode(buf, binary.LittleEndian, &header)
+		decoded, err := restarter_protocol.Decode(buf)
 		if err != nil {
-			log.Errorf("Failed to decode header: %v", err)
-			continue
+			return fmt.Errorf("Failed to decode message: %v", err)
 		}
 		log.Infof("Received KeepAlive from: %v", rAddr)
 
-		err = n.send(conn, rAddr)
+		err = n.send(conn, rAddr, decoded.Id)
 		if err != nil {
-			log.Errorf("Failed to send ACK: %v", err)
+			return fmt.Errorf("Failed to send ACK: %v", err)
 		}
 	}
 }
 
-func (n *Node[T]) send(conn *net.UDPConn, rAddr *net.UDPAddr) error {
-	nodeName := strings.Split(n.config.Address, ":")[0]
-	msg, err := binary.Append(nil, binary.LittleEndian, utils.MsgHeader{Ty: utils.Ack})
+func (n *Node[T]) send(conn *net.UDPConn, rAddr *net.UDPAddr, msgId uint64) error {
+	packet := restarter_protocol.Packet{
+		Id:  msgId,
+		Msg: restarter_protocol.Ack{}}
+
+	encoded, err := packet.Encode()
 	if err != nil {
 		return err
 	}
 
-	msg = append(msg, nodeName...)
-
-	_, err = conn.WriteToUDP(msg, rAddr)
+	_, err = conn.WriteToUDP(encoded, rAddr)
 	if err != nil {
 		return err
 	}
