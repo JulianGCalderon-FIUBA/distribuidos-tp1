@@ -26,7 +26,7 @@ func NewSequencer() *Sequencer {
 }
 
 // should eventually replace `NewSequencer`
-func NewSequencer2(name string) *Sequencer {
+func NewSequencerDisk(name string) *Sequencer {
 	return &Sequencer{
 		name:       name,
 		missingIDs: make(map[int]struct{}),
@@ -79,8 +79,8 @@ func (s *Sequencer) MarkDisk(snapshot *database.Snapshot, id int, EOF bool) erro
 	return nil
 }
 
-func (s *Sequencer) LoadDisk(snapshot *database.Snapshot) error {
-	file, err := snapshot.Get(s.name)
+func (s *Sequencer) LoadDisk(db *database.Database) error {
+	file, err := db.Get(s.name)
 	var pathError *fs.PathError
 	if errors.As(err, &pathError) {
 		return nil
@@ -88,6 +88,7 @@ func (s *Sequencer) LoadDisk(snapshot *database.Snapshot) error {
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 	reader := bufio.NewReader(file)
 
 	for {
@@ -103,7 +104,7 @@ func (s *Sequencer) LoadDisk(snapshot *database.Snapshot) error {
 		s.Mark(int(id), false)
 	}
 
-	exists, err := snapshot.Exists(fmt.Sprintf("%v-EOF", s.name))
+	exists, err := db.Exists(fmt.Sprintf("%v-EOF", s.name))
 	if err != nil {
 		return err
 	}

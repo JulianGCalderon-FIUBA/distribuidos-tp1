@@ -9,34 +9,88 @@ import (
 // directory inside of the database/snapshot containing the actual data
 const DATA_DIR string = "data"
 
-// creates database at path if it doesn't exist
-func NewDatabase(database_path string) error {
-	return os.MkdirAll(path.Join(database_path, DATA_DIR), 0750)
+type Database struct {
+	root string
 }
 
-// loads the database from path, restoring any commited snapshot
-func LoadDatabase(database_path string) error {
-	err := NewDatabase(database_path)
+// creates database at path if it doesn't exist
+// restores any in progress snapshot
+func NewDatabase(root string) (*Database, error) {
+	err := os.MkdirAll(path.Join(root, DATA_DIR), 0750)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	exists, err := utils.PathExists(path.Join(database_path, SNAPSHOT_DIR, COMMIT_FILE))
+	db := &Database{
+		root: root,
+	}
+
+	err = db.Restore()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// if there is no commit file, discard the snapshot
-	if !exists {
-		err := os.RemoveAll(path.Join(database_path, SNAPSHOT_DIR))
-		return err
-	}
+	return db, nil
+}
 
-	// if there is a commit file, we apply the snapshot
-	snapshot, err := LoadSnapshot(database_path)
+func (db *Database) Restore() error {
+	snapshot := Snapshot{
+		db:   db,
+		root: db.SnapshotPath(),
+	}
+	return snapshot.Restore()
+}
+
+func (db *Database) NewSnapshot() (*Snapshot, error) {
+	err := os.MkdirAll(db.SnapshotDataDir(), 0750)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	err = os.MkdirAll(db.SnapshotAppendDir(), 0750)
+	if err != nil {
+		return nil, err
 	}
 
-	return snapshot.ApplyCommit()
+	return &Snapshot{
+		db:    db,
+		root:  db.SnapshotPath(),
+		files: []*os.File{},
+	}, nil
+}
+
+// Accesses value of the key
+//
+// File should be manually closed
+func (db *Database) Get(k string) (*os.File, error) {
+	return os.Open(db.KeyPath(k))
+}
+
+func (db *Database) Exists(k string) (bool, error) {
+	return utils.PathExists(db.KeyPath(k))
+}
+
+// auxiliary path functions
+
+func (db *Database) KeyPath(k string) string {
+	return path.Join(db.DataDir(), k)
+}
+
+func (db *Database) CommitPath() string {
+	return path.Join(db.root, SNAPSHOT_DIR, COMMIT_FILE)
+}
+
+func (db *Database) DataDir() string {
+	return path.Join(db.root, DATA_DIR)
+}
+
+func (db *Database) SnapshotPath() string {
+	return path.Join(db.root, SNAPSHOT_DIR)
+}
+
+func (db *Database) SnapshotDataDir() string {
+	return path.Join(db.SnapshotPath(), DATA_DIR)
+}
+
+func (db *Database) SnapshotAppendDir() string {
+	return path.Join(db.SnapshotPath(), APPENDS_DIR)
 }

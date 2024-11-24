@@ -8,6 +8,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"math/rand"
 	"os"
 	"os/signal"
 	"syscall"
@@ -47,13 +48,13 @@ const (
 )
 
 type handler struct {
-	database_path string
-	output        string
-	sequencer     *middleware.Sequencer
+	db        *database.Database
+	output    string
+	sequencer *middleware.Sequencer
 }
 
 func (h *handler) handleGame(ch *middleware.Channel, data []byte) (err error) {
-	snapshot, err := database.NewSnapshot(h.database_path)
+	snapshot, err := h.db.NewSnapshot()
 	if err != nil {
 		return err
 	}
@@ -72,11 +73,9 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) (err error) {
 	if err != nil {
 		return err
 	}
-
 	if h.sequencer.Seen(batch.BatchID) {
 		return nil
 	}
-
 	err = h.sequencer.MarkDisk(snapshot, batch.BatchID, batch.EOF)
 	if err != nil {
 		return err
@@ -140,6 +139,10 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) (err error) {
 		return err
 	}
 
+	if rand.Float32() < 0.01 {
+		syscall.Exit(0)
+	}
+
 	if h.sequencer.EOF() {
 		count := map[Platform]int{
 			Windows: int(windowsCounter),
@@ -185,29 +188,17 @@ func main() {
 	nodeCfg := middleware.Config[*handler]{
 		Builder: func(clientID int) *handler {
 			database_path := middleware.Cat("client", clientID)
-			err := database.LoadDatabase(database_path)
-			if err != nil {
-				return nil
-			}
+			db, err := database.NewDatabase(database_path)
+			utils.Expect(err, "unrecoverable error")
 
-			sequencer := middleware.NewSequencer2("seq")
-			snapshot, err := database.NewSnapshot(database_path)
-			if err != nil {
-				return nil
-			}
-			err = sequencer.LoadDisk(snapshot)
-			if err != nil {
-				return nil
-			}
-			err = snapshot.Abort()
-			if err != nil {
-				return nil
-			}
+			sequencer := middleware.NewSequencerDisk("seq")
+			err = sequencer.LoadDisk(db)
+			utils.Expect(err, "unrecoverable error")
 
 			return &handler{
-				database_path: database_path,
-				output:        middleware.PartialQ1,
-				sequencer:     sequencer,
+				db:        db,
+				output:    middleware.PartialQ1,
+				sequencer: sequencer,
 			}
 		},
 		Endpoints: map[string]middleware.HandlerFunc[*handler]{

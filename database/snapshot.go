@@ -11,55 +11,36 @@ import (
 	"path/filepath"
 )
 
-type Snapshot struct {
-	database_path string
-	snapshot_path string
-	files         []*os.File
-}
-
 // directory inside of the database containing the snapshot
 const SNAPSHOT_DIR string = "snapshot"
 
 // file inside of the snapshot indicating that it's valid
 const COMMIT_FILE string = "commit"
 
+// directory inside of the snapshot containing appends
 const APPENDS_DIR string = "appends"
 
-func NewSnapshot(database_path string) (*Snapshot, error) {
-	snapshot_path := path.Join(database_path, SNAPSHOT_DIR)
-
-	err := os.MkdirAll(path.Join(snapshot_path, DATA_DIR), 0750)
-	if err != nil {
-		return nil, err
-	}
-	err = os.MkdirAll(path.Join(snapshot_path, APPENDS_DIR), 0750)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Snapshot{
-		database_path: database_path,
-		snapshot_path: snapshot_path,
-	}, nil
+type Snapshot struct {
+	db    *Database
+	root  string
+	files []*os.File
 }
 
-// loads an existing snapshot
-func LoadSnapshot(database_path string) (*Snapshot, error) {
-	snapshot_path := path.Join(database_path, SNAPSHOT_DIR)
-
-	return &Snapshot{
-		database_path: database_path,
-		snapshot_path: snapshot_path,
-	}, nil
-}
-
+// Accesses the original value of the key
 func (s *Snapshot) Get(k string) (*os.File, error) {
-	return os.Open(path.Join(s.database_path, DATA_DIR, k))
+	file, err := s.db.Get(k)
+	if err != nil {
+		return nil, err
+	}
+
+	s.files = append(s.files, file)
+
+	return file, nil
 }
 
 // Creates a new entry for the given key. It will replace the old entry if it exists
 func (s *Snapshot) Create(k string) (*os.File, error) {
-	file, err := os.Create(path.Join(s.snapshot_path, DATA_DIR, k))
+	file, err := os.OpenFile(s.KeyPath(k), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0666)
 	if err != nil {
 		return nil, err
 	}
@@ -70,22 +51,17 @@ func (s *Snapshot) Create(k string) (*os.File, error) {
 }
 
 // Copies the given entry to the snapshot and returns it's file descriptor.
-// The file descriptor must be manually closed.
 //
 // Fails if the entry has already been copied
 func (s *Snapshot) Update(k string) (*os.File, error) {
-	src, err := os.Open(path.Join(s.database_path, DATA_DIR, k))
+	src, err := os.Open(s.db.KeyPath(k))
 	if err != nil {
 		return nil, err
 	}
 	defer src.Close()
 
 	// O_EXCL asserts that file must not exist
-	dst, err := os.OpenFile(
-		path.Join(s.snapshot_path, DATA_DIR, k),
-		os.O_RDWR|os.O_CREATE|os.O_EXCL,
-		0666,
-	)
+	dst, err := os.OpenFile(s.KeyPath(k), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0666)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +86,7 @@ func (s *Snapshot) Update(k string) (*os.File, error) {
 // Append data to a given value. The file cursor's position should not be manually modified
 func (s *Snapshot) Append(k string) (*os.File, error) {
 	var size int64
-	info, err := os.Stat(path.Join(s.database_path, DATA_DIR, k))
+	info, err := os.Stat(s.db.KeyPath(k))
 	if err != nil {
 		var pathError *fs.PathError
 		if errors.As(err, &pathError) {
@@ -127,7 +103,7 @@ func (s *Snapshot) Append(k string) (*os.File, error) {
 		return s.Create(k)
 	}
 
-	file, err := os.OpenFile(path.Join(s.snapshot_path, APPENDS_DIR, k), os.O_WRONLY|os.O_APPEND|os.O_CREATE|os.O_EXCL, 0666)
+	file, err := os.OpenFile(s.AppendKeyPath(k), os.O_WRONLY|os.O_APPEND|os.O_CREATE|os.O_EXCL, 0666)
 	if err != nil {
 		return nil, err
 	}
@@ -148,14 +124,33 @@ func (s *Snapshot) Delete(k string) (*os.File, error) {
 }
 
 func (s *Snapshot) Exists(k string) (bool, error) {
-	return utils.PathExists(path.Join(s.database_path, DATA_DIR, k))
+	return s.db.Exists(k)
+}
 
+func (s *Snapshot) Close() error {
+	for _, f := range s.files {
+		err := f.Close()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Snapshot) Sync() error {
+	for _, f := range s.files {
+		err := f.Sync()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Commits all changes to the actual database.
 //
 // This operation is fault tolerant. If it's interrupted, it can be
-// completed afterwards
+// completed afterwards by calling `Restore`
 func (s *Snapshot) Commit() error {
 	err := s.Close()
 	if err != nil {
@@ -177,24 +172,27 @@ func (s *Snapshot) Abort() error {
 		return err
 	}
 
-	return os.RemoveAll(s.snapshot_path)
+	return os.RemoveAll(s.root)
 }
 
-func (s *Snapshot) Close() error {
-	for _, f := range s.files {
-		err := f.Close()
-		if err != nil {
-			return err
-		}
+// Depending on the state of the snapshot, it aborts it or commits it.
+func (s *Snapshot) Restore() error {
+	exists, err := utils.PathExists(s.CommitPath())
+	if err != nil {
+		return err
 	}
 
-	return nil
+	if exists {
+		return s.ApplyCommit()
+	} else {
+		return os.RemoveAll(s.root)
+	}
 }
 
 // Register the commit, but do not apply it.
 // This is unsafe and should only be used for testing
 func (s *Snapshot) RegisterCommit() error {
-	err := os.WriteFile(path.Join(s.snapshot_path, COMMIT_FILE), []byte{}, 0666)
+	err := os.WriteFile(path.Join(s.root, COMMIT_FILE), []byte{}, 0666)
 	if err != nil {
 		return err
 	}
@@ -203,16 +201,16 @@ func (s *Snapshot) RegisterCommit() error {
 }
 
 func (s *Snapshot) ApplyCommit() error {
-	err := filepath.WalkDir(path.Join(s.snapshot_path, DATA_DIR), s.commitFile)
+	err := filepath.WalkDir(path.Join(s.root, DATA_DIR), s.commitFile)
 	if err != nil {
 		return err
 	}
-	err = filepath.WalkDir(path.Join(s.snapshot_path, APPENDS_DIR), s.commitAppendFile)
+	err = filepath.WalkDir(path.Join(s.root, APPENDS_DIR), s.commitAppendFile)
 	if err != nil {
 		return err
 	}
 
-	err = os.RemoveAll(s.snapshot_path)
+	err = os.RemoveAll(s.root)
 	if err != nil {
 		return err
 	}
@@ -230,16 +228,20 @@ func (s *Snapshot) commitFile(modified_path string, info fs.DirEntry, err error)
 		return nil
 	}
 
-	rel_path, err := filepath.Rel(s.snapshot_path, modified_path)
+	rel_path, err := filepath.Rel(s.root, modified_path)
 	if err != nil {
 		return err
 	}
 
-	original_path := path.Join(s.database_path, rel_path)
+	original_path := path.Join(s.db.root, rel_path)
 
 	return os.Rename(modified_path, original_path)
 }
 
+// Commits the changes of an append file to the actual database
+//
+// This operation is NOT atomic on UNIX.
+// It should be reexecuted it interrupted and the append file was not erased.
 func (s *Snapshot) commitAppendFile(modified_path string, info fs.DirEntry, err error) error {
 	if err != nil {
 		return err
@@ -248,11 +250,11 @@ func (s *Snapshot) commitAppendFile(modified_path string, info fs.DirEntry, err 
 		return nil
 	}
 
-	rel_path, err := filepath.Rel(path.Join(s.snapshot_path, APPENDS_DIR), modified_path)
+	rel_path, err := filepath.Rel(path.Join(s.root, APPENDS_DIR), modified_path)
 	if err != nil {
 		return err
 	}
-	original_path := path.Join(s.database_path, DATA_DIR, rel_path)
+	original_path := path.Join(s.db.DataDir(), rel_path)
 
 	append_file, err := os.Open(modified_path)
 	if err != nil {
@@ -283,4 +285,22 @@ func (s *Snapshot) commitAppendFile(modified_path string, info fs.DirEntry, err 
 	}
 
 	return os.Remove(modified_path)
+}
+
+// auxiliary path functions
+
+func (s *Snapshot) DataDir() string {
+	return path.Join(s.root, DATA_DIR)
+}
+func (s *Snapshot) AppendsDir() string {
+	return path.Join(s.root, APPENDS_DIR)
+}
+func (s *Snapshot) KeyPath(k string) string {
+	return path.Join(s.DataDir(), k)
+}
+func (s *Snapshot) AppendKeyPath(k string) string {
+	return path.Join(s.AppendsDir(), k)
+}
+func (s *Snapshot) CommitPath() string {
+	return path.Join(s.root, COMMIT_FILE)
 }

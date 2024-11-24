@@ -12,10 +12,10 @@ import (
 	"testing"
 )
 
-func setupDatabase(t *testing.T, data map[string]string) string {
+func setupDatabase(t *testing.T, data map[string]string) *database.Database {
 	database_path := t.TempDir()
 
-	err := database.NewDatabase(database_path)
+	db, err := database.NewDatabase(database_path)
 	expect(t, err)
 
 	for k, v := range data {
@@ -25,22 +25,22 @@ func setupDatabase(t *testing.T, data map[string]string) string {
 		}
 	}
 
-	return database_path
+	return db
 }
 
-func assertDatabaseContent(t *testing.T, database_path string, data map[string]string) {
+func assertDatabaseContent(t *testing.T, db *database.Database, data map[string]string) {
 	t.Helper()
 
 	keys := make(map[string]struct{})
 
 	// find all files
-	err := filepath.WalkDir(path.Join(database_path, database.DATA_DIR), func(p string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(db.DataDir(), func(p string, d fs.DirEntry, err error) error {
 		if d.IsDir() {
 			return nil
 		}
 		expect(t, err)
 
-		p, err = filepath.Rel(path.Join(database_path, database.DATA_DIR), p)
+		p, err = filepath.Rel(db.DataDir(), p)
 		expect(t, err)
 
 		keys[p] = struct{}{}
@@ -51,7 +51,7 @@ func assertDatabaseContent(t *testing.T, database_path string, data map[string]s
 
 	// compare data
 	for k, expected_value := range data {
-		actual_value, err := os.ReadFile(path.Join(database_path, database.DATA_DIR, k))
+		actual_value, err := os.ReadFile(db.KeyPath(k))
 		if err != nil {
 			t.Fatalf("missing database value: %v", k)
 		}
@@ -183,9 +183,9 @@ func TestTransaction(t *testing.T) {
 			t.Parallel()
 
 			t.Run("Abort", func(t *testing.T) {
-				db_path := setupDatabase(t, c.data)
+				db := setupDatabase(t, c.data)
 
-				snapshot, err := database.NewSnapshot(db_path)
+				snapshot, err := db.NewSnapshot()
 				expect(t, err)
 
 				c.transaction(t, snapshot)
@@ -193,15 +193,15 @@ func TestTransaction(t *testing.T) {
 				err = snapshot.Abort()
 				expect(t, err)
 
-				assertDatabaseContent(t, db_path, c.data)
+				assertDatabaseContent(t, db, c.data)
 
-				assertSnapshotErased(t, db_path)
+				assertSnapshotErased(t, db)
 			})
 
 			t.Run("Commit", func(t *testing.T) {
-				db_path := setupDatabase(t, c.data)
+				db := setupDatabase(t, c.data)
 
-				snapshot, err := database.NewSnapshot(db_path)
+				snapshot, err := db.NewSnapshot()
 				expect(t, err)
 
 				transaction_data := c.transaction(t, snapshot)
@@ -211,35 +211,35 @@ func TestTransaction(t *testing.T) {
 
 				expected_data := maps.Clone(c.data)
 				maps.Copy(expected_data, transaction_data)
-				assertDatabaseContent(t, db_path, expected_data)
+				assertDatabaseContent(t, db, expected_data)
 
-				assertSnapshotErased(t, db_path)
+				assertSnapshotErased(t, db)
 			})
 
 			t.Run("FailureBeforeCommit", func(t *testing.T) {
-				db_path := setupDatabase(t, c.data)
+				db := setupDatabase(t, c.data)
 
-				snapshot, err := database.NewSnapshot(db_path)
+				snapshot, err := db.NewSnapshot()
 				expect(t, err)
 
 				c.transaction(t, snapshot)
 
 				// we load the database to simulate that we have been killed
-				err = database.LoadDatabase(db_path)
+				err = db.Restore()
 				expect(t, err)
 
-				assertDatabaseContent(t, db_path, c.data)
+				assertDatabaseContent(t, db, c.data)
 
-				assertSnapshotErased(t, db_path)
+				assertSnapshotErased(t, db)
 
 				err = snapshot.Close()
 				expect(t, err)
 			})
 
 			t.Run("FailureAfterCommit", func(t *testing.T) {
-				db_path := setupDatabase(t, c.data)
+				db := setupDatabase(t, c.data)
 
-				snapshot, err := database.NewSnapshot(db_path)
+				snapshot, err := db.NewSnapshot()
 				expect(t, err)
 
 				transaction_data := c.transaction(t, snapshot)
@@ -251,23 +251,23 @@ func TestTransaction(t *testing.T) {
 				expect(t, err)
 
 				// we load the database to simulate that we have been killed
-				err = database.LoadDatabase(db_path)
+				err = db.Restore()
 				expect(t, err)
 
 				expected_data := maps.Clone(c.data)
 				maps.Copy(expected_data, transaction_data)
-				assertDatabaseContent(t, db_path, expected_data)
+				assertDatabaseContent(t, db, expected_data)
 
-				assertSnapshotErased(t, db_path)
+				assertSnapshotErased(t, db)
 			})
 		})
 	}
 }
 
-func assertSnapshotErased(t *testing.T, db_path string) {
+func assertSnapshotErased(t *testing.T, db *database.Database) {
 	t.Helper()
 
-	exists, err := utils.PathExists(path.Join(db_path, database.SNAPSHOT_DIR))
+	exists, err := utils.PathExists(db.SnapshotPath())
 	expect(t, err)
 
 	if exists {
