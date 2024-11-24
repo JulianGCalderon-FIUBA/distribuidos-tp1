@@ -2,8 +2,13 @@ package main
 
 import (
 	"context"
+	"distribuidos/tp1/database"
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/utils"
+	"encoding/binary"
+	"errors"
+	"io"
+	"os"
 	"os/signal"
 	"syscall"
 
@@ -42,12 +47,26 @@ const (
 )
 
 type handler struct {
-	output    string
-	count     map[Platform]int
-	sequencer *utils.Sequencer
+	database_path string
+	output        string
+	sequencer     *utils.Sequencer
 }
 
-func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
+func (h *handler) handleGame(ch *middleware.Channel, data []byte) (err error) {
+	snapshot, err := database.NewSnapshot(h.database_path)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		switch err {
+		case nil:
+			cerr := snapshot.Commit()
+			utils.Expect(cerr, "unrecoverable error")
+		default:
+			cerr := snapshot.Abort()
+			utils.Expect(cerr, "unrecoverable error")
+		}
+	}()
 
 	batch, err := middleware.Deserialize[middleware.Batch[middleware.Game]](data)
 	if err != nil {
@@ -56,24 +75,76 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 
 	h.sequencer.Mark(batch.BatchID, batch.EOF)
 
-	for _, g := range batch.Data {
-		if g.Windows {
-			h.count[Windows] += 1
+	var windowsCounter uint64
+	var linuxCounter uint64
+	var macCounter uint64
+
+	counterFile, err := snapshot.Update("counter")
+	var pathError *os.PathError
+	if errors.As(err, &pathError) {
+		counterFile, err = snapshot.Create("counter")
+		if err != nil {
+			return err
 		}
-		if g.Linux {
-			h.count[Linux] += 1
+	} else if err != nil {
+		return err
+	} else {
+		err = binary.Read(counterFile, binary.LittleEndian, &windowsCounter)
+		if err != nil {
+			return err
 		}
-		if g.Mac {
-			h.count[Mac] += 1
+		err = binary.Read(counterFile, binary.LittleEndian, &linuxCounter)
+		if err != nil {
+			return err
+		}
+		err = binary.Read(counterFile, binary.LittleEndian, &macCounter)
+		if err != nil {
+			return err
 		}
 	}
 
+	for _, g := range batch.Data {
+		if g.Windows {
+			windowsCounter += 1
+		}
+		if g.Linux {
+			linuxCounter += 1
+		}
+		if g.Mac {
+			macCounter += 1
+		}
+	}
+
+	_, err = counterFile.Seek(0, io.SeekStart)
+	if err != nil {
+		return err
+	}
+
+	err = binary.Write(counterFile, binary.LittleEndian, windowsCounter)
+	if err != nil {
+		return err
+	}
+	err = binary.Write(counterFile, binary.LittleEndian, linuxCounter)
+	if err != nil {
+		return err
+	}
+	err = binary.Write(counterFile, binary.LittleEndian, macCounter)
+	if err != nil {
+		return err
+	}
+
 	if h.sequencer.EOF() {
-		for k, v := range h.count {
+		count := map[Platform]int{
+			Windows: int(windowsCounter),
+			Linux:   int(linuxCounter),
+			Mac:     int(macCounter),
+		}
+
+		for k, v := range count {
 			log.Infof("Found %v games with %v support", v, string(k))
 		}
 
-		err := ch.Send(h.count, "", h.output)
+		err := ch.Send(count, "", h.output)
 		if err != nil {
 			return err
 		}
@@ -106,10 +177,14 @@ func main() {
 
 	nodeCfg := middleware.Config[*handler]{
 		Builder: func(clientID int) *handler {
+			database_path := middleware.Cat("client", clientID)
+			err := database.LoadDatabase(database_path)
+			utils.Expect(err, "unrecoverable error")
+
 			return &handler{
-				count:     make(map[Platform]int),
-				output:    middleware.PartialQ1,
-				sequencer: utils.NewSequencer(),
+				database_path: database_path,
+				output:        middleware.PartialQ1,
+				sequencer:     utils.NewSequencer(),
 			}
 		},
 		Endpoints: map[string]middleware.HandlerFunc[*handler]{
