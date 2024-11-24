@@ -115,13 +115,14 @@ services:
     entrypoint: /build/restarter
     environment:
       - ID=0
-      - ADDRESS=restarter-0:7000
+      - ADDRESS=restarter-0:14300
       - REPLICAS=1
     volumes:
       - ./.node-config.csv:/work/.node-config.csv
-    networks:
-      - net
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - gateway
+    networks:
+      - net
 networks:
   net:
