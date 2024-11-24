@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"slices"
 	"sync"
 	"time"
@@ -51,13 +52,14 @@ func NewLeaderElection(id uint64, address string, replicas uint64) *LeaderElecti
 	cond := sync.NewCond(&mu)
 
 	l := &LeaderElection{
-		id:           id,
-		replicas:     replicas,
-		condLeaderId: cond,
-		conn:         conn,
-		mu:           &sync.Mutex{},
-		gotAckMap:    make(map[uint64]chan bool),
-		lastMsgId:    0,
+		id:             id,
+		replicas:       replicas,
+		condLeaderId:   cond,
+		conn:           conn,
+		mu:             &sync.Mutex{},
+		gotAckMap:      make(map[uint64]chan bool),
+		lastMsgId:      0,
+		fallenNeighbor: make(chan uint64),
 	}
 
 	return l
@@ -89,12 +91,7 @@ func (l *LeaderElection) Start(ctx context.Context) error {
 		utils.Expect(err, "Failed to start election")
 	}()
 
-	go func() {
-		err := l.monitorNeighbor(ctx)
-		if err != nil {
-			log.Errorf("Failed to monitor neighbor: %v", err)
-		}
-	}()
+	go l.monitorNeighbor(ctx)
 
 	l.read(ctx)
 	return nil
@@ -141,6 +138,7 @@ func (l *LeaderElection) read(ctx context.Context) {
 					}
 				}()
 			case KeepAlive:
+				log.Infof("Received keep alive from %v", recvAddr)
 				err = l.sendAck(recvAddr, packet.Id)
 				if err != nil {
 					log.Errorf("Failed to send ack: %v", err)
@@ -150,19 +148,41 @@ func (l *LeaderElection) read(ctx context.Context) {
 	}
 }
 
-func (l *LeaderElection) monitorNeighbor(ctx context.Context) error {
-	msg := KeepAlive{}
-	err := l.sendToRing(ctx, msg)
-	if err != nil {
-		return err
+func (l *LeaderElection) monitorNeighbor(ctx context.Context) {
+	go l.restartNeighbor(ctx)
+	ticker := time.NewTicker(time.Second * 5)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			msg := KeepAlive{}
+			addr, _ := utils.GetUDPAddr((l.id + 1) % l.replicas)
+			err := l.safeSend(ctx, msg, addr)
+			if err != nil && !errors.Is(err, ErrFallenNode) {
+				log.Errorf("Failed to send keep alive: %v", err)
+			}
+		}
 	}
-	select {
-	case <-ctx.Done():
-		return nil
-	case <-l.fallenNeighbor: // recibir id para saber a quien levantar
-		// levantar vecino
+}
+
+func (l *LeaderElection) restartNeighbor(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case id := <-l.fallenNeighbor:
+			log.Errorf("Neighbor %v has fallen. Restarting", id)
+
+			cmdStr := fmt.Sprintf("docker start restarter-%v", id)
+			out, err := exec.CommandContext(ctx, "/bin/sh", "-c", cmdStr).Output()
+			log.Infof("RESTART OUTPUT %s", out)
+			if err != nil {
+				log.Errorf("Failed to execute docker start %v", err)
+				return
+			}
+		}
 	}
-	return nil
 }
 
 func (l *LeaderElection) startElection(ctx context.Context) error {
@@ -234,12 +254,7 @@ func (l *LeaderElection) sendToRing(ctx context.Context, msg Message) error {
 		if err == nil {
 			return nil
 		}
-		if !errors.Is(err, ErrFallenNode) {
-			return err
-		}
-		if next == l.id+1 {
-			l.fallenNeighbor <- next
-		}
+		log.Infof("Neighbor %v is not answering, sending message to next one", next)
 		next += 1
 	}
 	return nil
@@ -258,11 +273,10 @@ func (l *LeaderElection) safeSend(ctx context.Context, msg Message, addr *net.UD
 		if err == nil {
 			return nil
 		}
-		if !errors.Is(err, os.ErrDeadlineExceeded) {
-			return err
-		}
 	}
-	log.Errorf("Never got ack for message %v", id)
+	l.fallenNeighbor <- (l.id + 1)
+
+	log.Errorf("Never got ack for message %#v (id %v)", msg, id)
 	return ErrFallenNode
 }
 
@@ -290,7 +304,7 @@ func (l *LeaderElection) send(ctx context.Context, p Packet, addr *net.UDPAddr) 
 		l.mu.Unlock()
 		return nil
 	case <-time.After(time.Second):
-		log.Infof("Timeout, trying to send again message %v", p.Id)
+		log.Infof("Timeout, trying to send again message %#v (id %v)", p.Msg, p.Id)
 		return os.ErrDeadlineExceeded
 	case <-ctx.Done():
 		return nil
@@ -298,7 +312,6 @@ func (l *LeaderElection) send(ctx context.Context, p Packet, addr *net.UDPAddr) 
 }
 
 func (l *LeaderElection) sendAck(prevNeighbor *net.UDPAddr, msgId uint64) error {
-
 	packet := Packet{
 		Id:  msgId,
 		Msg: Ack{},
