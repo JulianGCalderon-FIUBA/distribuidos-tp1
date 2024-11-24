@@ -63,7 +63,6 @@ type Q4Result struct {
 
 type Q5Result struct {
 	Percentile90 []middleware.GameStat
-	EOF          bool
 }
 
 func (q Q1Result) Header() []string { return []string{"Linux", "Mac", "Windows"} }
