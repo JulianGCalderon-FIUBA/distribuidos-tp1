@@ -37,8 +37,6 @@ type LeaderElection struct {
 	mu        *sync.Mutex
 	gotAckMap map[uint64]chan bool
 	lastMsgId uint64
-
-	fallenNeighbor chan uint64
 }
 
 func NewLeaderElection(id uint64, address string, replicas uint64) *LeaderElection {
@@ -53,14 +51,13 @@ func NewLeaderElection(id uint64, address string, replicas uint64) *LeaderElecti
 	cond := sync.NewCond(&mu)
 
 	l := &LeaderElection{
-		id:             id,
-		replicas:       replicas,
-		condLeaderId:   cond,
-		conn:           conn,
-		mu:             &sync.Mutex{},
-		gotAckMap:      make(map[uint64]chan bool),
-		lastMsgId:      0,
-		fallenNeighbor: make(chan uint64),
+		id:           id,
+		replicas:     replicas,
+		condLeaderId: cond,
+		conn:         conn,
+		mu:           &sync.Mutex{},
+		gotAckMap:    make(map[uint64]chan bool),
+		lastMsgId:    0,
 	}
 
 	return l
@@ -151,7 +148,6 @@ func (l *LeaderElection) read(ctx context.Context) {
 }
 
 func (l *LeaderElection) monitorNeighbor(ctx context.Context) {
-	go l.restartNeighbor(ctx)
 	ticker := time.NewTicker(time.Second * 5)
 	for {
 		select {
@@ -163,7 +159,10 @@ func (l *LeaderElection) monitorNeighbor(ctx context.Context) {
 			addr, _ := utils.GetUDPAddr(host, RESTARTER_PORT)
 			err := l.safeSend(ctx, msg, addr)
 			if errors.Is(err, ErrFallenNode) {
-				l.fallenNeighbor <- (l.id + 1) % l.replicas
+				err := l.restartNeighbor(ctx, (l.id+1)%l.replicas)
+				if err != nil {
+					log.Errorf("Failed to restart neighbor: %v", err)
+				}
 				continue
 			}
 			if err != nil {
@@ -173,29 +172,23 @@ func (l *LeaderElection) monitorNeighbor(ctx context.Context) {
 	}
 }
 
-func (l *LeaderElection) restartNeighbor(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case id := <-l.fallenNeighbor:
-			log.Errorf("Neighbor %v has fallen. Restarting...", id)
-			if id == l.leaderId {
-				log.Infof("Leader has fallen, starting election")
-				err := l.startElection(ctx)
-				if err != nil {
-					log.Errorf("Failed to start election: %v", err)
-				}
-			}
-			cmdStr := fmt.Sprintf("docker start %v%v", CONTAINER_NAME, id)
-			out, err := exec.CommandContext(ctx, "/bin/sh", "-c", cmdStr).Output()
-			log.Infof("Restart output: %s", out)
-			if err != nil {
-				log.Errorf("Failed to execute docker start %v", err)
-				return
-			}
+func (l *LeaderElection) restartNeighbor(ctx context.Context, id uint64) error {
+	log.Errorf("Neighbor %v has fallen. Restarting...", id)
+	if id == l.leaderId {
+		log.Infof("Leader has fallen, starting election")
+		err := l.startElection(ctx)
+		if err != nil {
+			return err
 		}
 	}
+	cmdStr := fmt.Sprintf("docker start %v%v", CONTAINER_NAME, id)
+	out, err := exec.CommandContext(ctx, "/bin/sh", "-c", cmdStr).Output()
+	log.Infof("Restart output: %s", out)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (l *LeaderElection) startElection(ctx context.Context) error {
