@@ -1,4 +1,4 @@
-package leaderelection
+package restarter
 
 import (
 	"context"

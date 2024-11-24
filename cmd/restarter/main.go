@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	leaderelection "distribuidos/tp1/leader-election"
+	"distribuidos/tp1/restarter-protocol"
 	"distribuidos/tp1/utils"
 	"os/signal"
 	"syscall"
@@ -40,7 +40,7 @@ func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to get config")
 
-	l := leaderelection.NewLeaderElection(cfg.Id, cfg.Address, cfg.Replicas)
+	l := restarter.NewLeaderElection(cfg.Id, cfg.Address, cfg.Replicas)
 
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 

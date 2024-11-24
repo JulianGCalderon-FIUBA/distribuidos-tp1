@@ -1,13 +1,13 @@
-package leaderelection_test
+package restarter_test
 
 import (
-	leaderelection "distribuidos/tp1/leader-election"
+	"distribuidos/tp1/restarter-protocol"
 	"reflect"
 	"testing"
 )
 
 func TestSerializeElection(t *testing.T) {
-	e := leaderelection.Election{
+	e := restarter.Election{
 		Ids: []uint64{1, 2, 3},
 	}
 
@@ -15,7 +15,7 @@ func TestSerializeElection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to encode election msg: %v", err)
 	}
-	recv_e, err := leaderelection.DecodeElection(buf)
+	recv_e, err := restarter.DecodeElection(buf)
 	if err != nil {
 		t.Fatalf("Failed to decode election msg: %v", err)
 	}
@@ -26,7 +26,7 @@ func TestSerializeElection(t *testing.T) {
 }
 
 func TestSerializeCoordinator(t *testing.T) {
-	c := leaderelection.Coordinator{
+	c := restarter.Coordinator{
 		Leader: 3,
 		Ids:    []uint64{1, 2, 3},
 	}
@@ -35,7 +35,7 @@ func TestSerializeCoordinator(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to encode coordinator msg: %v", err)
 	}
-	recv_c, err := leaderelection.DecodeCoordinator(buf)
+	recv_c, err := restarter.DecodeCoordinator(buf)
 	if err != nil {
 		t.Fatalf("Failed to decode coordinator msg: %v", err)
 	}
@@ -46,23 +46,23 @@ func TestSerializeCoordinator(t *testing.T) {
 }
 
 func TestSerializePacket(t *testing.T) {
-	packetList := []leaderelection.Packet{
+	packetList := []restarter.Packet{
 		{
 			Id: 1,
-			Msg: leaderelection.Election{
+			Msg: restarter.Election{
 				Ids: []uint64{1, 2, 3},
 			},
 		},
 		{
 			Id: 1,
-			Msg: leaderelection.Coordinator{
+			Msg: restarter.Coordinator{
 				Leader: 3,
 				Ids:    []uint64{1, 2, 3},
 			},
 		},
 		{
 			Id:  1,
-			Msg: leaderelection.Ack{},
+			Msg: restarter.Ack{},
 		}}
 
 	for _, p := range packetList {
@@ -72,7 +72,7 @@ func TestSerializePacket(t *testing.T) {
 			t.Fatalf("Failed to encode packet: %v", err)
 		}
 
-		recv_p, err := leaderelection.Decode(buf)
+		recv_p, err := restarter.Decode(buf)
 		if err != nil {
 			t.Fatalf("Failed to encode packet: %v", err)
 		}
