@@ -54,7 +54,7 @@ func main() {
 			log.Infof("I am leader (id %v) and I woke up", cfg.Id)
 			// start reiniciar en go rutinas
 			l.WaitLeader(false)
-			log.Infof("I am no longer leader (id %v) and I woke up", cfg.Id)
+			log.Infof("I am no longer leader (id %v)", cfg.Id)
 			// frenar trabajo -> shutdown a las go rutinas
 		}
 	}()
