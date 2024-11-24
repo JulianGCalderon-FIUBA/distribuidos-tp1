@@ -162,7 +162,11 @@ func (l *LeaderElection) monitorNeighbor(ctx context.Context) {
 			host := fmt.Sprintf("%v%v", CONTAINER_NAME, (l.id+1)%l.replicas)
 			addr, _ := utils.GetUDPAddr(host, RESTARTER_PORT)
 			err := l.safeSend(ctx, msg, addr)
-			if err != nil && !errors.Is(err, ErrFallenNode) {
+			if errors.Is(err, ErrFallenNode) {
+				l.fallenNeighbor <- (l.id + 1) % l.replicas
+				continue
+			}
+			if err != nil {
 				log.Errorf("Failed to send keep alive: %v", err)
 			}
 		}
@@ -287,7 +291,6 @@ func (l *LeaderElection) safeSend(ctx context.Context, msg Message, addr *net.UD
 			return nil
 		}
 	}
-	l.fallenNeighbor <- (l.id + 1) % l.replicas
 
 	log.Errorf("Never got ack for message %#v (id %v)", msg, id)
 	return ErrFallenNode
