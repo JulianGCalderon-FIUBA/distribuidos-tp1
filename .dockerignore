@@ -9,3 +9,5 @@ compose.yaml
 .data/
 bin/
 .results/
+.backup/
+.results-*/
