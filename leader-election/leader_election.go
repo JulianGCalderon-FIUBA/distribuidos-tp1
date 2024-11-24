@@ -175,7 +175,13 @@ func (l *LeaderElection) restartNeighbor(ctx context.Context) {
 			return
 		case id := <-l.fallenNeighbor:
 			log.Errorf("Neighbor %v has fallen. Restarting...", id)
-
+			if id == l.leaderId {
+				log.Infof("Leader has fallen, starting election")
+				err := l.startElection(ctx)
+				if err != nil {
+					log.Errorf("Failed to start election: %v", err)
+				}
+			}
 			cmdStr := fmt.Sprintf("docker start %v%v", CONTAINER_NAME, id)
 			out, err := exec.CommandContext(ctx, "/bin/sh", "-c", cmdStr).Output()
 			log.Infof("Restart output: %s", out)
@@ -249,15 +255,12 @@ func (l *LeaderElection) sendToRing(ctx context.Context, msg Message) error {
 	next := l.id + 1
 	for next%l.replicas != l.id {
 		host := fmt.Sprintf("%v%v", CONTAINER_NAME, next%l.replicas)
-		addr, err := utils.GetUDPAddr(host, RESTARTER_PORT)
-		if err != nil {
-			return err
-		}
-		err = l.safeSend(ctx, msg, addr)
+		addr, _ := utils.GetUDPAddr(host, RESTARTER_PORT)
+		err := l.safeSend(ctx, msg, addr)
 		if err == nil {
 			return nil
 		}
-		log.Infof("Neighbor %v is not answering, sending message to next one", next)
+		log.Infof("Neighbor %v is not answering, sending message to next one", next%l.replicas)
 		next += 1
 	}
 	return nil
@@ -277,7 +280,7 @@ func (l *LeaderElection) safeSend(ctx context.Context, msg Message, addr *net.UD
 			return nil
 		}
 	}
-	l.fallenNeighbor <- (l.id + 1)
+	l.fallenNeighbor <- (l.id + 1) % l.replicas
 
 	log.Errorf("Never got ack for message %#v (id %v)", msg, id)
 	return ErrFallenNode
