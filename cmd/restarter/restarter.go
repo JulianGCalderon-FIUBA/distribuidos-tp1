@@ -130,7 +130,6 @@ func (r *restarter) monitorNode(ctx context.Context, nodeName string) error {
 		case <-ctx.Done():
 			return nil
 		default:
-			time.Sleep(time.Second) // lo dejo para debuggear, hay que sacarlo
 			err = r.safeSend(ctx, restarter_protocol.KeepAlive{}, udpAddr)
 			if err != nil {
 				if errors.Is(err, ErrFallenNode) {
@@ -239,13 +238,12 @@ func (r *restarter) newMsgId() uint64 {
 	return r.lastMsgId
 }
 
-func (r *restarter) restartNode(_ context.Context, containerName string) error {
+func (r *restarter) restartNode(ctx context.Context, containerName string) error {
 	log.Infof("Restarting [%v]", containerName)
+	time.Sleep(2 * time.Second) // wait if SIGTERM signal triggered
 	cmdStr := fmt.Sprintf("docker restart %v", containerName)
-	out, err := exec.Command("/bin/sh", "-c", cmdStr).Output()
+	out, err := exec.CommandContext(ctx, "/bin/sh", "-c", cmdStr).Output()
 
-	// cmd := exec.Command("docker", "restart", containerName)
-	// out, err := cmd.Output()
 	log.Infof("Restart output: %s", out)
 	if err != nil {
 		return err
