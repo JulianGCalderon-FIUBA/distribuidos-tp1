@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	"distribuidos/tp1/utils"
 	"distribuidos/tp1/restarter-protocol"
+	"distribuidos/tp1/utils"
 	"os/signal"
 	"syscall"
 
