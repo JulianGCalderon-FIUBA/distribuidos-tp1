@@ -15,7 +15,11 @@ import (
 	"github.com/op/go-logging"
 )
 
-const NO_ID int = -1
+const CONTAINER_NAME = "restarter-"
+const RESTARTER_PORT = 14300
+
+const MAX_ATTEMPTS = 4
+const MAX_PACKAGE_SIZE = 1024
 
 var log = logging.MustGetLogger("log")
 var ErrFallenNode = errors.New("Never got ack")
@@ -36,9 +40,6 @@ type LeaderElection struct {
 
 	fallenNeighbor chan uint64
 }
-
-const MAX_ATTEMPTS = 4
-const MAX_PACKAGE_SIZE = 1024
 
 func NewLeaderElection(id uint64, address string, replicas uint64) *LeaderElection {
 
@@ -157,7 +158,8 @@ func (l *LeaderElection) monitorNeighbor(ctx context.Context) {
 			return
 		case <-ticker.C:
 			msg := KeepAlive{}
-			addr, _ := utils.GetUDPAddr((l.id + 1) % l.replicas)
+			host := fmt.Sprintf("%v%v", CONTAINER_NAME, (l.id+1)%l.replicas)
+			addr, _ := utils.GetUDPAddr(host, RESTARTER_PORT)
 			err := l.safeSend(ctx, msg, addr)
 			if err != nil && !errors.Is(err, ErrFallenNode) {
 				log.Errorf("Failed to send keep alive: %v", err)
@@ -172,11 +174,11 @@ func (l *LeaderElection) restartNeighbor(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case id := <-l.fallenNeighbor:
-			log.Errorf("Neighbor %v has fallen. Restarting", id)
+			log.Errorf("Neighbor %v has fallen. Restarting...", id)
 
-			cmdStr := fmt.Sprintf("docker start restarter-%v", id)
+			cmdStr := fmt.Sprintf("docker start %v%v", CONTAINER_NAME, id)
 			out, err := exec.CommandContext(ctx, "/bin/sh", "-c", cmdStr).Output()
-			log.Infof("RESTART OUTPUT %s", out)
+			log.Infof("Restart output: %s", out)
 			if err != nil {
 				log.Errorf("Failed to execute docker start %v", err)
 				return
@@ -246,7 +248,8 @@ func (l *LeaderElection) handleAck(msgId uint64) {
 func (l *LeaderElection) sendToRing(ctx context.Context, msg Message) error {
 	next := l.id + 1
 	for next%l.replicas != l.id {
-		addr, err := utils.GetUDPAddr(next % l.replicas)
+		host := fmt.Sprintf("%v%v", CONTAINER_NAME, next%l.replicas)
+		addr, err := utils.GetUDPAddr(host, RESTARTER_PORT)
 		if err != nil {
 			return err
 		}

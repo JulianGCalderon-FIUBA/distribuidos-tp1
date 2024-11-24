@@ -17,8 +17,8 @@ func Expect(err any, msg string) {
 	}
 }
 
-func GetUDPAddr(id uint64) (*net.UDPAddr, error) {
-	addr := fmt.Sprintf("restarter-%v:1430%v", id, id)
+func GetUDPAddr(host string, port int) (*net.UDPAddr, error) {
+	addr := fmt.Sprintf("%v:%v", host, port)
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
 		return nil, err
