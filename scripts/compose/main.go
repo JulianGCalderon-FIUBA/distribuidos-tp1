@@ -82,7 +82,7 @@ func generateClient() {
 		fmt.Println("      - GATEWAY_CONN_ADDR=gateway:9001")
 		fmt.Println("      - GATEWAY_DATA_ADDR=gateway:9002")
 		fmt.Println("    volumes:")
-		fmt.Println("      - ./.data:/work/.data")
+		fmt.Println("      - ./.data-reduced:/work/.data")
 		fmt.Printf("      - ./.results-%v:/work/.results\n", i)
 		fmt.Println("    networks:")
 		fmt.Println("      - net")
