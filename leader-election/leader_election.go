@@ -213,7 +213,14 @@ func (l *LeaderElection) handleElection(ctx context.Context, msg Election) error
 func (l *LeaderElection) startCoordinator(ctx context.Context, ids []uint64) error {
 	log.Infof("Starting coordinator")
 	leader := slices.Max(ids)
+	l.condLeaderId.L.Lock()
 	l.leaderId = leader
+	l.hasLeader = true
+	l.condLeaderId.L.Unlock()
+
+	l.condLeaderId.Signal()
+
+	log.Infof("Leader is %v", leader)
 
 	coor := Coordinator{
 		Leader: leader,
@@ -253,7 +260,7 @@ func (l *LeaderElection) handleAck(msgId uint64) {
 
 func (l *LeaderElection) sendToRing(ctx context.Context, msg Message) error {
 	next := l.id + 1
-	for next%l.replicas != l.id {
+	for {
 		host := fmt.Sprintf("%v%v", CONTAINER_NAME, next%l.replicas)
 		addr, _ := utils.GetUDPAddr(host, RESTARTER_PORT)
 		err := l.safeSend(ctx, msg, addr)
@@ -263,7 +270,6 @@ func (l *LeaderElection) sendToRing(ctx context.Context, msg Message) error {
 		log.Infof("Neighbor %v is not answering, sending message to next one", next%l.replicas)
 		next += 1
 	}
-	return nil
 }
 
 func (l *LeaderElection) safeSend(ctx context.Context, msg Message, addr *net.UDPAddr) error {
