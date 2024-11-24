@@ -19,6 +19,7 @@ func Register() {
 	gob.Register(Q3Result{})
 	gob.Register(Q4Result{})
 	gob.Register(Q5Result{})
+	gob.Register(Q4Finish{})
 }
 
 func NewConn(conn io.ReadWriteCloser) *Conn {
