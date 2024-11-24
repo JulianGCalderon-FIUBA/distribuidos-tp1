@@ -18,7 +18,7 @@ services:
     entrypoint: /build/restarter
     environment:
       - ID=1
-      - ADDRESS=restarter-1:14301
+      - ADDRESS=restarter-1:14300
       - REPLICAS=4
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -30,7 +30,7 @@ services:
     entrypoint: /build/restarter
     environment:
       - ID=2
-      - ADDRESS=restarter-2:14302
+      - ADDRESS=restarter-2:14300
       - REPLICAS=4
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -42,7 +42,7 @@ services:
     entrypoint: /build/restarter
     environment:
       - ID=3
-      - ADDRESS=restarter-3:14303
+      - ADDRESS=restarter-3:14300
       - REPLICAS=4
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock

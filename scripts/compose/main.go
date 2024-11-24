@@ -471,7 +471,7 @@ func generateRestarter() {
 		fmt.Println("    entrypoint: /build/restarter")
 		fmt.Println("    environment:")
 		fmt.Printf("      - ID=%v\n", i)
-		fmt.Printf("      - ADDRESS=restarter-%v:1430%v\n", i, i)
+		fmt.Printf("      - ADDRESS=restarter-%v:14300\n", i)
 		fmt.Printf("      - REPLICAS=%v\n", RESTARTER)
 		fmt.Println("    volumes:")
 		fmt.Println("      - /var/run/docker.sock:/var/run/docker.sock")
