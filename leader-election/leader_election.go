@@ -100,52 +100,49 @@ func (l *LeaderElection) Start(ctx context.Context) error {
 
 func (l *LeaderElection) read(ctx context.Context) {
 	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			buf := make([]byte, MAX_PACKAGE_SIZE)
-			_, recvAddr, err := l.conn.ReadFromUDP(buf)
-			if err != nil {
-				log.Errorf("Failed to read: %v", err)
-				continue
-			}
 
-			packet, err := Decode(buf)
+		buf := make([]byte, MAX_PACKAGE_SIZE)
+		_, recvAddr, err := l.conn.ReadFromUDP(buf)
+		if err != nil {
+			log.Errorf("Failed to read: %v", err)
+			continue
+		}
 
-			switch msg := packet.Msg.(type) {
-			case Ack:
-				l.handleAck(packet.Id)
-			case Coordinator:
-				go func() {
-					err = l.sendAck(recvAddr, packet.Id)
-					if err != nil {
-						log.Errorf("Failed to send ack: %v", err)
-					}
-					err = l.handleCoordinator(ctx, msg)
-					if err != nil {
-						log.Errorf("Failed to handle coordinator message: %v", err)
-					}
-				}()
-			case Election:
-				go func() {
-					err = l.sendAck(recvAddr, packet.Id)
-					if err != nil {
-						log.Errorf("Failed to send ack: %v", err)
-					}
-					err = l.handleElection(ctx, msg)
-					if err != nil {
-						log.Errorf("Failed to handle election message: %v", err)
-					}
-				}()
-			case KeepAlive:
-				log.Infof("Received keep alive from %v", recvAddr)
+		packet, err := Decode(buf)
+
+		switch msg := packet.Msg.(type) {
+		case Ack:
+			l.handleAck(packet.Id)
+		case Coordinator:
+			go func() {
 				err = l.sendAck(recvAddr, packet.Id)
 				if err != nil {
 					log.Errorf("Failed to send ack: %v", err)
 				}
+				err = l.handleCoordinator(ctx, msg)
+				if err != nil {
+					log.Errorf("Failed to handle coordinator message: %v", err)
+				}
+			}()
+		case Election:
+			go func() {
+				err = l.sendAck(recvAddr, packet.Id)
+				if err != nil {
+					log.Errorf("Failed to send ack: %v", err)
+				}
+				err = l.handleElection(ctx, msg)
+				if err != nil {
+					log.Errorf("Failed to handle election message: %v", err)
+				}
+			}()
+		case KeepAlive:
+			log.Infof("Received keep alive from %v", recvAddr)
+			err = l.sendAck(recvAddr, packet.Id)
+			if err != nil {
+				log.Errorf("Failed to send ack: %v", err)
 			}
 		}
+
 	}
 }
 
