@@ -4,13 +4,15 @@ import (
 	"context"
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/protocol"
+	"distribuidos/tp1/utils"
 )
 
 const MAX_RESULTS = 5
 
 type resultsHandler struct {
-	ch      chan protocol.Result
-	results int
+	ch        chan protocol.Result
+	results   int
+	sequencer *utils.Sequencer
 }
 
 func (h *resultsHandler) handle(ch *middleware.Channel, data []byte) error {
@@ -21,15 +23,37 @@ func (h *resultsHandler) handle(ch *middleware.Channel, data []byte) error {
 
 	log.Infof("Received results")
 
-	switch r := result.(type) {
-	case protocol.Q4Result:
-		if r.EOF {
-			h.results += 1
-		}
-	default:
+	h.results += 1
+	h.ch <- result
+
+	if h.results == MAX_RESULTS {
+		log.Infof("Received all results")
+		close(h.ch)
+		return nil
+	}
+
+	return nil
+}
+
+func (h *resultsHandler) handleQ4(ch *middleware.Channel, data []byte) error {
+	batch, err := middleware.Deserialize[middleware.Batch[middleware.GameStat]](data)
+	if err != nil {
+		return err
+	}
+
+	h.sequencer.Mark(batch.BatchID, batch.EOF)
+
+	if len(batch.Data) > 0 {
+		log.Infof("Received Q4 results")
+		r := protocol.Q4Result{Games: batch.Data}
+		h.ch <- r
+	}
+
+	if h.sequencer.EOF() {
+		r := protocol.Q4Finish{}
+		h.ch <- r
 		h.results += 1
 	}
-	h.ch <- result
 
 	if h.results == MAX_RESULTS {
 		log.Infof("Received all results")
@@ -51,12 +75,13 @@ func (g *gateway) startResultsEndpoint(ctx context.Context) error {
 		g.mu.Unlock()
 
 		return &resultsHandler{
-			ch: chanResults,
+			ch:        chanResults,
+			sequencer: utils.NewSequencer(),
 		}
 	}
 
 	topology := middleware.Topology{
-		Queues: []middleware.QueueConfig{{Name: middleware.Results}},
+		Queues: []middleware.QueueConfig{{Name: middleware.Results}, {Name: middleware.ResultsQ4}},
 	}
 	err := topology.Declare(g.rabbitCh)
 	if err != nil {
@@ -66,7 +91,8 @@ func (g *gateway) startResultsEndpoint(ctx context.Context) error {
 	cfg := middleware.Config[*resultsHandler]{
 		Builder: newResultsHandler,
 		Endpoints: map[string]middleware.HandlerFunc[*resultsHandler]{
-			middleware.Results: (*resultsHandler).handle,
+			middleware.Results:   (*resultsHandler).handle,
+			middleware.ResultsQ4: (*resultsHandler).handleQ4,
 		},
 	}
 
