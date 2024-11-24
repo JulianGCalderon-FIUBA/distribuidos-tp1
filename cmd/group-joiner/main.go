@@ -18,6 +18,7 @@ type config struct {
 	Partitions int
 	Input      string
 	Output     string
+	Address    string
 }
 
 func getConfig() (config, error) {
@@ -30,6 +31,7 @@ func getConfig() (config, error) {
 	_ = v.BindEnv("Partitions", "PARTITIONS")
 	_ = v.BindEnv("Input", "INPUT")
 	_ = v.BindEnv("Output", "OUTPUT")
+	_ = v.BindEnv("Address", "ADDRESS")
 
 	var c config
 	err := v.Unmarshal(&c)
@@ -135,6 +137,7 @@ func main() {
 			}
 		},
 		Endpoints: endpoints,
+		Address:   cfg.Address,
 	}
 
 	node, err := middleware.NewNode(nodeCfg, conn)

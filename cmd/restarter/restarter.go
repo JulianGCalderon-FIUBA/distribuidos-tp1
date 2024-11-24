@@ -10,6 +10,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"os/exec"
 	"sync"
 	"time"
 )
@@ -99,7 +100,7 @@ func (r *restarter) start(ctx context.Context) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		r.readFromSocket(ctx)
+		r.readFromSocket()
 	}()
 
 	for node := range r.nodes {
@@ -124,42 +125,45 @@ func (r *restarter) monitorNode(ctx context.Context, nodeName string) error {
 		return fmt.Errorf("Failed to resolve address: %v", err)
 	}
 
-	err = r.safeSend(ctx, restarter_protocol.KeepAlive{}, udpAddr)
-	if err != nil {
-		if errors.Is(err, ErrFallenNode) {
-			log.Infof("Restarting node %v", nodeName)
-			// restart node
-		} else {
-			return fmt.Errorf("Failed to send keep alive: %v", err)
-		}
-	}
-	return nil
-}
-
-func (r *restarter) readFromSocket(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return nil
 		default:
-			buf := make([]byte, MAX_PACKAGE_SIZE)
-			_, _, err := r.conn.ReadFromUDP(buf)
+			time.Sleep(time.Second) // lo dejo para debuggear, hay que sacarlo
+			err = r.safeSend(ctx, restarter_protocol.KeepAlive{}, udpAddr)
 			if err != nil {
-				log.Errorf("Failed to read: %v", err)
-				return
-
+				if errors.Is(err, ErrFallenNode) {
+					err = r.restartNode(ctx, nodeName)
+					if err != nil {
+						return err
+					}
+				} else {
+					return fmt.Errorf("Failed to send keep alive: %v", err)
+				}
 			}
+		}
+	}
+}
 
-			packet, err := restarter_protocol.Decode(buf)
-			if err != nil {
-				log.Errorf("Failed to decode packet: %v", err)
-				return
-			}
+func (r *restarter) readFromSocket() {
+	for {
+		buf := make([]byte, MAX_PACKAGE_SIZE)
+		_, _, err := r.conn.ReadFromUDP(buf)
+		if err != nil {
+			log.Errorf("Failed to read: %v", err)
+			return
+		}
 
-			switch packet.Msg.(type) {
-			case restarter_protocol.Ack:
-				r.handleAck(packet.Id)
-			}
+		packet, err := restarter_protocol.Decode(buf)
+		if err != nil {
+			log.Errorf("Failed to decode packet: %v", err)
+			return
+		}
+
+		switch packet.Msg.(type) {
+		case restarter_protocol.Ack:
+			r.handleAck(packet.Id)
 		}
 	}
 }
@@ -233,4 +237,18 @@ func (r *restarter) newMsgId() uint64 {
 	defer r.mu.Unlock()
 
 	return r.lastMsgId
+}
+
+func (r *restarter) restartNode(_ context.Context, containerName string) error {
+	log.Infof("Restarting [%v]", containerName)
+	cmdStr := fmt.Sprintf("docker restart %v", containerName)
+	out, err := exec.Command("/bin/sh", "-c", cmdStr).Output()
+
+	// cmd := exec.Command("docker", "restart", containerName)
+	// out, err := cmd.Output()
+	log.Infof("Restart output: %s", out)
+	if err != nil {
+		return err
+	}
+	return nil
 }

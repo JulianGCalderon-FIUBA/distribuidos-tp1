@@ -18,6 +18,7 @@ type config struct {
 	PartitionId int
 	Input       string
 	Output      string
+	Address     string
 }
 
 func getConfig() (config, error) {
@@ -30,6 +31,7 @@ func getConfig() (config, error) {
 	_ = v.BindEnv("TopN", "TOP_N")
 	_ = v.BindEnv("PartitionId", "PARTITION_ID")
 	_ = v.BindEnv("Input", "INPUT")
+	_ = v.BindEnv("Address", "ADDRESS")
 
 	var c config
 	err := v.Unmarshal(&c)
@@ -133,6 +135,7 @@ func main() {
 		Endpoints: map[string]middleware.HandlerFunc[*handler]{
 			qInput: (*handler).handleBatch,
 		},
+		Address: cfg.Address,
 	}
 
 	node, err := middleware.NewNode(nodeCfg, conn)
