@@ -40,19 +40,15 @@ func Decode(buf []byte) (Packet, error) {
 	switch ty {
 	case AckMsg:
 		msg, err = DecodeAck(buf)
-		if err != nil {
-			return Packet{}, err
-		}
 	case CoordinatorMsg:
 		msg, err = DecodeCoordinator(buf)
-		if err != nil {
-			return Packet{}, err
-		}
 	case ElectionMsg:
 		msg, err = DecodeElection(buf)
-		if err != nil {
-			return Packet{}, err
-		}
+	case KeepAliveMsg:
+		msg, err = DecodeKeepAlive(buf)
+	}
+	if err != nil {
+		return Packet{}, err
 	}
 
 	return Packet{
