@@ -9,6 +9,7 @@ COPY . .
 RUN CGO_ENABLED=0 go build -o .build/ ./cmd/...
 
 FROM alpine:latest
+RUN apk add docker
 COPY --from=builder /build/.build/ /build
 
 WORKDIR /work

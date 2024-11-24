@@ -473,6 +473,8 @@ func generateRestarter() {
 		fmt.Printf("      - ID=%v\n", i)
 		fmt.Printf("      - ADDRESS=restarter-%v:1430%v\n", i, i)
 		fmt.Printf("      - REPLICAS=%v\n", RESTARTER)
+		fmt.Println("    volumes:")
+		fmt.Println("      - /var/run/docker.sock:/var/run/docker.sock")
 		fmt.Println("    networks:")
 		fmt.Println("      - net")
 	}
