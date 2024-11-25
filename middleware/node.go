@@ -84,10 +84,11 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 	}
 
 	err := n.config.Endpoints[d.Queue](h, ch, d.Body)
-	if ch.FinishFlag {
-		// todo: persistir cuales clientes terminaron
-		n.freeResources(clientID, h)
-	}
+	// todo: persistir cuales clientes terminaron
+	// todo: free resources
+	// if ch.FinishFlag {
+	// n.freeResources(clientID, h)
+	// }
 
 	if err != nil {
 		log.Errorf("Failed to handle message %v", err)
