@@ -18,6 +18,8 @@ const DECADE_FILTER = 1
 const GENRE_FITLER = 1
 const SCORE_FILTER = 1
 
+const RESTARTER = 4
+
 func main() {
 	generateInit()
 	generateRabbit()
@@ -32,6 +34,7 @@ func main() {
 	generateQ3()
 	generateQ4()
 	generateQ5()
+	generateRestarter()
 	generateNet()
 }
 
@@ -458,6 +461,23 @@ func generateQ5() {
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
 	fmt.Println("      - gateway")
+}
+
+func generateRestarter() {
+	for i := 0; i < RESTARTER; i++ {
+		fmt.Printf("  restarter-%v:\n", i)
+		fmt.Printf("    container_name: restarter-%v\n", i)
+		fmt.Println("    image: tp1:latest")
+		fmt.Println("    entrypoint: /build/restarter")
+		fmt.Println("    environment:")
+		fmt.Printf("      - ID=%v\n", i)
+		fmt.Printf("      - ADDRESS=restarter-%v:14300\n", i)
+		fmt.Printf("      - REPLICAS=%v\n", RESTARTER)
+		fmt.Println("    volumes:")
+		fmt.Println("      - /var/run/docker.sock:/var/run/docker.sock")
+		fmt.Println("    networks:")
+		fmt.Println("      - net")
+	}
 }
 
 func generateNet() {
