@@ -56,6 +56,10 @@ func (s *Snapshot) Create(k string) (*os.File, error) {
 func (s *Snapshot) Update(k string) (*os.File, error) {
 	src, err := os.Open(s.db.KeyPath(k))
 	if err != nil {
+		var pathError *fs.PathError
+		if errors.As(err, &pathError) {
+			return s.Create(k)
+		}
 		return nil, err
 	}
 	defer src.Close()
