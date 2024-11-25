@@ -45,7 +45,7 @@ func (s *SequencerDisk) EOF() bool {
 
 func (s *SequencerDisk) Seen(id int) bool {
 	_, missing := s.missingIDs[id]
-	return id < s.latestID && !missing
+	return id <= s.latestID && !missing
 }
 
 func (s *SequencerDisk) MarkDisk(snapshot *database.Snapshot, id int, EOF bool) error {
