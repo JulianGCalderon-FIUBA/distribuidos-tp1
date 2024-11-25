@@ -191,7 +191,7 @@ func main() {
 			db, err := database.NewDatabase(database_path)
 			utils.Expect(err, "unrecoverable error")
 
-			sequencer := middleware.NewSequencerDisk("seq")
+			sequencer := middleware.NewSequencerDisk("sequencer")
 			err = sequencer.LoadDisk(db)
 			utils.Expect(err, "unrecoverable error")
 
