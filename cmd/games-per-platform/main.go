@@ -139,10 +139,6 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) (err error) {
 		return err
 	}
 
-	if rand.Float32() < 0.01 {
-		syscall.Exit(0)
-	}
-
 	if h.sequencer.EOF() {
 		count := map[Platform]int{
 			Windows: int(windowsCounter),
