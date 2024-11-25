@@ -11,7 +11,7 @@ func (c ExchangeConfig) Declare(ch *amqp.Channel) error {
 	return ch.ExchangeDeclare(
 		c.Name,
 		c.Type,
-		false,
+		true,
 		false,
 		false,
 		false,
@@ -27,7 +27,7 @@ type QueueConfig struct {
 func (c QueueConfig) Declare(ch *amqp.Channel) error {
 	name, err := ch.QueueDeclare(
 		c.Name,
-		false,
+		true,
 		false,
 		false,
 		false,

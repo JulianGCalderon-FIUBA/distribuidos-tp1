@@ -19,7 +19,8 @@ func (c *Channel) Send(msg any, exchange, key string) error {
 		log.Panicf("Failed to serialize result %v", err)
 	}
 	err = c.Ch.Publish(exchange, key, false, false, amqp.Publishing{
-		ContentType: "",
+		DeliveryMode: amqp.Persistent,
+		ContentType:  "",
 		Headers: amqp.Table{
 			"clientID": c.ClientID,
 		},

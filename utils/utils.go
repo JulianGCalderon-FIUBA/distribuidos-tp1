@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"fmt"
+	"net"
 	"os"
 
 	"github.com/op/go-logging"
@@ -25,4 +27,13 @@ func PathExists(path string) (bool, error) {
 		return false, nil
 	}
 	return false, err
+}
+
+func GetUDPAddr(host string, port int) (*net.UDPAddr, error) {
+	addr := fmt.Sprintf("%v:%v", host, port)
+	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	if err != nil {
+		return nil, err
+	}
+	return udpAddr, nil
 }
