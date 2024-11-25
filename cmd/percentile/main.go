@@ -106,7 +106,6 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 	}
 
 	if h.sequencer.EOF() {
-		log.Infof("Received eof")
 		err = h.conclude(ch)
 		if err != nil {
 			return err
@@ -127,7 +126,6 @@ func (h *handler) conclude(ch *middleware.Channel) error {
 	p := protocol.Q5Result{
 		Percentile90: results,
 	}
-	log.Infof("Sending 90 percentile games (%v games)", len(results))
 
 	return ch.SendAny(p, "", h.output)
 }
