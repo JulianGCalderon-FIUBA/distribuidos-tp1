@@ -6,7 +6,9 @@ import (
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/utils"
+	"encoding/binary"
 	"encoding/gob"
+	"io"
 	"os/signal"
 	"syscall"
 
@@ -45,10 +47,9 @@ const (
 )
 
 type handler struct {
-	db         *database.Database
-	output     string
-	count      map[Platform]int
-	partitions map[int]struct{}
+	db     *database.Database
+	output string
+	joiner *middleware.JoinerDisk
 }
 
 func buildHandler(partition int) middleware.HandlerFunc[*handler] {
@@ -58,47 +59,104 @@ func buildHandler(partition int) middleware.HandlerFunc[*handler] {
 }
 
 func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte, partition int) error {
+	snapshot, err := h.db.NewSnapshot()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		switch err {
+		case nil:
+			cerr := snapshot.Commit()
+			utils.Expect(cerr, "unrecoverable error")
+		default:
+			cerr := snapshot.Abort()
+			utils.Expect(cerr, "unrecoverable error")
+		}
+	}()
+
 	c, err := middleware.Deserialize[map[Platform]int](data)
-	log.Infof("SEEN %v!!\n", partition)
-	if _, notSeen := h.partitions[partition]; !notSeen {
+	if h.joiner.Seen(partition) {
+		return nil
+	}
+	err = h.joiner.Mark(snapshot, partition)
+	if err != nil {
+		return err
+	}
+
+	var windowsCounter uint64
+	var linuxCounter uint64
+	var macCounter uint64
+
+	exists, err := snapshot.Exists("counter")
+	if err != nil {
+		return err
+	}
+	counterFile, err := snapshot.Update("counter")
+	if err != nil {
+		return err
+	}
+	if exists {
+		err = binary.Read(counterFile, binary.LittleEndian, &windowsCounter)
+		if err != nil {
+			return err
+		}
+		err = binary.Read(counterFile, binary.LittleEndian, &linuxCounter)
+		if err != nil {
+			return err
+		}
+		err = binary.Read(counterFile, binary.LittleEndian, &macCounter)
+		if err != nil {
+			return err
+		}
+	}
+
+	windowsCounter += uint64(c[Windows])
+	linuxCounter += uint64(c[Linux])
+	macCounter += uint64(c[Mac])
+
+	_, err = counterFile.Seek(0, io.SeekStart)
+	if err != nil {
+		return err
+	}
+
+	err = binary.Write(counterFile, binary.LittleEndian, windowsCounter)
+	if err != nil {
+		return err
+	}
+	err = binary.Write(counterFile, binary.LittleEndian, linuxCounter)
+	if err != nil {
+		return err
+	}
+	err = binary.Write(counterFile, binary.LittleEndian, macCounter)
+	if err != nil {
+		return err
+	}
+
+
+	if h.joiner.EOF() {
+		count := map[Platform]int{
+			Windows: int(windowsCounter),
+			Linux:   int(linuxCounter),
+			Mac:     int(macCounter),
+		}
+		for k, v := range count {
+			log.Infof("Found %v games with %v support", v, string(k))
+		}
+
+		result := protocol.Q1Result{
+			Windows: int(windowsCounter),
+			Linux:   int(linuxCounter),
+			Mac:     int(macCounter),
+		}
+		err := ch.SendAny(result, "", h.output)
+		if err != nil {
+			return err
+		}
+
+		ch.Finish()
 		return nil
 	}
 
-	// save this on disk also
-	delete(h.partitions, partition)
-
-	if err != nil {
-		return err
-	}
-
-	for k, v := range c {
-		h.count[k] += v
-	}
-
-	if len(h.partitions) == 0 {
-		return h.conclude(ch)
-	}
-
-	return nil
-}
-
-func (h *handler) conclude(ch *middleware.Channel) error {
-	for k, v := range h.count {
-		log.Infof("Found %v games with %v support", v, string(k))
-	}
-
-	result := protocol.Q1Result{
-		Windows: h.count[Windows],
-		Linux:   h.count[Linux],
-		Mac:     h.count[Mac],
-	}
-
-	err := ch.SendAny(result, "", h.output)
-	if err != nil {
-		return err
-	}
-
-	ch.Finish()
 	return nil
 }
 
@@ -142,16 +200,14 @@ func main() {
 			db, err := database.NewDatabase(database_path)
 			utils.Expect(err, "unrecoverable error")
 
-			partitions := make(map[int]struct{})
-			for i := 1; i <= cfg.Partitions; i++ {
-				partitions[i] = struct{}{}
-			}
+			joiner := middleware.NewJoinerDisk("joiner", cfg.Partitions)
+			err = joiner.Load(db)
+			utils.Expect(err, "unrecoverable error")
 
 			return &handler{
-				db:         db,
-				output:     middleware.Results,
-				count:      make(map[Platform]int, 0),
-				partitions: partitions,
+				db:     db,
+				output: middleware.Results,
+				joiner: joiner,
 			}
 		},
 		Endpoints: endpoints,

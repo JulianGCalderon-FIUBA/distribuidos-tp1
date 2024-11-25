@@ -6,9 +6,7 @@ import (
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/utils"
 	"encoding/binary"
-	"errors"
 	"io"
-	"math/rand"
 	"os"
 	"os/signal"
 	"syscall"
@@ -85,16 +83,16 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) (err error) {
 	var linuxCounter uint64
 	var macCounter uint64
 
-	counterFile, err := snapshot.Update("counter")
-	var pathError *os.PathError
-	if errors.As(err, &pathError) {
-		counterFile, err = snapshot.Create("counter")
-		if err != nil {
-			return err
-		}
-	} else if err != nil {
+	exists, err := snapshot.Exists("counter")
+	if err != nil {
 		return err
-	} else {
+	}
+	counterFile, err := snapshot.Update("counter")
+	if err != nil {
+		return err
+	}
+
+	if exists {
 		err = binary.Read(counterFile, binary.LittleEndian, &windowsCounter)
 		if err != nil {
 			return err
