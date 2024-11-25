@@ -132,7 +132,6 @@ func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte, parti
 		return err
 	}
 
-
 	if h.joiner.EOF() {
 		count := map[Platform]int{
 			Windows: int(windowsCounter),
