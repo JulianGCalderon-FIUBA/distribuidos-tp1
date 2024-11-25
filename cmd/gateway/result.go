@@ -22,8 +22,8 @@ func (h *resultsHandler) handle(ch *middleware.Channel, data []byte) error {
 
 	log.Infof("Received results")
 
-	h.results[result.Number()] = true
 	h.ch <- result
+	h.results[result.Number()] = true
 
 	if len(h.results) == MAX_RESULTS {
 		log.Infof("Received all results")
