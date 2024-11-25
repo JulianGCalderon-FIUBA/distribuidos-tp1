@@ -23,13 +23,14 @@ type client struct {
 	id       uint64
 	conn     *protocol.Conn
 	dataConn *protocol.Conn
-	results  int
+	results  map[int]bool
 }
 
 func newClient(config config) *client {
 	protocol.Register()
 	return &client{
-		config: config,
+		config:  config,
+		results: make(map[int]bool),
 	}
 }
 
@@ -218,11 +219,11 @@ func (c *client) waitResults() error {
 		switch r := r.(type) {
 		case protocol.Q4Finish:
 			log.Infof("Received Q4 Finish")
-			c.results += 1
+			c.results[r.Number()] = true
 		default:
 			log.Infof("Received Q%v results", r.Number())
 			if r.Number() != 4 {
-				c.results += 1
+				c.results[r.Number()] = true
 			}
 			writer := writers[r.Number()-1]
 
@@ -232,7 +233,7 @@ func (c *client) waitResults() error {
 			}
 		}
 
-		if c.results == MAX_RESULTS {
+		if len(c.results) == MAX_RESULTS {
 			log.Infof("Received all results")
 			break
 		}

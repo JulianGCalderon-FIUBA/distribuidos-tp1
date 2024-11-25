@@ -11,7 +11,7 @@ const MAX_RESULTS = 5
 
 type resultsHandler struct {
 	ch        chan protocol.Result
-	results   int
+	results   map[int]bool
 	sequencer *utils.Sequencer
 }
 
@@ -23,10 +23,10 @@ func (h *resultsHandler) handle(ch *middleware.Channel, data []byte) error {
 
 	log.Infof("Received results")
 
-	h.results += 1
+	h.results[result.Number()] = true
 	h.ch <- result
 
-	if h.results == MAX_RESULTS {
+	if len(h.results) == MAX_RESULTS {
 		log.Infof("Received all results")
 		close(h.ch)
 		return nil
@@ -52,10 +52,10 @@ func (h *resultsHandler) handleQ4(ch *middleware.Channel, data []byte) error {
 	if h.sequencer.EOF() {
 		r := protocol.Q4Finish{}
 		h.ch <- r
-		h.results += 1
+		h.results[r.Number()] = true
 	}
 
-	if h.results == MAX_RESULTS {
+	if len(h.results) == MAX_RESULTS {
 		log.Infof("Received all results")
 		close(h.ch)
 		return nil
@@ -76,6 +76,7 @@ func (g *gateway) startResultsEndpoint(ctx context.Context) error {
 
 		return &resultsHandler{
 			ch:        chanResults,
+			results:   make(map[int]bool),
 			sequencer: utils.NewSequencer(),
 		}
 	}

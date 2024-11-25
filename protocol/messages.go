@@ -80,8 +80,7 @@ func (q Q2Result) Number() int { return 2 }
 func (q Q3Result) Number() int { return 3 }
 func (q Q4Result) Number() int { return 4 }
 func (q Q5Result) Number() int { return 5 }
-
-func (q Q4Finish) Number() int { return -1 }
+func (q Q4Finish) Number() int { return 4 }
 
 func (q Q1Result) ToCSV() [][]string {
 	return [][]string{{
