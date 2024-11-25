@@ -14,13 +14,21 @@ import (
 var log = logging.MustGetLogger("log")
 
 type config struct {
-	Address string
+	Id       uint64
+	Address  string
+	Replicas uint64
 }
 
 func getConfig() (config, error) {
 	v := viper.New()
 
+	v.SetDefault("Id", 0)
+	v.SetDefault("Address", "127.0.0.1:9000")
+	v.SetDefault("Replicas", 4)
+
+	_ = v.BindEnv("Id", "ID")
 	_ = v.BindEnv("Address", "ADDRESS")
+	_ = v.BindEnv("Replicas", "REPLICAS")
 
 	var c config
 	err := v.Unmarshal(&c)
@@ -28,15 +36,30 @@ func getConfig() (config, error) {
 }
 
 func main() {
-	cfg, err := getConfig()
-	utils.Expect(err, "Failed to read config")
 
-	r := restarter.NewRestarter(cfg.Address)
+	cfg, err := getConfig()
+	utils.Expect(err, "Failed to get config")
+
+	r := restarter.NewRestarter(cfg.Address, cfg.Id, cfg.Replicas)
 
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 
-	err = r.Start(ctx)
-	if err != nil {
-		log.Fatalf("Failed to run restarter: %v", err)
-	}
+	go func() {
+		err = r.Start(ctx)
+		utils.Expect(err, "Failed to start leader election")
+	}()
+	go func() {
+		for {
+			r.WaitLeader(true)
+			log.Infof("I am leader (id %v) and I woke up", cfg.Id)
+
+			// start reiniciar en go rutinas
+			r.StartMonitoring(ctx)
+
+			r.WaitLeader(false)
+			log.Infof("I am no longer leader (id %v)", cfg.Id)
+			// frenar trabajo -> shutdown a las go rutinas
+		}
+	}()
+	<-ctx.Done()
 }

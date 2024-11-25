@@ -9,7 +9,7 @@ services:
     networks:
       - net
     healthcheck:
-      test: ["CMD", "rabbitmqctl", "status"]
+      test: [ "CMD", "rabbitmqctl", "status" ]
       interval: 5s
       timeout: 5s
       retries: 3
@@ -26,20 +26,20 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-  client-1:
-    container_name: client-1
-    image: tp1:latest
-    entrypoint: /build/client
-    environment:
-      - GATEWAY_CONN_ADDR=gateway:9001
-      - GATEWAY_DATA_ADDR=gateway:9002
-    volumes:
-      - ./.data:/work/.data
-      - ./.results-1:/work/.results
-    networks:
-      - net
-    depends_on:
-      - gateway
+  # client-1:
+  #   container_name: client-1
+  #   image: tp1:latest
+  #   entrypoint: /build/client
+  #   environment:
+  #     - GATEWAY_CONN_ADDR=gateway:9001
+  #     - GATEWAY_DATA_ADDR=gateway:9002
+  #   volumes:
+  #     - ./.data:/work/.data
+  #     - ./.results-1:/work/.results
+  #   networks:
+  #     - net
+  #   depends_on:
+  #     - gateway
   genre-filter-1:
     container_name: genre-filter-1
     image: tp1:latest
@@ -385,7 +385,52 @@ services:
     environment:
       - ID=0
       - ADDRESS=restarter-0:14300
-      - REPLICAS=1
+      - REPLICAS=4
+    volumes:
+      - ./.node-config.csv:/work/.node-config.csv
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - gateway
+    networks:
+      - net
+  restarter-1:
+    container_name: restarter-1
+    image: tp1:latest
+    entrypoint: /build/restarter
+    environment:
+      - ID=1
+      - ADDRESS=restarter-1:14300
+      - REPLICAS=4
+    volumes:
+      - ./.node-config.csv:/work/.node-config.csv
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - gateway
+    networks:
+      - net
+  restarter-2:
+    container_name: restarter-2
+    image: tp1:latest
+    entrypoint: /build/restarter
+    environment:
+      - ID=2
+      - ADDRESS=restarter-2:14300
+      - REPLICAS=4
+    volumes:
+      - ./.node-config.csv:/work/.node-config.csv
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - gateway
+    networks:
+      - net
+  restarter-3:
+    container_name: restarter-3
+    image: tp1:latest
+    entrypoint: /build/restarter
+    environment:
+      - ID=3
+      - ADDRESS=restarter-3:14300
+      - REPLICAS=4
     volumes:
       - ./.node-config.csv:/work/.node-config.csv
       - /var/run/docker.sock:/var/run/docker.sock

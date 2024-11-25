@@ -24,7 +24,7 @@ const DECADE_FILTER = 1
 const GENRE_FITLER = 1
 const SCORE_FILTER = 1
 
-const RESTARTER = 1
+const RESTARTER = 4
 
 type Container struct {
 	Name string
