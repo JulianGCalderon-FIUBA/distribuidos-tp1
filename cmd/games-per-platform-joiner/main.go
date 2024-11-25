@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"distribuidos/tp1/database"
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/utils"
@@ -44,14 +45,27 @@ const (
 )
 
 type handler struct {
+	db         *database.Database
 	output     string
 	count      map[Platform]int
-	partitions int
+	partitions map[int]struct{}
 }
 
-func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte) error {
+func buildHandler(partition int) middleware.HandlerFunc[*handler] {
+	return func(h *handler, ch *middleware.Channel, data []byte) error {
+		return h.handlePartialResult(ch, data, partition)
+	}
+}
+
+func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte, partition int) error {
 	c, err := middleware.Deserialize[map[Platform]int](data)
-	h.partitions--
+	log.Infof("SEEN %v!!\n", partition)
+	if _, notSeen := h.partitions[partition]; !notSeen {
+		return nil
+	}
+
+	// save this on disk also
+	delete(h.partitions, partition)
 
 	if err != nil {
 		return err
@@ -61,7 +75,7 @@ func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte) error
 		h.count[k] += v
 	}
 
-	if h.partitions == 0 {
+	if len(h.partitions) == 0 {
 		return h.conclude(ch)
 	}
 
@@ -100,12 +114,22 @@ func main() {
 	conn, ch, err := middleware.Dial(cfg.RabbitIP)
 	utils.Expect(err, "Failed to dial rabbit")
 
-	qInput := middleware.PartialQ1
+	queues := make([]middleware.QueueConfig, 0)
+	endpoints := make(map[string]middleware.HandlerFunc[*handler], 0)
+
+	for i := 1; i <= cfg.Partitions; i++ {
+		qName := middleware.Cat(middleware.PartialQ1, i)
+		qcfg := middleware.QueueConfig{
+			Name: qName,
+		}
+		queues = append(queues, qcfg)
+		endpoints[qName] = buildHandler(i)
+	}
+
+	queues = append(queues, middleware.QueueConfig{Name: middleware.Results})
+
 	err = middleware.Topology{
-		Queues: []middleware.QueueConfig{
-			{Name: qInput},
-			{Name: middleware.Results},
-		},
+		Queues: queues,
 	}.Declare(ch)
 
 	if err != nil {
@@ -114,15 +138,23 @@ func main() {
 
 	nConfig := middleware.Config[*handler]{
 		Builder: func(clientID int) *handler {
+			database_path := middleware.Cat("client", clientID)
+			db, err := database.NewDatabase(database_path)
+			utils.Expect(err, "unrecoverable error")
+
+			partitions := make(map[int]struct{})
+			for i := 1; i <= cfg.Partitions; i++ {
+				partitions[i] = struct{}{}
+			}
+
 			return &handler{
+				db:         db,
 				output:     middleware.Results,
 				count:      make(map[Platform]int, 0),
-				partitions: cfg.Partitions,
+				partitions: partitions,
 			}
 		},
-		Endpoints: map[string]middleware.HandlerFunc[*handler]{
-			qInput: (*handler).handlePartialResult,
-		},
+		Endpoints: endpoints,
 	}
 
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)

@@ -50,7 +50,7 @@ const (
 type handler struct {
 	db        *database.Database
 	output    string
-	sequencer *middleware.Sequencer
+	sequencer *middleware.SequencerDisk
 }
 
 func (h *handler) handleGame(ch *middleware.Channel, data []byte) (err error) {
@@ -172,11 +172,12 @@ func main() {
 	conn, ch, err := middleware.Dial(cfg.RabbitIP)
 	utils.Expect(err, "Failed to dial rabbit")
 
-	qName := middleware.Cat(middleware.GamesQ1, "x", cfg.PartitionID)
+	inputQ := middleware.Cat(middleware.GamesQ1, "x", cfg.PartitionID)
+	outputQ := middleware.Cat(middleware.PartialQ1, cfg.PartitionID)
 	err = middleware.Topology{
 		Queues: []middleware.QueueConfig{
-			{Name: qName},
-			{Name: middleware.PartialQ1},
+			{Name: inputQ},
+			{Name: outputQ},
 		},
 	}.Declare(ch)
 	utils.Expect(err, "Failed to declare queues")
@@ -193,12 +194,12 @@ func main() {
 
 			return &handler{
 				db:        db,
-				output:    middleware.PartialQ1,
+				output:    outputQ,
 				sequencer: sequencer,
 			}
 		},
 		Endpoints: map[string]middleware.HandlerFunc[*handler]{
-			qName: (*handler).handleGame,
+			inputQ: (*handler).handleGame,
 		},
 	}
 
