@@ -85,6 +85,7 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 
 	err := n.config.Endpoints[d.Queue](h, ch, d.Body)
 	if ch.FinishFlag {
+		// todo: persistir cuales clientes terminaron
 		n.freeResources(clientID, h)
 	}
 
