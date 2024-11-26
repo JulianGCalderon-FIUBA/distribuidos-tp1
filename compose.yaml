@@ -26,20 +26,20 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-  # client-1:
-  #   container_name: client-1
-  #   image: tp1:latest
-  #   entrypoint: /build/client
-  #   environment:
-  #     - GATEWAY_CONN_ADDR=gateway:9001
-  #     - GATEWAY_DATA_ADDR=gateway:9002
-  #   volumes:
-  #     - ./.data:/work/.data
-  #     - ./.results-1:/work/.results
-  #   networks:
-  #     - net
-  #   depends_on:
-  #     - gateway
+  client-1:
+    container_name: client-1
+    image: tp1:latest
+    entrypoint: /build/client
+    environment:
+      - GATEWAY_CONN_ADDR=gateway:9001
+      - GATEWAY_DATA_ADDR=gateway:9002
+    volumes:
+      - ./.data:/work/.data
+      - ./.results-1:/work/.results
+    networks:
+      - net
+    depends_on:
+      - gateway
   genre-filter-1:
     container_name: genre-filter-1
     image: tp1:latest
@@ -58,7 +58,6 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - DECADE=2010
-      - ADDRESS=decade-filter-1:7000
     networks:
       - net
     depends_on:
@@ -69,7 +68,6 @@ services:
     entrypoint: /build/filter-score
     environment:
       - RABBIT_IP=rabbitmq
-      - ADDRESS=review-filter-1:7000
     networks:
       - net
     depends_on:
@@ -80,7 +78,6 @@ services:
     entrypoint: /build/filter-language
     environment:
       - RABBIT_IP=rabbitmq
-      - ADDRESS=language-filter-1:7000
     networks:
       - net
     depends_on:
@@ -93,7 +90,6 @@ services:
       - RABBIT_IP=rabbitmq
       - INPUT=games-Q1
       - PARTITIONS=1
-      - ADDRESS=q1-partitioner:7000
       - TYPE=game
     networks:
       - net
@@ -106,7 +102,6 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=1
-      - ADDRESS=q1-count-1:7000
     networks:
       - net
     depends_on:
@@ -118,7 +113,6 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITIONS=1
-      - ADDRESS=q1-joiner:7000
     networks:
       - net
     depends_on:
@@ -132,7 +126,6 @@ services:
       - INPUT=games-Q2
       - PARTITIONS=1
       - TYPE=game
-      - ADDRESS=q2-partitioner:7000
     networks:
       - net
     depends_on:
@@ -146,7 +139,6 @@ services:
       - PARTITION_ID=1
       - INPUT=games-Q2
       - TOP_N=10
-      - ADDRESS=q2-top-1:7000
     networks:
       - net
     depends_on:
@@ -160,7 +152,6 @@ services:
       - PARTITIONS=1
       - INPUT=partial-Q2-joiner
       - TOP_N=10
-      - ADDRESS=q2-joiner:7000
     networks:
       - net
     depends_on:
@@ -174,7 +165,6 @@ services:
       - INPUT=games-Q3
       - PARTITIONS=1
       - TYPE=game
-      - ADDRESS=q3-games-partitioner:7000
     networks:
       - net
     depends_on:
@@ -188,7 +178,6 @@ services:
       - INPUT=reviews-Q3
       - PARTITIONS=1
       - TYPE=review
-      - ADDRESS=q3-reviews-partitioner:7000
     networks:
       - net
     depends_on:
@@ -203,7 +192,6 @@ services:
       - GAME_INPUT=games-Q3
       - REVIEW_INPUT=reviews-Q3
       - OUTPUT=grouped-Q3-top
-      - ADDRESS=q3-group-1:7000
     volumes:
       - ./.backup/q3-group-1:/work
     networks:
@@ -218,7 +206,6 @@ services:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=1
       - N=5000
-      - ADDRESS=q3-top-1:7000
     networks:
       - net
     depends_on:
@@ -231,7 +218,6 @@ services:
       - RABBIT_IP=rabbitmq
       - TOP_N=5
       - PARTITIONS=1
-      - ADDRESS=q3-joiner:7000
     networks:
       - net
     depends_on:
@@ -245,7 +231,6 @@ services:
       - INPUT=games-Q4
       - PARTITIONS=1
       - TYPE=game
-      - ADDRESS=q4-games-partitioner:7000
     networks:
       - net
     depends_on:
@@ -259,7 +244,6 @@ services:
       - INPUT=reviews-Q4
       - PARTITIONS=1
       - TYPE=review
-      - ADDRESS=q4-reviews-partitioner:7000
     networks:
       - net
     depends_on:
@@ -274,7 +258,6 @@ services:
       - GAME_INPUT=games-Q4
       - REVIEW_INPUT=reviews-Q4
       - OUTPUT=grouped-Q4-joiner
-      - ADDRESS=q4-group-1:7000
     volumes:
       - ./.backup/q4-group-1:/work
     networks:
@@ -290,7 +273,6 @@ services:
       - PARTITIONS=1
       - INPUT=grouped-Q4-joiner
       - OUTPUT=grouped-Q4-filter
-      - ADDRESS=q4-joiner:7000
     networks:
       - net
     depends_on:
@@ -302,7 +284,6 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - N=5000
-      - ADDRESS=q4-filter:7000
     networks:
       - net
     depends_on:
@@ -316,7 +297,6 @@ services:
       - INPUT=games-Q5
       - PARTITIONS=1
       - TYPE=game
-      - ADDRESS=q5-games-partitioner:7000
     networks:
       - net
     depends_on:
@@ -330,7 +310,6 @@ services:
       - INPUT=reviews-Q5
       - PARTITIONS=1
       - TYPE=review
-      - ADDRESS=q5-reviews-partitioner:7000
     networks:
       - net
     depends_on:
@@ -345,7 +324,6 @@ services:
       - GAME_INPUT=games-Q5
       - REVIEW_INPUT=reviews-Q5
       - OUTPUT=grouped-Q5-joiner
-      - ADDRESS=q5-group-1:7000
     volumes:
       - ./.backup/q5-group-1:/work
     networks:
@@ -361,7 +339,6 @@ services:
       - PARTITIONS=1
       - INPUT=grouped-Q5-joiner
       - OUTPUT=grouped-Q5-percentil
-      - ADDRESS=q5-joiner:7000
     networks:
       - net
     depends_on:
@@ -373,7 +350,6 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PERCENTILE=90
-      - ADDRESS=q5-percentile:7000
     networks:
       - net
     depends_on:

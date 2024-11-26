@@ -18,7 +18,6 @@ var log = logging.MustGetLogger("log")
 type config struct {
 	RabbitIP   string
 	Partitions int
-	Address    string
 }
 
 func getConfig() (config, error) {
@@ -29,7 +28,6 @@ func getConfig() (config, error) {
 
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")
 	_ = v.BindEnv("Partitions", "PARTITIONS")
-	_ = v.BindEnv("Address", "ADDRESS")
 
 	var c config
 	err := v.Unmarshal(&c)
@@ -125,7 +123,6 @@ func main() {
 		Endpoints: map[string]middleware.HandlerFunc[*handler]{
 			qInput: (*handler).handlePartialResult,
 		},
-		Address: cfg.Address,
 	}
 
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)

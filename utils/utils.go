@@ -9,6 +9,10 @@ import (
 
 var log = logging.MustGetLogger("log")
 
+const NODE_PORT = 7000
+const RESTARTER_PORT = 14300
+const NODE_UDP_ADDR = "0.0.0.0:7000"
+
 // Fails if error is not nil, used for functions that
 // cannot fail (ej: rabbit communication)
 func Expect(err any, msg string) {

@@ -19,7 +19,6 @@ type config struct {
 	Output     string
 	Partitions int
 	Type       DataType
-	Address    string
 }
 
 type DataType string
@@ -40,7 +39,6 @@ func getConfig() (config, error) {
 	_ = v.BindEnv("Input", "INPUT")
 	_ = v.BindEnv("Output", "OUTPUT")
 	_ = v.BindEnv("Type", "TYPE")
-	_ = v.BindEnv("Address", "ADDRESS")
 
 	var c config
 	err := v.Unmarshal(&c)
@@ -83,7 +81,6 @@ func main() {
 		Queue:       cfg.Input,
 		Exchange:    cfg.Output,
 		QueuesByKey: make(map[string][]string),
-		Address:     cfg.Address,
 	}
 
 	for i := 1; i <= cfg.Partitions; i++ {

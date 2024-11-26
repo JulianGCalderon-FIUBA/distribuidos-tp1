@@ -17,7 +17,6 @@ import (
 type config struct {
 	RabbitIP string
 	N        int
-	Address  string
 }
 
 func getConfig() (config, error) {
@@ -28,7 +27,6 @@ func getConfig() (config, error) {
 
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")
 	_ = v.BindEnv("N", "N_REVIEWS")
-	_ = v.BindEnv("Address", "ADDRESS")
 
 	var c config
 	err := v.Unmarshal(&c)
@@ -122,7 +120,6 @@ func main() {
 		Endpoints: map[string]middleware.HandlerFunc[*handler]{
 			middleware.GroupedQ4Filter: (*handler).handleBatch,
 		},
-		Address: cfg.Address,
 	}
 
 	node, err := middleware.NewNode(nodeCfg, conn)

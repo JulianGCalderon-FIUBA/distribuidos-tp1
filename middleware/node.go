@@ -19,8 +19,6 @@ type Config[T Handler] struct {
 	Builder HandlerBuilder[T]
 	// Each queue is registered to a particular HandlerFunc
 	Endpoints map[string]HandlerFunc[T]
-
-	Address string
 }
 
 type Node[T Handler] struct {
@@ -130,14 +128,14 @@ func (n *Node[T]) freeResources(clientID int, h T) {
 }
 
 func (n *Node[T]) sendAlive(ctx context.Context) error {
-	udpAddr, err := net.ResolveUDPAddr("udp", n.config.Address)
+	udpAddr, err := net.ResolveUDPAddr("udp", utils.NODE_UDP_ADDR)
 	if err != nil {
 		return fmt.Errorf("Failed to resolve address: %v", err)
 	}
 
 	conn, err := net.ListenUDP("udp", udpAddr)
 	if err != nil {
-		return fmt.Errorf("failed to start listener on address %v: %v", n.config.Address, err)
+		return fmt.Errorf("failed to start listener on address %v: %v", utils.NODE_UDP_ADDR, err)
 	}
 
 	log.Infof("Listening in %v", udpAddr)

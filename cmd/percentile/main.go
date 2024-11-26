@@ -17,7 +17,6 @@ import (
 type config struct {
 	RabbitIP   string
 	Percentile int
-	Address    string
 }
 
 func getConfig() (config, error) {
@@ -28,7 +27,6 @@ func getConfig() (config, error) {
 
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")
 	_ = v.BindEnv("Percentile", "PERCENTILE")
-	_ = v.BindEnv("Address", "ADDRESS")
 
 	var c config
 	err := v.Unmarshal(&c)
@@ -110,7 +108,6 @@ func main() {
 		Endpoints: map[string]middleware.HandlerFunc[*handler]{
 			middleware.GroupedQ5Percentile: (*handler).handleBatch,
 		},
-		Address: cfg.Address,
 	}
 
 	node, err := middleware.NewNode(nodeCfg, conn)

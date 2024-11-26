@@ -22,7 +22,6 @@ type config struct {
 	ReviewInput string
 	Output      string
 	BatchSize   int
-	Address     string
 }
 
 func getConfig() (config, error) {
@@ -38,7 +37,6 @@ func getConfig() (config, error) {
 	_ = v.BindEnv("ReviewInput", "REVIEW_INPUT")
 	_ = v.BindEnv("Output", "OUTPUT")
 	_ = v.BindEnv("BatchSize", "BATCH_SIZE")
-	_ = v.BindEnv("Address", "ADDRESS")
 
 	var c config
 	err := v.Unmarshal(&c)
@@ -195,7 +193,6 @@ func main() {
 			gameInput:   (*handler).handleGame,
 			reviewInput: (*handler).handleReview,
 		},
-		Address: cfg.Address,
 	}
 
 	node, err := middleware.NewNode(nodeCfg, conn)

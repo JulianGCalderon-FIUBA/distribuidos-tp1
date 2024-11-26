@@ -18,7 +18,6 @@ type config struct {
 	RabbitIP    string
 	PartitionID int
 	N           int
-	Address     string
 }
 
 func getConfig() (config, error) {
@@ -31,7 +30,6 @@ func getConfig() (config, error) {
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")
 	_ = v.BindEnv("N", "N")
 	_ = v.BindEnv("PartitionID", "PARTITION_ID")
-	_ = v.BindEnv("Address", "ADDRESS")
 
 	var c config
 	err := v.Unmarshal(&c)
@@ -116,7 +114,6 @@ func main() {
 		Endpoints: map[string]middleware.HandlerFunc[*handler]{
 			qInput: (*handler).handleBatch,
 		},
-		Address: cfg.Address,
 	}
 
 	node, err := middleware.NewNode(nodeCfg, conn)

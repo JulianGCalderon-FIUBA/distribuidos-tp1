@@ -23,12 +23,12 @@ func getConfig() (config, error) {
 	v := viper.New()
 
 	v.SetDefault("Id", 0)
-	v.SetDefault("Address", "127.0.0.1:9000")
 	v.SetDefault("Replicas", 4)
 
 	_ = v.BindEnv("Id", "ID")
-	_ = v.BindEnv("Address", "ADDRESS")
+
 	_ = v.BindEnv("Replicas", "REPLICAS")
+	_ = v.BindEnv("Address", "ADDRESS")
 
 	var c config
 	err := v.Unmarshal(&c)

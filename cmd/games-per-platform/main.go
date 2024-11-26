@@ -16,7 +16,6 @@ var log = logging.MustGetLogger("log")
 type config struct {
 	RabbitIP    string
 	PartitionID int
-	Address     string
 }
 
 func getConfig() (config, error) {
@@ -27,7 +26,6 @@ func getConfig() (config, error) {
 
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")
 	_ = v.BindEnv("PartitionID", "PARTITION_ID")
-	_ = v.BindEnv("Address", "ADDRESS")
 
 	var c config
 	err := v.Unmarshal(&c)
@@ -117,7 +115,6 @@ func main() {
 		Endpoints: map[string]middleware.HandlerFunc[*handler]{
 			qName: (*handler).handleGame,
 		},
-		Address: cfg.Address,
 	}
 
 	node, err := middleware.NewNode(nodeCfg, conn)

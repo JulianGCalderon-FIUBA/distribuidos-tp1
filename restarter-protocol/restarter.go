@@ -10,7 +10,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -23,7 +22,6 @@ const MAX_ATTEMPTS = 3
 const MAX_PACKAGE_SIZE = 1024
 
 const RESTARTER_NAME = "restarter-"
-const RESTARTER_PORT = 14300
 
 var log = logging.MustGetLogger("log")
 
@@ -31,7 +29,7 @@ var ErrFallenNode = errors.New("Never got ack")
 
 type Restarter struct {
 	id           uint64
-	nodes        map[string]string
+	nodes        []string
 	replicas     uint64
 	conn         *net.UDPConn
 	ackMap       map[uint64]chan bool
@@ -43,7 +41,7 @@ type Restarter struct {
 	wg           *sync.WaitGroup
 }
 
-func readNodeConfig() (map[string]string, error) {
+func readNodeConfig() ([]string, error) {
 	file, err := os.Open(CONFIG_PATH)
 	if err != nil {
 		return nil, err
@@ -57,7 +55,7 @@ func readNodeConfig() (map[string]string, error) {
 		return nil, err
 	}
 
-	var nodes = make(map[string]string)
+	var nodes []string
 
 	for {
 		node, err := csvReader.Read()
@@ -72,8 +70,7 @@ func readNodeConfig() (map[string]string, error) {
 			return nil, err
 		}
 
-		port := node[1] // config file is guaranteed to have 2 fields for all its rows
-		nodes[node[0]] = port
+		nodes = append(nodes, node[0])
 	}
 	return nodes, nil
 }
@@ -112,13 +109,15 @@ func (r *Restarter) Start(ctx context.Context) error {
 		err = errors.Join(err, closeErr)
 	}()
 
+	log.Infof("Listening at %v", r.conn.LocalAddr().String())
+
 	go func() {
 		time.Sleep(3 * time.Second)
 		err := r.startElection(ctx)
 		utils.Expect(err, "Failed to start election")
 	}()
 
-	go r.monitorNode(ctx, fmt.Sprintf("%v%v", RESTARTER_NAME, (r.id+1)%r.replicas), RESTARTER_PORT)
+	go r.monitorNode(ctx, fmt.Sprintf("%v%v", RESTARTER_NAME, (r.id+1)%r.replicas), utils.RESTARTER_PORT)
 
 	r.read(ctx)
 
@@ -126,14 +125,11 @@ func (r *Restarter) Start(ctx context.Context) error {
 }
 
 func (r *Restarter) StartMonitoring(ctx context.Context) {
-	for node := range r.nodes {
+	for _, node := range r.nodes {
 		r.wg.Add(1)
 		go func(nodeName string) {
 			defer r.wg.Done()
-			time.Sleep(time.Second)
-			port, err := strconv.Atoi(r.nodes[nodeName])
-			utils.Expect(err, "Failed to parse port")
-			r.monitorNode(ctx, nodeName, port)
+			r.monitorNode(ctx, nodeName, utils.NODE_PORT)
 		}(node)
 	}
 	go func() {
