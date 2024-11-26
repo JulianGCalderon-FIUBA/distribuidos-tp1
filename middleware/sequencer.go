@@ -33,5 +33,5 @@ func (s *Sequencer) EOF() bool {
 
 func (s *Sequencer) Seen(id int) bool {
 	_, missing := s.missingIDs[id]
-	return id < s.latestID && !missing
+	return id <= s.latestID && !missing
 }

@@ -39,6 +39,10 @@ func (h *resultsHandler) handleQ4(ch *middleware.Channel, data []byte) error {
 		return err
 	}
 
+	if h.sequencer.Seen(batch.BatchID) {
+		return nil
+	}
+
 	h.sequencer.Mark(batch.BatchID, batch.EOF)
 
 	if len(batch.Data) > 0 {
