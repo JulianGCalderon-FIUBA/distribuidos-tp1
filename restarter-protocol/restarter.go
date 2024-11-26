@@ -249,11 +249,11 @@ func (r *Restarter) send(ctx context.Context, p Packet, addr *net.UDPAddr) error
 	r.mu.Unlock()
 	select {
 	case <-ch:
-		log.Infof("Received ack for message %v", p.Id)
+		// log.Infof("Received ack for message %v", p.Id)
 		r.mu.Lock()
 		delete(r.ackMap, p.Id)
 		r.mu.Unlock()
-	case <-time.After(time.Second):
+	case <-time.After(2 * time.Second):
 		log.Infof("Timeout, trying to send again message %v", p.Id)
 		return os.ErrDeadlineExceeded
 	case <-ctx.Done():
@@ -301,7 +301,7 @@ func (r *Restarter) newMsgId() uint64 {
 }
 
 func (r *Restarter) restartNode(ctx context.Context, containerName string) error {
-	if r.isNeighbor(containerName) {
+	if r.isRestarterNode(containerName) {
 		id := (r.id + 1) % r.replicas
 		if id == r.leaderId {
 			log.Infof("Leader has fallen, starting election")
@@ -319,6 +319,6 @@ func (r *Restarter) restartNode(ctx context.Context, containerName string) error
 	return err
 }
 
-func (r *Restarter) isNeighbor(containerName string) bool {
+func (r *Restarter) isRestarterNode(containerName string) bool {
 	return strings.Contains(containerName, RESTARTER_NAME)
 }
