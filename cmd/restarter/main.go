@@ -52,13 +52,14 @@ func main() {
 		for {
 			r.WaitLeader(true)
 			log.Infof("I am leader (id %v) and I woke up", cfg.Id)
+			monitorCtx, cancelMonitor := context.WithCancel(ctx)
+			r.StartMonitoring(monitorCtx)
 
-			// start reiniciar en go rutinas
-			r.StartMonitoring(ctx)
-
+			// stop monitoring
 			r.WaitLeader(false)
 			log.Infof("I am no longer leader (id %v)", cfg.Id)
-			// frenar trabajo -> shutdown a las go rutinas
+			cancelMonitor()
+			<-monitorCtx.Done()
 		}
 	}()
 	<-ctx.Done()
