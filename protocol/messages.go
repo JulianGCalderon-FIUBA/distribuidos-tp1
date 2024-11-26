@@ -58,12 +58,13 @@ type Q3Result struct {
 
 type Q4Result struct {
 	Games []middleware.GameStat
-	EOF   bool
 }
 
 type Q5Result struct {
 	Percentile90 []middleware.GameStat
-	EOF          bool
+}
+
+type Q4Finish struct {
 }
 
 func (q Q1Result) Header() []string { return []string{"Linux", "Mac", "Windows"} }
@@ -72,11 +73,14 @@ func (q Q3Result) Header() []string { return []string{"AppID", "Name", "Reviews"
 func (q Q4Result) Header() []string { return []string{"AppID", "Name", "Reviews"} }
 func (q Q5Result) Header() []string { return []string{"AppID", "Name", "Reviews"} }
 
+func (q Q4Finish) Header() []string { return []string{} }
+
 func (q Q1Result) Number() int { return 1 }
 func (q Q2Result) Number() int { return 2 }
 func (q Q3Result) Number() int { return 3 }
 func (q Q4Result) Number() int { return 4 }
 func (q Q5Result) Number() int { return 5 }
+func (q Q4Finish) Number() int { return 4 }
 
 func (q Q1Result) ToCSV() [][]string {
 	return [][]string{{
@@ -90,6 +94,8 @@ func (q Q2Result) ToCSV() [][]string { return GameStatsToCSV(q.TopN) }
 func (q Q3Result) ToCSV() [][]string { return GameStatsToCSV(q.TopN) }
 func (q Q4Result) ToCSV() [][]string { return GameStatsToCSV(q.Games) }
 func (q Q5Result) ToCSV() [][]string { return GameStatsToCSV(q.Percentile90) }
+
+func (q Q4Finish) ToCSV() [][]string { return [][]string{} }
 
 func GameStatsToCSV(s []middleware.GameStat) [][]string {
 	res := make([][]string, 0)
