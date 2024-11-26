@@ -11,15 +11,14 @@ import (
 	"errors"
 	"io"
 	"math"
+	"os"
 	"os/signal"
 	"sort"
 	"syscall"
 
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
+	"golang.org/x/exp/rand"
 )
-
-var log = logging.MustGetLogger("log")
 
 type config struct {
 	RabbitIP   string
@@ -104,21 +103,30 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 			return err
 		}
 	}
+	if rand.Float64() < 0.1 {
+		os.Exit(0)
+	}
 
 	if h.sequencer.EOF() {
-		err = h.conclude(ch)
+		err = h.conclude(ch, batch.Data)
 		if err != nil {
 			return err
 		}
 		ch.Finish()
 	}
+	if rand.Float64() < 0.1 {
+		os.Exit(0)
+	}
 	return nil
 }
 
-func (h *handler) conclude(ch *middleware.Channel) error {
+func (h *handler) conclude(ch *middleware.Channel, data []middleware.GameStat) error {
 	sorted, err := h.readData()
 	if err != nil {
 		return err
+	}
+	for _, stat := range data {
+		sorted = sortedInsert(sorted, stat)
 	}
 	n := float64(len(sorted))
 	index := max(0, int(math.Ceil(h.percentile/100.0*n))-1)
@@ -144,7 +152,7 @@ func (h *handler) readData() ([]middleware.GameStat, error) {
 			NameSize uint64
 		}{}
 		err := binary.Read(percentileFile, binary.LittleEndian, &header)
-		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -152,9 +160,6 @@ func (h *handler) readData() ([]middleware.GameStat, error) {
 		}
 		name := make([]byte, header.NameSize)
 		err = binary.Read(percentileFile, binary.LittleEndian, &name)
-		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-			break
-		}
 		if err != nil {
 			return nil, err
 		}
@@ -163,13 +168,17 @@ func (h *handler) readData() ([]middleware.GameStat, error) {
 			Name:  string(name),
 			Stat:  header.Stat,
 		}
-		i := sort.Search(len(sorted), func(i int) bool { return sorted[i].Stat >= stat.Stat })
-		sorted = append(sorted, middleware.GameStat{})
-		copy(sorted[i+1:], sorted[i:])
-		sorted[i] = stat
-
+		sorted = sortedInsert(sorted, stat)
 	}
 	return sorted, nil
+}
+
+func sortedInsert(sorted []middleware.GameStat, stat middleware.GameStat) []middleware.GameStat {
+	i := sort.Search(len(sorted), func(i int) bool { return sorted[i].Stat >= stat.Stat })
+	sorted = append(sorted, middleware.GameStat{})
+	copy(sorted[i+1:], sorted[i:])
+	sorted[i] = stat
+	return sorted
 }
 
 func (h *handler) Free() error {
