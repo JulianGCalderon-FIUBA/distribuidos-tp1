@@ -20,13 +20,12 @@ func (h *resultsHandler) handle(ch *middleware.Channel, data []byte) error {
 		return err
 	}
 
-	log.Infof("Received Q%v results", result.Number())
+	log.Infof("Sending Q%v results", result.Number())
 
 	h.ch <- result
 	h.results[result.Number()] = true
 
 	if len(h.results) == MAX_RESULTS {
-		log.Infof("Received all results")
 		close(h.ch)
 		return nil
 	}
@@ -43,7 +42,7 @@ func (h *resultsHandler) handleQ4(ch *middleware.Channel, data []byte) error {
 	h.sequencer.Mark(batch.BatchID, batch.EOF)
 
 	if len(batch.Data) > 0 {
-		log.Infof("Received Q4 results")
+		log.Infof("Sending Q4 results")
 		r := protocol.Q4Result{Games: batch.Data}
 		h.ch <- r
 	}
@@ -55,7 +54,6 @@ func (h *resultsHandler) handleQ4(ch *middleware.Channel, data []byte) error {
 	}
 
 	if len(h.results) == MAX_RESULTS {
-		log.Infof("Received all results")
 		close(h.ch)
 		return nil
 	}
