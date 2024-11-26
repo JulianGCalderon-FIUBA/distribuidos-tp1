@@ -20,7 +20,7 @@ func (h *resultsHandler) handle(ch *middleware.Channel, data []byte) error {
 		return err
 	}
 
-	log.Infof("Received results")
+	log.Infof("Received Q%v results", result.Number())
 
 	h.ch <- result
 	h.results[result.Number()] = true
