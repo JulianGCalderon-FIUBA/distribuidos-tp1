@@ -9,7 +9,7 @@ services:
     networks:
       - net
     healthcheck:
-      test: [ "CMD", "rabbitmqctl", "status" ]
+      test: ["CMD", "rabbitmqctl", "status"]
       interval: 5s
       timeout: 5s
       retries: 3
@@ -34,7 +34,7 @@ services:
       - GATEWAY_CONN_ADDR=gateway:9001
       - GATEWAY_DATA_ADDR=gateway:9002
     volumes:
-      - ./.data:/work/.data
+      - ./.data-reduced:/work/.data
       - ./.results-1:/work/.results
     networks:
       - net
