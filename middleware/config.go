@@ -73,6 +73,8 @@ const (
 	ReviewsQ4       string = "reviews-Q4"
 	GroupedQ4Joiner string = "grouped-Q4-joiner"
 	GroupedQ4Filter string = "grouped-Q4-filter"
+	KeyQ4           string = "Q4key"
+	ExchangeQ4      string = "Q4-x"
 )
 
 // Q5
@@ -85,7 +87,8 @@ const (
 
 // Results
 const (
-	Results string = "results"
+	Results   string = "results"
+	ResultsQ4 string = "results-q4"
 )
 
 func Cat(v ...any) string {
