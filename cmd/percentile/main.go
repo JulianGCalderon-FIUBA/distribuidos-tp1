@@ -11,13 +11,11 @@ import (
 	"errors"
 	"io"
 	"math"
-	"os"
 	"os/signal"
 	"sort"
 	"syscall"
 
 	"github.com/spf13/viper"
-	"golang.org/x/exp/rand"
 )
 
 type config struct {
@@ -103,9 +101,6 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 			return err
 		}
 	}
-	if rand.Float64() < 0.1 {
-		os.Exit(0)
-	}
 
 	if h.sequencer.EOF() {
 		err = h.conclude(ch, batch.Data)
@@ -114,9 +109,7 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 		}
 		ch.Finish()
 	}
-	if rand.Float64() < 0.1 {
-		os.Exit(0)
-	}
+
 	return nil
 }
 
