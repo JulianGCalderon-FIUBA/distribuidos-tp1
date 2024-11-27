@@ -40,47 +40,19 @@ services:
       - net
     depends_on:
       - gateway
-  client-2:
-    container_name: client-2
-    image: tp1:latest
-    entrypoint: /build/client
-    environment:
-      - GATEWAY_CONN_ADDR=gateway:9001
-      - GATEWAY_DATA_ADDR=gateway:9002
-    volumes:
-      - ./.data-reduced:/work/.data
-      - ./.results-2:/work/.results
-    networks:
-      - net
-    depends_on:
-      - gateway
-  client-3:
-    container_name: client-3
-    image: tp1:latest
-    entrypoint: /build/client
-    environment:
-      - GATEWAY_CONN_ADDR=gateway:9001
-      - GATEWAY_DATA_ADDR=gateway:9002
-    volumes:
-      - ./.data-reduced:/work/.data
-      - ./.results-3:/work/.results
-    networks:
-      - net
-    depends_on:
-      - gateway
-  genre-filter:
+  genre-filter-1:
+    container_name: genre-filter-1
     image: tp1:latest
     entrypoint: /build/filter-genre
     environment:
       - RABBIT_IP=rabbitmq
+      - ADDRESS=genre-filter-1:7000
     networks:
       - net
     depends_on:
       - gateway
-    deploy:
-      mode: replicated
-      replicas: 1
-  decade-filter:
+  decade-filter-1:
+    container_name: decade-filter-1
     image: tp1:latest
     entrypoint: /build/filter-decade
     environment:
@@ -90,10 +62,8 @@ services:
       - net
     depends_on:
       - gateway
-    deploy:
-      mode: replicated
-      replicas: 1
-  review-filter:
+  review-filter-1:
+    container_name: review-filter-1
     image: tp1:latest
     entrypoint: /build/filter-score
     environment:
@@ -102,10 +72,8 @@ services:
       - net
     depends_on:
       - gateway
-    deploy:
-      mode: replicated
-      replicas: 1
-  language-filter:
+  language-filter-1:
+    container_name: language-filter-1
     image: tp1:latest
     entrypoint: /build/filter-language
     environment:
@@ -114,9 +82,6 @@ services:
       - net
     depends_on:
       - gateway
-    deploy:
-      mode: replicated
-      replicas: 4
   q1-partitioner:
     container_name: q1-partitioner
     image: tp1:latest
@@ -398,7 +363,10 @@ services:
       - ADDRESS=restarter-0:14300
       - REPLICAS=4
     volumes:
+      - ./.node-config.csv:/work/.node-config.csv
       - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - gateway
     networks:
       - net
   restarter-1:
@@ -410,7 +378,10 @@ services:
       - ADDRESS=restarter-1:14300
       - REPLICAS=4
     volumes:
+      - ./.node-config.csv:/work/.node-config.csv
       - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - gateway
     networks:
       - net
   restarter-2:
@@ -422,7 +393,10 @@ services:
       - ADDRESS=restarter-2:14300
       - REPLICAS=4
     volumes:
+      - ./.node-config.csv:/work/.node-config.csv
       - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - gateway
     networks:
       - net
   restarter-3:
@@ -434,7 +408,10 @@ services:
       - ADDRESS=restarter-3:14300
       - REPLICAS=4
     volumes:
+      - ./.node-config.csv:/work/.node-config.csv
       - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - gateway
     networks:
       - net
 networks:
