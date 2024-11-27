@@ -24,7 +24,6 @@ func getConfig() (config, error) {
 
 	v.SetDefault("RabbitIP", "localhost")
 	v.SetDefault("BatchSize", "100")
-	v.SetDefault("Address", "genre-filter-1:7000")
 
 	_ = v.BindEnv("RabbitIP", "RABBIT_IP")
 	_ = v.BindEnv("BatchSize", "BATCH_SIZE")
