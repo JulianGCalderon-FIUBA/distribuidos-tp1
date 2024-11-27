@@ -1,9 +1,12 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"net"
 	"os"
+	"path"
 
 	"github.com/op/go-logging"
 )
@@ -36,4 +39,17 @@ func GetUDPAddr(host string, port int) (*net.UDPAddr, error) {
 		return nil, err
 	}
 	return udpAddr, nil
+}
+
+func OpenFileAll(name string, flag int, perm os.FileMode) (*os.File, error) {
+	file, err := os.OpenFile(name, flag, perm)
+	if errors.Is(err, fs.ErrNotExist) {
+		err = os.MkdirAll(path.Dir(name), 0750)
+		if err != nil {
+			return nil, err
+		}
+
+		file, err = os.OpenFile(name, flag, perm)
+	}
+	return file, err
 }

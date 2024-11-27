@@ -40,7 +40,8 @@ func (s *Snapshot) Get(k string) (*os.File, error) {
 
 // Creates a new entry for the given key. It will replace the old entry if it exists
 func (s *Snapshot) Create(k string) (*os.File, error) {
-	file, err := os.OpenFile(s.KeyPath(k), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0666)
+	file, err := utils.OpenFileAll(s.KeyPath(k), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0666)
+
 	if err != nil {
 		return nil, err
 	}
@@ -55,17 +56,17 @@ func (s *Snapshot) Create(k string) (*os.File, error) {
 // Fails if the entry has already been copied
 func (s *Snapshot) Update(k string) (*os.File, error) {
 	src, err := os.Open(s.db.KeyPath(k))
+	if errors.Is(err, fs.ErrNotExist) {
+		return s.Create(k)
+	}
 	if err != nil {
-		var pathError *fs.PathError
-		if errors.As(err, &pathError) {
-			return s.Create(k)
-		}
 		return nil, err
 	}
 	defer src.Close()
 
 	// O_EXCL asserts that file must not exist
-	dst, err := os.OpenFile(s.KeyPath(k), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0666)
+	dst, err := utils.OpenFileAll(s.KeyPath(k), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0666)
+
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +108,7 @@ func (s *Snapshot) Append(k string) (*os.File, error) {
 		return s.Create(k)
 	}
 
-	file, err := os.OpenFile(s.AppendKeyPath(k), os.O_WRONLY|os.O_APPEND|os.O_CREATE|os.O_EXCL, 0666)
+	file, err := utils.OpenFileAll(s.AppendKeyPath(k), os.O_WRONLY|os.O_APPEND|os.O_CREATE|os.O_EXCL, 0666)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +240,16 @@ func (s *Snapshot) commitFile(modified_path string, info fs.DirEntry, err error)
 
 	original_path := path.Join(s.db.root, rel_path)
 
-	return os.Rename(modified_path, original_path)
+	err = os.Rename(modified_path, original_path)
+	if errors.Is(err, fs.ErrNotExist) {
+		err = os.MkdirAll(path.Dir(original_path), 0750)
+		if err != nil {
+			return err
+		}
+		return os.Rename(modified_path, original_path)
+	}
+
+	return nil
 }
 
 // Commits the changes of an append file to the actual database
