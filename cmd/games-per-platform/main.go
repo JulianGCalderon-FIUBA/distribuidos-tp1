@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"distribuidos/tp1/database"
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/utils"
+	"encoding/binary"
+	"io"
 	"os/signal"
 	"syscall"
 
@@ -42,38 +45,109 @@ const (
 )
 
 type handler struct {
+	db        *database.Database
 	output    string
-	count     map[Platform]int
-	sequencer *utils.Sequencer
+	sequencer *middleware.SequencerDisk
 }
 
-func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
+func (h *handler) handleGame(ch *middleware.Channel, data []byte) (err error) {
+	snapshot, err := h.db.NewSnapshot()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		switch err {
+		case nil:
+			cerr := snapshot.Commit()
+			utils.Expect(cerr, "unrecoverable error")
+		default:
+			cerr := snapshot.Abort()
+			utils.Expect(cerr, "unrecoverable error")
+		}
+	}()
 
 	batch, err := middleware.Deserialize[middleware.Batch[middleware.Game]](data)
 	if err != nil {
 		return err
 	}
+	if h.sequencer.Seen(batch.BatchID) {
+		return nil
+	}
+	err = h.sequencer.MarkDisk(snapshot, batch.BatchID, batch.EOF)
+	if err != nil {
+		return err
+	}
 
-	h.sequencer.Mark(batch.BatchID, batch.EOF)
+	var windowsCounter uint64
+	var linuxCounter uint64
+	var macCounter uint64
 
-	for _, g := range batch.Data {
-		if g.Windows {
-			h.count[Windows] += 1
+	exists, err := snapshot.Exists("counter")
+	if err != nil {
+		return err
+	}
+	counterFile, err := snapshot.Update("counter")
+	if err != nil {
+		return err
+	}
+
+	if exists {
+		err = binary.Read(counterFile, binary.LittleEndian, &windowsCounter)
+		if err != nil {
+			return err
 		}
-		if g.Linux {
-			h.count[Linux] += 1
+		err = binary.Read(counterFile, binary.LittleEndian, &linuxCounter)
+		if err != nil {
+			return err
 		}
-		if g.Mac {
-			h.count[Mac] += 1
+		err = binary.Read(counterFile, binary.LittleEndian, &macCounter)
+		if err != nil {
+			return err
 		}
 	}
 
+	for _, g := range batch.Data {
+		if g.Windows {
+			windowsCounter += 1
+		}
+		if g.Linux {
+			linuxCounter += 1
+		}
+		if g.Mac {
+			macCounter += 1
+		}
+	}
+
+	_, err = counterFile.Seek(0, io.SeekStart)
+	if err != nil {
+		return err
+	}
+
+	err = binary.Write(counterFile, binary.LittleEndian, windowsCounter)
+	if err != nil {
+		return err
+	}
+	err = binary.Write(counterFile, binary.LittleEndian, linuxCounter)
+	if err != nil {
+		return err
+	}
+	err = binary.Write(counterFile, binary.LittleEndian, macCounter)
+	if err != nil {
+		return err
+	}
+
 	if h.sequencer.EOF() {
-		for k, v := range h.count {
+		count := map[Platform]int{
+			Windows: int(windowsCounter),
+			Linux:   int(linuxCounter),
+			Mac:     int(macCounter),
+		}
+
+		for k, v := range count {
 			log.Infof("Found %v games with %v support", v, string(k))
 		}
 
-		err := ch.Send(h.count, "", h.output)
+		err := ch.Send(count, "", h.output)
 		if err != nil {
 			return err
 		}
@@ -95,25 +169,34 @@ func main() {
 	conn, ch, err := middleware.Dial(cfg.RabbitIP)
 	utils.Expect(err, "Failed to dial rabbit")
 
-	qName := middleware.Cat(middleware.GamesQ1, "x", cfg.PartitionID)
+	inputQ := middleware.Cat(middleware.GamesQ1, "x", cfg.PartitionID)
+	outputQ := middleware.Cat(middleware.PartialQ1, cfg.PartitionID)
 	err = middleware.Topology{
 		Queues: []middleware.QueueConfig{
-			{Name: qName},
-			{Name: middleware.PartialQ1},
+			{Name: inputQ},
+			{Name: outputQ},
 		},
 	}.Declare(ch)
 	utils.Expect(err, "Failed to declare queues")
 
 	nodeCfg := middleware.Config[*handler]{
 		Builder: func(clientID int) *handler {
+			database_path := middleware.Cat("client", clientID)
+			db, err := database.NewDatabase(database_path)
+			utils.Expect(err, "unrecoverable error")
+
+			sequencer := middleware.NewSequencerDisk("sequencer")
+			err = sequencer.LoadDisk(db)
+			utils.Expect(err, "unrecoverable error")
+
 			return &handler{
-				count:     make(map[Platform]int),
-				output:    middleware.PartialQ1,
-				sequencer: utils.NewSequencer(),
+				db:        db,
+				output:    outputQ,
+				sequencer: sequencer,
 			}
 		},
 		Endpoints: map[string]middleware.HandlerFunc[*handler]{
-			qName: (*handler).handleGame,
+			inputQ: (*handler).handleGame,
 		},
 	}
 

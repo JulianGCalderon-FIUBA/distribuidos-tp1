@@ -46,8 +46,8 @@ func getConfig() (config, error) {
 
 type handler struct {
 	diskMap         *middleware.DiskMap
-	gameSequencer   *utils.Sequencer
-	reviewSequencer *utils.Sequencer
+	gameSequencer   *middleware.Sequencer
+	reviewSequencer *middleware.Sequencer
 	batchSize       int
 	output          string
 }
@@ -183,8 +183,8 @@ func main() {
 
 			return &handler{
 				diskMap:         diskMap,
-				gameSequencer:   utils.NewSequencer(),
-				reviewSequencer: utils.NewSequencer(),
+				gameSequencer:   middleware.NewSequencer(),
+				reviewSequencer: middleware.NewSequencer(),
 				batchSize:       cfg.BatchSize,
 				output:          output,
 			}

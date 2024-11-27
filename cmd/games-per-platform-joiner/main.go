@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"distribuidos/tp1/database"
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/utils"
+	"encoding/binary"
 	"encoding/gob"
+	"io"
 	"os/signal"
 	"syscall"
 
@@ -44,47 +47,115 @@ const (
 )
 
 type handler struct {
-	output     string
-	count      map[Platform]int
-	partitions int
+	db     *database.Database
+	output string
+	joiner *middleware.JoinerDisk
 }
 
-func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte) error {
+func buildHandler(partition int) middleware.HandlerFunc[*handler] {
+	return func(h *handler, ch *middleware.Channel, data []byte) error {
+		return h.handlePartialResult(ch, data, partition)
+	}
+}
+
+func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte, partition int) error {
+	snapshot, err := h.db.NewSnapshot()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		switch err {
+		case nil:
+			cerr := snapshot.Commit()
+			utils.Expect(cerr, "unrecoverable error")
+		default:
+			cerr := snapshot.Abort()
+			utils.Expect(cerr, "unrecoverable error")
+		}
+	}()
+
 	c, err := middleware.Deserialize[map[Platform]int](data)
-	h.partitions--
-
+	if h.joiner.Seen(partition) {
+		return nil
+	}
+	err = h.joiner.Mark(snapshot, partition)
 	if err != nil {
 		return err
 	}
 
-	for k, v := range c {
-		h.count[k] += v
+	var windowsCounter uint64
+	var linuxCounter uint64
+	var macCounter uint64
+
+	exists, err := snapshot.Exists("counter")
+	if err != nil {
+		return err
+	}
+	counterFile, err := snapshot.Update("counter")
+	if err != nil {
+		return err
+	}
+	if exists {
+		err = binary.Read(counterFile, binary.LittleEndian, &windowsCounter)
+		if err != nil {
+			return err
+		}
+		err = binary.Read(counterFile, binary.LittleEndian, &linuxCounter)
+		if err != nil {
+			return err
+		}
+		err = binary.Read(counterFile, binary.LittleEndian, &macCounter)
+		if err != nil {
+			return err
+		}
 	}
 
-	if h.partitions == 0 {
-		return h.conclude(ch)
-	}
+	windowsCounter += uint64(c[Windows])
+	linuxCounter += uint64(c[Linux])
+	macCounter += uint64(c[Mac])
 
-	return nil
-}
-
-func (h *handler) conclude(ch *middleware.Channel) error {
-	for k, v := range h.count {
-		log.Infof("Found %v games with %v support", v, string(k))
-	}
-
-	result := protocol.Q1Result{
-		Windows: h.count[Windows],
-		Linux:   h.count[Linux],
-		Mac:     h.count[Mac],
-	}
-
-	err := ch.SendAny(result, "", h.output)
+	_, err = counterFile.Seek(0, io.SeekStart)
 	if err != nil {
 		return err
 	}
 
-	ch.Finish()
+	err = binary.Write(counterFile, binary.LittleEndian, windowsCounter)
+	if err != nil {
+		return err
+	}
+	err = binary.Write(counterFile, binary.LittleEndian, linuxCounter)
+	if err != nil {
+		return err
+	}
+	err = binary.Write(counterFile, binary.LittleEndian, macCounter)
+	if err != nil {
+		return err
+	}
+
+	if h.joiner.EOF() {
+		count := map[Platform]int{
+			Windows: int(windowsCounter),
+			Linux:   int(linuxCounter),
+			Mac:     int(macCounter),
+		}
+		for k, v := range count {
+			log.Infof("Found %v games with %v support", v, string(k))
+		}
+
+		result := protocol.Q1Result{
+			Windows: int(windowsCounter),
+			Linux:   int(linuxCounter),
+			Mac:     int(macCounter),
+		}
+		err := ch.SendAny(result, "", h.output)
+		if err != nil {
+			return err
+		}
+
+		ch.Finish()
+		return nil
+	}
+
 	return nil
 }
 
@@ -100,12 +171,22 @@ func main() {
 	conn, ch, err := middleware.Dial(cfg.RabbitIP)
 	utils.Expect(err, "Failed to dial rabbit")
 
-	qInput := middleware.PartialQ1
+	queues := make([]middleware.QueueConfig, 0)
+	endpoints := make(map[string]middleware.HandlerFunc[*handler], 0)
+
+	for i := 1; i <= cfg.Partitions; i++ {
+		qName := middleware.Cat(middleware.PartialQ1, i)
+		qcfg := middleware.QueueConfig{
+			Name: qName,
+		}
+		queues = append(queues, qcfg)
+		endpoints[qName] = buildHandler(i)
+	}
+
+	queues = append(queues, middleware.QueueConfig{Name: middleware.Results})
+
 	err = middleware.Topology{
-		Queues: []middleware.QueueConfig{
-			{Name: qInput},
-			{Name: middleware.Results},
-		},
+		Queues: queues,
 	}.Declare(ch)
 
 	if err != nil {
@@ -114,15 +195,21 @@ func main() {
 
 	nConfig := middleware.Config[*handler]{
 		Builder: func(clientID int) *handler {
+			database_path := middleware.Cat("client", clientID)
+			db, err := database.NewDatabase(database_path)
+			utils.Expect(err, "unrecoverable error")
+
+			joiner := middleware.NewJoinerDisk("joiner", cfg.Partitions)
+			err = joiner.Load(db)
+			utils.Expect(err, "unrecoverable error")
+
 			return &handler{
-				output:     middleware.Results,
-				count:      make(map[Platform]int, 0),
-				partitions: cfg.Partitions,
+				db:     db,
+				output: middleware.Results,
+				joiner: joiner,
 			}
 		},
-		Endpoints: map[string]middleware.HandlerFunc[*handler]{
-			qInput: (*handler).handlePartialResult,
-		},
+		Endpoints: endpoints,
 	}
 
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)

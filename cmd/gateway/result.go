@@ -4,7 +4,6 @@ import (
 	"context"
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/protocol"
-	"distribuidos/tp1/utils"
 )
 
 const MAX_RESULTS = 5
@@ -12,7 +11,7 @@ const MAX_RESULTS = 5
 type resultsHandler struct {
 	ch        chan protocol.Result
 	results   map[int]bool
-	sequencer *utils.Sequencer
+	sequencer *middleware.Sequencer
 }
 
 func (h *resultsHandler) handle(ch *middleware.Channel, data []byte) error {
@@ -39,6 +38,10 @@ func (h *resultsHandler) handleQ4(ch *middleware.Channel, data []byte) error {
 	batch, err := middleware.Deserialize[middleware.Batch[middleware.GameStat]](data)
 	if err != nil {
 		return err
+	}
+
+	if h.sequencer.Seen(batch.BatchID) {
+		return nil
 	}
 
 	h.sequencer.Mark(batch.BatchID, batch.EOF)
@@ -77,7 +80,7 @@ func (g *gateway) startResultsEndpoint(ctx context.Context) error {
 		return &resultsHandler{
 			ch:        chanResults,
 			results:   make(map[int]bool),
-			sequencer: utils.NewSequencer(),
+			sequencer: middleware.NewSequencer(),
 		}
 	}
 
