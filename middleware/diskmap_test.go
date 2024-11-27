@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strconv"
 	"testing"
 )
 
@@ -37,7 +38,7 @@ func TestInsert(t *testing.T) {
 			Name:  "Stardew Valley",
 		},
 	} {
-		stat1, err := diskMap.Get(stat.AppID)
+		stat1, err := diskMap.Get(strconv.Itoa(int(stat.AppID)))
 		if err != nil {
 			t.Fatalf("Failed to get: %v", err)
 		}
@@ -50,7 +51,7 @@ func TestInsert(t *testing.T) {
 			t.Fatalf("Failed to insert: %v", err)
 		}
 
-		stat2, err := diskMap.Get(stat.AppID)
+		stat2, err := diskMap.Get(strconv.Itoa(int(stat.AppID)))
 		if err != nil {
 			t.Fatalf("Failed to get: %v", err)
 		}
@@ -98,7 +99,7 @@ func TestUpdate(t *testing.T) {
 			t.Fatalf("Failed to insert: %v", err)
 		}
 
-		stat1, err := diskMap.Get(stat.AppID)
+		stat1, err := diskMap.Get(strconv.Itoa(int(stat.AppID)))
 		if err != nil {
 			t.Fatalf("Failed to get: %v", err)
 		}
@@ -112,7 +113,7 @@ func TestUpdate(t *testing.T) {
 			t.Fatalf("Failed to insert: %v", err)
 		}
 
-		stat2, err := diskMap.Get(stat.AppID)
+		stat2, err := diskMap.Get(strconv.Itoa(int(stat.AppID)))
 		if err != nil {
 			t.Fatalf("Failed to get: %v", err)
 		}
@@ -159,7 +160,7 @@ func TestIncrement(t *testing.T) {
 
 		}
 
-		finalStat, err := diskMap.Get(stat.AppID)
+		finalStat, err := diskMap.Get(strconv.Itoa(int(stat.AppID)))
 		if err != nil {
 			t.Fatalf("Failed to get: %v", err)
 		}
@@ -206,7 +207,7 @@ func TestRename(t *testing.T) {
 				t.Fatalf("Failed to rename: %v", err)
 			}
 
-			renamedStat, err := diskMap.Get(stat.AppID)
+			renamedStat, err := diskMap.Get(strconv.Itoa(int(stat.AppID)))
 			if err != nil {
 				t.Fatalf("Failed to get: %v", err)
 			}
@@ -266,7 +267,7 @@ func TestAll(t *testing.T) {
 			t.Fatalf("Failed to rename: %v", err)
 		}
 
-		actualStat, err := diskMap.Get(stat.AppID)
+		actualStat, err := diskMap.Get(strconv.Itoa(int(stat.AppID)))
 		if err != nil {
 			t.Fatalf("Failed to get: %v", err)
 		}
