@@ -203,7 +203,7 @@ func (r *Restarter) read(ctx context.Context) {
 				}
 			}()
 		case KeepAlive:
-			log.Infof("Received keep alive from %v", recvAddr)
+			// log.Infof("Received keep alive from %v", recvAddr)
 			err = r.sendAck(recvAddr, packet.Id)
 			if err != nil {
 				log.Errorf("Failed to send ack: %v", err)
