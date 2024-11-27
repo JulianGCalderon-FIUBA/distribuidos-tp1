@@ -6,8 +6,10 @@ import (
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/utils"
 	"encoding/binary"
+	"io"
 	"os"
 	"os/signal"
+	"path"
 	"slices"
 	"strconv"
 	"syscall"
@@ -15,6 +17,8 @@ import (
 	logging "github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
+
+const GAMES_DIR = "games"
 
 var log = logging.MustGetLogger("log")
 
@@ -89,19 +93,18 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 	games := make(map[uint64]string)
 
 	for _, g := range batch.Data {
-		fname := strconv.Itoa(int(g.AppID))
-		exists, err := snapshot.Exists(fname)
+		path := path.Join(GAMES_DIR, strconv.Itoa(int(g.AppID)))
+		exists, err := snapshot.Exists(path)
 		if err != nil {
 			return err
 		}
-
 		if exists {
-			err = rename(snapshot, fname, g.Name)
+			err = rename(snapshot, path, g.Name)
 			if err != nil {
 				return err
 			}
 		} else {
-			err = insert(snapshot, fname, g)
+			err = insert(snapshot, path, g)
 			if err != nil {
 				return err
 			}
@@ -120,16 +123,16 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 	return nil
 }
 
-func rename(snapshot *database.Snapshot, fname string, name string) error {
-	statsFile, err := snapshot.Append(fname)
+func rename(snapshot *database.Snapshot, path string, name string) error {
+	statsFile, err := snapshot.Append(path)
 	if err != nil {
 		return err
 	}
 	return binary.Write(statsFile, binary.LittleEndian, []byte(name))
 }
 
-func insert(snapshot *database.Snapshot, fname string, g middleware.Game) error {
-	statsFile, err := snapshot.Create(fname)
+func insert(snapshot *database.Snapshot, path string, g middleware.Game) error {
+	statsFile, err := snapshot.Create(path)
 	if err != nil {
 		return err
 	}
@@ -166,8 +169,11 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 	if err != nil {
 		return err
 	}
+	/* log.Infof("Received review batch %v", batch.BatchID)
+	return nil */
 
 	if h.reviewSequencer.Seen(batch.BatchID) {
+		log.Infof("already seen batch %v", batch.BatchID)
 		return nil
 	}
 
@@ -182,12 +188,12 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 	}
 
 	for id, stat := range reviews {
-		fname := strconv.Itoa(int(id))
-		exists, err := snapshot.Exists(fname)
+		path := path.Join(GAMES_DIR, strconv.Itoa(int(id)))
+		exists, err := snapshot.Exists(path)
 		if err != nil {
 			return err
 		}
-		statsFile, err := snapshot.Update(fname)
+		statsFile, err := snapshot.Update(path)
 		if err != nil {
 			return err
 		}
@@ -277,7 +283,7 @@ func (h *handler) conclude(ch *middleware.Channel, reviews map[uint64]uint64, ga
 }
 
 func (h *handler) getAll(reviews map[uint64]uint64, games map[uint64]string) ([]middleware.GameStat, error) {
-	entries, err := os.ReadDir(h.db.DataDir())
+	entries, err := h.db.GetAll(GAMES_DIR)
 	if err != nil {
 		return nil, err
 	}
@@ -285,7 +291,11 @@ func (h *handler) getAll(reviews map[uint64]uint64, games map[uint64]string) ([]
 	stats := make([]middleware.GameStat, 0)
 
 	for _, e := range entries {
-		content, err := os.ReadFile(e.Name())
+		file, err := h.db.Get(e)
+		if err != nil {
+			return nil, err
+		}
+		content, err := io.ReadAll(file)
 		if err != nil {
 			return nil, err
 		}
