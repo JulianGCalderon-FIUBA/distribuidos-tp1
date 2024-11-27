@@ -169,11 +169,8 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 	if err != nil {
 		return err
 	}
-	/* log.Infof("Received review batch %v", batch.BatchID)
-	return nil */
 
 	if h.reviewSequencer.Seen(batch.BatchID) {
-		log.Infof("already seen batch %v", batch.BatchID)
 		return nil
 	}
 
