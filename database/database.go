@@ -69,6 +69,21 @@ func (db *Database) Exists(k string) (bool, error) {
 	return utils.PathExists(db.KeyPath(k))
 }
 
+func (db *Database) GetAll(k string) ([]string, error) {
+	files := make([]string, 0)
+	entries, err := os.ReadDir(db.KeyPath(k))
+	if err != nil {
+		return nil, nil
+	}
+
+	for _, e := range entries {
+		n := path.Join(k, e.Name())
+		files = append(files, n)
+	}
+
+	return files, nil
+}
+
 // auxiliary path functions
 
 func (db *Database) KeyPath(k string) string {
