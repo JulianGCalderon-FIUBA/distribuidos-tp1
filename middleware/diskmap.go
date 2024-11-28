@@ -17,7 +17,6 @@ type DiskMap struct {
 }
 
 func NewDiskMap(name string) (*DiskMap, error) {
-
 	db, err := database.NewDatabase(name)
 	if err != nil {
 		return nil, err
@@ -27,6 +26,11 @@ func NewDiskMap(name string) (*DiskMap, error) {
 		name: name,
 		db:   db,
 	}, nil
+}
+
+func (m *DiskMap) NewSequencer(name string) (*SequencerDisk, error) {
+	seq := NewSequencerDisk(name)
+	return seq, seq.LoadDisk(m.db)
 }
 
 func (m *DiskMap) NewSnapshot() (*database.Snapshot, error) {
@@ -66,20 +70,20 @@ func (m *DiskMap) Get(k string) (*GameStat, error) {
 
 }
 
-func (m *DiskMap) GetAll() ([]GameStat, error) {
+func (m *DiskMap) GetAll() ([]*GameStat, error) {
 	entries, err := m.db.GetAll(GAMES_DIR)
 	if err != nil {
 		return nil, err
 	}
 
-	stats := make([]GameStat, 0)
+	stats := make([]*GameStat, 0)
 
 	for _, e := range entries {
 		g, err := m.Get(path.Base(e))
 		if err != nil {
 			return nil, err
 		}
-		stats = append(stats, *g)
+		stats = append(stats, g)
 	}
 	return stats, nil
 }
