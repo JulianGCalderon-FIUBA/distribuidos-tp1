@@ -119,6 +119,7 @@ func main() {
 	utils.Expect(err, "Failed to dial rabbit")
 
 	qInput := middleware.Cat(cfg.Input, "x", cfg.PartitionId)
+	outputQ := middleware.Cat(middleware.PartialQ2, cfg.PartitionId)
 
 	err = middleware.Topology{
 		Queues: []middleware.QueueConfig{
@@ -147,7 +148,7 @@ func main() {
 
 			return &handler{
 				db:        db,
-				output:    middleware.PartialQ2,
+				output:    outputQ,
 				sequencer: sequencer,
 				topN:      topN,
 			}
