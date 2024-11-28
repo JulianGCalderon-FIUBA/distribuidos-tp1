@@ -13,34 +13,18 @@ const GAMES_DIR string = "games"
 
 type DiskMap struct {
 	name string
-	db   *database.Database
 }
 
-func NewDiskMap(name string) (*DiskMap, error) {
-	db, err := database.NewDatabase(name)
-	if err != nil {
-		return nil, err
-	}
-
+func NewDiskMap(name string) *DiskMap {
 	return &DiskMap{
 		name: name,
-		db:   db,
-	}, nil
+	}
 }
 
-func (m *DiskMap) NewSequencer(name string) (*SequencerDisk, error) {
-	seq := NewSequencerDisk(name)
-	return seq, seq.LoadDisk(m.db)
-}
-
-func (m *DiskMap) NewSnapshot() (*database.Snapshot, error) {
-	return m.db.NewSnapshot()
-}
-
-func (m *DiskMap) Get(k string) (*GameStat, error) {
+func (m *DiskMap) Get(db *database.Database, k string) (*GameStat, error) {
 	fileName := m.GamesPath(k)
 
-	file, err := m.db.Get(fileName)
+	file, err := db.Get(fileName)
 	if os.IsNotExist(err) {
 		return nil, nil
 	}
@@ -70,8 +54,8 @@ func (m *DiskMap) Get(k string) (*GameStat, error) {
 
 }
 
-func (m *DiskMap) GetAll() ([]*GameStat, error) {
-	entries, err := m.db.GetAll(GAMES_DIR)
+func (m *DiskMap) GetAll(db *database.Database) ([]*GameStat, error) {
+	entries, err := db.GetAll(GAMES_DIR)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +63,7 @@ func (m *DiskMap) GetAll() ([]*GameStat, error) {
 	stats := make([]*GameStat, 0)
 
 	for _, e := range entries {
-		g, err := m.Get(path.Base(e))
+		g, err := m.Get(db, path.Base(e))
 		if err != nil {
 			return nil, err
 		}

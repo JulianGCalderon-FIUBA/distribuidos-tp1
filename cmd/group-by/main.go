@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"distribuidos/tp1/database"
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/utils"
 	"os/signal"
@@ -46,6 +47,7 @@ func getConfig() (config, error) {
 }
 
 type handler struct {
+	db              *database.Database
 	diskMap         *middleware.DiskMap
 	gameSequencer   *middleware.SequencerDisk
 	reviewSequencer *middleware.SequencerDisk
@@ -55,7 +57,7 @@ type handler struct {
 }
 
 func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
-	snapshot, err := h.diskMap.NewSnapshot()
+	snapshot, err := h.db.NewSnapshot()
 	if err != nil {
 		return err
 	}
@@ -103,7 +105,7 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 }
 
 func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
-	snapshot, err := h.diskMap.NewSnapshot()
+	snapshot, err := h.db.NewSnapshot()
 	if err != nil {
 		return err
 	}
@@ -189,7 +191,7 @@ func (h *handler) conclude(ch *middleware.Channel, reviews map[uint64]uint64, ga
 }
 
 func (h *handler) getAll(reviews map[uint64]uint64, games map[uint64]string) ([]middleware.GameStat, error) {
-	stats, err := h.diskMap.GetAll()
+	stats, err := h.diskMap.GetAll(h.db)
 	if err != nil {
 		return nil, err
 	}
@@ -245,16 +247,21 @@ func main() {
 	nodeCfg := middleware.Config[*handler]{
 		Builder: func(clientID int) *handler {
 			database_path := middleware.Cat("client", clientID)
-
-			diskMap, err := middleware.NewDiskMap(database_path)
+			db, err := database.NewDatabase(database_path)
 			utils.Expect(err, "unrecoverable error")
 
-			gameSequencer, err := diskMap.NewSequencer("game-sequencer")
+			diskMap := middleware.NewDiskMap(database_path)
 			utils.Expect(err, "unrecoverable error")
-			reviewSequencer, err := diskMap.NewSequencer("review-sequencer")
+
+			gameSequencer := middleware.NewSequencerDisk("game-sequencer")
+			err = gameSequencer.LoadDisk(db)
+			utils.Expect(err, "unrecoverable error")
+			reviewSequencer := middleware.NewSequencerDisk("review-sequencer")
+			err = reviewSequencer.LoadDisk(db)
 			utils.Expect(err, "unrecoverable error")
 
 			return &handler{
+				db:              db,
 				diskMap:         diskMap,
 				gameSequencer:   gameSequencer,
 				reviewSequencer: reviewSequencer,
