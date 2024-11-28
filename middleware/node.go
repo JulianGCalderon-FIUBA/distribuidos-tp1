@@ -78,9 +78,6 @@ func (n *Node[T]) Run(ctx context.Context) error {
 				return err
 			}
 		case <-ctx.Done():
-			for clientId, h := range n.clients {
-				n.freeResources(clientId, h)
-			}
 			return nil
 		}
 	}
