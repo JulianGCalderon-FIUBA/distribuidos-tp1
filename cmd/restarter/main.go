@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/op/go-logging"
+	logging "github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
 
@@ -23,12 +23,12 @@ func getConfig() (config, error) {
 	v := viper.New()
 
 	v.SetDefault("Id", 0)
-	v.SetDefault("Address", "127.0.0.1:9000")
 	v.SetDefault("Replicas", 4)
 
 	_ = v.BindEnv("Id", "ID")
-	_ = v.BindEnv("Address", "ADDRESS")
+
 	_ = v.BindEnv("Replicas", "REPLICAS")
+	_ = v.BindEnv("Address", "ADDRESS")
 
 	var c config
 	err := v.Unmarshal(&c)
@@ -40,24 +40,27 @@ func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to get config")
 
-	l := restarter.NewLeaderElection(cfg.Id, cfg.Address, cfg.Replicas)
+	r := restarter.NewRestarter(cfg.Address, cfg.Id, cfg.Replicas)
 
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 
 	go func() {
-		err = l.Start(ctx)
+		err = r.Start(ctx)
 		utils.Expect(err, "Failed to start leader election")
 	}()
 	go func() {
 		for {
-			l.WaitLeader(true)
+			r.WaitLeader(true)
 			log.Infof("I am leader (id %v) and I woke up", cfg.Id)
-			// start reiniciar en go rutinas
-			l.WaitLeader(false)
+			monitorCtx, cancelMonitor := context.WithCancel(ctx)
+			r.StartMonitoring(monitorCtx)
+
+			// stop monitoring
+			r.WaitLeader(false)
 			log.Infof("I am no longer leader (id %v)", cfg.Id)
-			// frenar trabajo -> shutdown a las go rutinas
+			cancelMonitor()
+			<-monitorCtx.Done()
 		}
 	}()
-
 	<-ctx.Done()
 }

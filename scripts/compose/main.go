@@ -2,10 +2,16 @@ package main
 
 import (
 	"distribuidos/tp1/middleware"
+	"encoding/csv"
 	"fmt"
+	"os"
+
+	logging "github.com/op/go-logging"
 )
 
-const CLIENT = 3
+var log = logging.MustGetLogger("log")
+
+const CLIENT = 1
 
 const Q1 = 1
 const Q2 = 1
@@ -13,12 +19,14 @@ const Q3 = 1
 const Q4 = 1
 const Q5 = 1
 
-const LANGUAGE_FILTER = 4
+const LANGUAGE_FILTER = 1
 const DECADE_FILTER = 1
 const GENRE_FITLER = 1
 const SCORE_FILTER = 1
 
 const RESTARTER = 4
+
+var names []string
 
 func main() {
 	generateInit()
@@ -36,6 +44,39 @@ func main() {
 	generateQ5()
 	generateRestarter()
 	generateNet()
+
+	writeNodeConfig(".node-config.csv")
+}
+
+func addNodeConfig(name string) {
+	names = append(names, name)
+}
+
+func writeNodeConfig(filename string) {
+	file, err := os.Create(filename)
+	if err != nil {
+		log.Errorf("Error creating file: %v\n", err)
+		return
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	err = writer.Write([]string{"name"})
+	if err != nil {
+		log.Errorf("Error writing file: %v", err)
+		return
+	}
+
+	for _, containerName := range names {
+		err = writer.Write([]string{containerName})
+		if err != nil {
+			log.Errorf("Error writing file: %v", err)
+			return
+		}
+	}
+	log.Infof("Nodes configuration written to %s\n", filename)
 }
 
 func generateInit() {
@@ -73,6 +114,7 @@ func generateGateway() {
 	fmt.Println("    depends_on:")
 	fmt.Println("      rabbitmq:")
 	fmt.Println("        condition: service_healthy")
+	addNodeConfig("gateway")
 }
 
 func generateClient() {
@@ -95,64 +137,69 @@ func generateClient() {
 }
 
 func generateGenreFilter() {
-	fmt.Println("  genre-filter:")
-	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /build/filter-genre")
-	fmt.Println("    environment:")
-	fmt.Println("      - RABBIT_IP=rabbitmq")
-	fmt.Println("    networks:")
-	fmt.Println("      - net")
-	fmt.Println("    depends_on:")
-	fmt.Println("      - gateway")
-	fmt.Println("    deploy:")
-	fmt.Println("      mode: replicated")
-	fmt.Printf("      replicas: %v\n", GENRE_FITLER)
+	for i := 1; i <= GENRE_FITLER; i++ {
+		fmt.Printf("  genre-filter-%v:\n", i)
+		fmt.Printf("    container_name: genre-filter-%v\n", i)
+		fmt.Println("    image: tp1:latest")
+		fmt.Println("    entrypoint: /build/filter-genre")
+		fmt.Println("    environment:")
+		fmt.Println("      - RABBIT_IP=rabbitmq")
+		fmt.Printf("      - ADDRESS=genre-filter-%v:7000\n", i)
+		fmt.Println("    networks:")
+		fmt.Println("      - net")
+		fmt.Println("    depends_on:")
+		fmt.Println("      - gateway")
+		addNodeConfig(fmt.Sprintf("genre-filter-%v", i))
+	}
 }
 
 func generateDecadeFilter() {
-	fmt.Println("  decade-filter:")
-	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /build/filter-decade")
-	fmt.Println("    environment:")
-	fmt.Println("      - RABBIT_IP=rabbitmq")
-	fmt.Println("      - DECADE=2010")
-	fmt.Println("    networks:")
-	fmt.Println("      - net")
-	fmt.Println("    depends_on:")
-	fmt.Println("      - gateway")
-	fmt.Println("    deploy:")
-	fmt.Println("      mode: replicated")
-	fmt.Printf("      replicas: %v\n", DECADE_FILTER)
+	for i := 1; i <= DECADE_FILTER; i++ {
+		fmt.Printf("  decade-filter-%v:\n", i)
+		fmt.Printf("    container_name: decade-filter-%v\n", i)
+		fmt.Println("    image: tp1:latest")
+		fmt.Println("    entrypoint: /build/filter-decade")
+		fmt.Println("    environment:")
+		fmt.Println("      - RABBIT_IP=rabbitmq")
+		fmt.Println("      - DECADE=2010")
+		fmt.Println("    networks:")
+		fmt.Println("      - net")
+		fmt.Println("    depends_on:")
+		fmt.Println("      - gateway")
+		addNodeConfig(fmt.Sprintf("decade-filter-%v", i))
+	}
 }
 
 func generateScoreFilter() {
-	fmt.Println("  review-filter:")
-	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /build/filter-score")
-	fmt.Println("    environment:")
-	fmt.Println("      - RABBIT_IP=rabbitmq")
-	fmt.Println("    networks:")
-	fmt.Println("      - net")
-	fmt.Println("    depends_on:")
-	fmt.Println("      - gateway")
-	fmt.Println("    deploy:")
-	fmt.Println("      mode: replicated")
-	fmt.Printf("      replicas: %v\n", SCORE_FILTER)
+	for i := 1; i <= SCORE_FILTER; i++ {
+		fmt.Printf("  review-filter-%v:\n", i)
+		fmt.Printf("    container_name: review-filter-%v\n", i)
+		fmt.Println("    image: tp1:latest")
+		fmt.Println("    entrypoint: /build/filter-score")
+		fmt.Println("    environment:")
+		fmt.Println("      - RABBIT_IP=rabbitmq")
+		fmt.Println("    networks:")
+		fmt.Println("      - net")
+		fmt.Println("    depends_on:")
+		fmt.Println("      - gateway")
+		addNodeConfig(fmt.Sprintf("review-filter-%v", i))
+	}
 }
 
 func generateLanguageFilter() {
-	fmt.Println("  language-filter:")
-	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /build/filter-language")
-	fmt.Println("    environment:")
-	fmt.Println("      - RABBIT_IP=rabbitmq")
-	fmt.Println("    networks:")
-	fmt.Println("      - net")
-	fmt.Println("    depends_on:")
-	fmt.Println("      - gateway")
-	fmt.Println("    deploy:")
-	fmt.Println("      mode: replicated")
-	fmt.Printf("      replicas: %v\n", LANGUAGE_FILTER)
+	for i := 1; i <= LANGUAGE_FILTER; i++ {
+		fmt.Printf("  language-filter-%v:\n", i)
+		fmt.Printf("    container_name: language-filter-%v\n", i)
+		fmt.Println("    image: tp1:latest")
+		fmt.Println("    entrypoint: /build/filter-language")
+		fmt.Println("    environment:")
+		fmt.Println("      - RABBIT_IP=rabbitmq")
+		fmt.Println("    networks:")
+		fmt.Println("      - net")
+		fmt.Println("    depends_on:")
+		fmt.Println("      - gateway")
+		addNodeConfig(fmt.Sprintf("language-filter-%v", i))
+	}
 }
 
 func generateQ1() {
@@ -169,6 +216,7 @@ func generateQ1() {
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
 	fmt.Println("      - gateway")
+	addNodeConfig("q1-partitioner")
 	for i := 1; i <= Q1; i++ {
 		fmt.Printf("  q1-count-%v:\n", i)
 		fmt.Printf("    container_name: q1-count-%v\n", i)
@@ -181,6 +229,7 @@ func generateQ1() {
 		fmt.Println("      - net")
 		fmt.Println("    depends_on:")
 		fmt.Println("      - gateway")
+		addNodeConfig(fmt.Sprintf("q1-count-%v", i))
 	}
 	fmt.Println("  q1-joiner:")
 	fmt.Println("    container_name: q1-joiner")
@@ -193,6 +242,7 @@ func generateQ1() {
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
 	fmt.Println("      - gateway")
+	addNodeConfig("q1-joiner")
 }
 
 func generateQ2() {
@@ -209,6 +259,7 @@ func generateQ2() {
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
 	fmt.Println("      - gateway")
+	addNodeConfig("q2-partitioner")
 	for i := 1; i <= Q2; i++ {
 		fmt.Printf("  q2-top-%v:\n", i)
 		fmt.Printf("    container_name: q2-top-%v\n", i)
@@ -223,6 +274,7 @@ func generateQ2() {
 		fmt.Println("      - net")
 		fmt.Println("    depends_on:")
 		fmt.Println("      - gateway")
+		addNodeConfig(fmt.Sprintf("q2-top-%v", i))
 	}
 	fmt.Println("  q2-joiner:")
 	fmt.Println("    container_name: q2-joiner")
@@ -237,6 +289,7 @@ func generateQ2() {
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
 	fmt.Println("      - gateway")
+	addNodeConfig("q2-joiner")
 }
 
 func generateQ3() {
@@ -253,6 +306,7 @@ func generateQ3() {
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
 	fmt.Println("      - gateway")
+	addNodeConfig("q3-games-partitioner")
 
 	fmt.Println("  q3-reviews-partitioner:")
 	fmt.Println("    container_name: q3-reviews-partitioner")
@@ -267,6 +321,7 @@ func generateQ3() {
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
 	fmt.Println("      - gateway")
+	addNodeConfig("q3-reviews-partitioner")
 
 	for i := 1; i <= Q3; i++ {
 		fmt.Printf("  q3-group-%v:\n", i)
@@ -285,6 +340,7 @@ func generateQ3() {
 		fmt.Println("      - net")
 		fmt.Println("    depends_on:")
 		fmt.Println("      - gateway")
+		addNodeConfig(fmt.Sprintf("q3-group-%v", i))
 
 		fmt.Printf("  q3-top-%v:\n", i)
 		fmt.Printf("    container_name: q3-top-%v\n", i)
@@ -298,6 +354,7 @@ func generateQ3() {
 		fmt.Println("      - net")
 		fmt.Println("    depends_on:")
 		fmt.Println("      - gateway")
+		addNodeConfig(fmt.Sprintf("q3-top-%v", i))
 	}
 	fmt.Println("  q3-joiner:")
 	fmt.Println("    container_name: q3-joiner")
@@ -311,6 +368,7 @@ func generateQ3() {
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
 	fmt.Println("      - gateway")
+	addNodeConfig("q3-joiner")
 }
 
 func generateQ4() {
@@ -327,6 +385,7 @@ func generateQ4() {
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
 	fmt.Println("      - gateway")
+	addNodeConfig("q4-games-partitioner")
 
 	fmt.Println("  q4-reviews-partitioner:")
 	fmt.Println("    container_name: q4-reviews-partitioner")
@@ -341,6 +400,7 @@ func generateQ4() {
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
 	fmt.Println("      - gateway")
+	addNodeConfig("q4-reviews-partitioner")
 
 	for i := 1; i <= Q4; i++ {
 		fmt.Printf("  q4-group-%v:\n", i)
@@ -359,6 +419,7 @@ func generateQ4() {
 		fmt.Println("      - net")
 		fmt.Println("    depends_on:")
 		fmt.Println("      - gateway")
+		addNodeConfig(fmt.Sprintf("q4-group-%v", i))
 	}
 
 	fmt.Println("  q4-joiner:")
@@ -374,6 +435,7 @@ func generateQ4() {
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
 	fmt.Println("      - gateway")
+	addNodeConfig("q4-joiner")
 
 	fmt.Println("  q4-filter:")
 	fmt.Println("    container_name: q4-filter")
@@ -386,6 +448,7 @@ func generateQ4() {
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
 	fmt.Println("      - gateway")
+	addNodeConfig("q4-filter")
 }
 
 func generateQ5() {
@@ -402,6 +465,7 @@ func generateQ5() {
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
 	fmt.Println("      - gateway")
+	addNodeConfig("q5-games-partitioner")
 
 	fmt.Println("  q5-reviews-partitioner:")
 	fmt.Println("    container_name: q5-reviews-partitioner")
@@ -416,6 +480,7 @@ func generateQ5() {
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
 	fmt.Println("      - gateway")
+	addNodeConfig("q5-reviews-partitioner")
 
 	for i := 1; i <= Q5; i++ {
 		fmt.Printf("  q5-group-%v:\n", i)
@@ -434,6 +499,7 @@ func generateQ5() {
 		fmt.Println("      - net")
 		fmt.Println("    depends_on:")
 		fmt.Println("      - gateway")
+		addNodeConfig(fmt.Sprintf("q5-group-%v", i))
 	}
 
 	fmt.Println("  q5-joiner:")
@@ -449,6 +515,7 @@ func generateQ5() {
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
 	fmt.Println("      - gateway")
+	addNodeConfig("q5-joiner")
 
 	fmt.Println("  q5-percentile:")
 	fmt.Println("    container_name: q5-percentile")
@@ -461,6 +528,7 @@ func generateQ5() {
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
 	fmt.Println("      - gateway")
+	addNodeConfig("q5-percentile")
 }
 
 func generateRestarter() {
@@ -474,7 +542,10 @@ func generateRestarter() {
 		fmt.Printf("      - ADDRESS=restarter-%v:14300\n", i)
 		fmt.Printf("      - REPLICAS=%v\n", RESTARTER)
 		fmt.Println("    volumes:")
+		fmt.Println("      - ./.node-config.csv:/work/.node-config.csv")
 		fmt.Println("      - /var/run/docker.sock:/var/run/docker.sock")
+		fmt.Println("    depends_on:")
+		fmt.Println("      - gateway")
 		fmt.Println("    networks:")
 		fmt.Println("      - net")
 	}

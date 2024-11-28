@@ -18,8 +18,8 @@ compose-up: compose-down docker-build
 .PHONY: compose-up
 
 compose-down:
-	docker compose -f compose.yaml stop -t 20
-	docker compose -f compose.yaml down
+	docker compose -f compose.yaml stop -t 2
+	docker compose -f compose.yaml down --remove-orphans
 .PHONY: compose-down
 
 compose-logs:

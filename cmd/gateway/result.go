@@ -19,6 +19,9 @@ func (h *resultsHandler) handle(ch *middleware.Channel, data []byte) error {
 	if err != nil {
 		return err
 	}
+	if h.results[result.Number()] {
+		return nil
+	}
 
 	log.Infof("Sending Q%v results", result.Number())
 
