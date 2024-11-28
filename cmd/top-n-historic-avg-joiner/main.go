@@ -1,14 +1,13 @@
 package main
 
 import (
-	"container/heap"
 	"context"
+	"distribuidos/tp1/database"
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/utils"
 	"encoding/gob"
 	"os/signal"
-	"sort"
 	"syscall"
 
 	"github.com/op/go-logging"
@@ -42,10 +41,10 @@ func getConfig() (config, error) {
 }
 
 type handler struct {
+	db         *database.Database
 	output     string
-	topN       int
-	topNGames  middleware.GameHeap
-	eofs       map[int]struct{}
+	topN       *middleware.TopNDisk
+	joiner     *middleware.JoinerDisk
 	partitions int
 }
 
@@ -55,26 +54,44 @@ func buildHandler(partition int) middleware.HandlerFunc[*handler] {
 	}
 }
 func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte, partition int) error {
+	snapshot, err := h.db.NewSnapshot()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		switch err {
+		case nil:
+			cerr := snapshot.Commit()
+			utils.Expect(cerr, "unrecoverable error")
+		default:
+			cerr := snapshot.Abort()
+			utils.Expect(cerr, "unrecoverable error")
+		}
+	}()
+
 	partial, err := middleware.Deserialize[[]middleware.GameStat](data)
 	if err != nil {
 		return err
 	}
 
-	if _, seen := h.eofs[partition]; seen {
+	if h.joiner.Seen(partition) {
 		return nil
 	}
-	h.eofs[partition] = struct{}{}
-
-	for _, g := range partial {
-		if h.topNGames.Len() < h.topN {
-			heap.Push(&h.topNGames, g)
-		} else if g.Stat > h.topNGames.Peek().Stat {
-			heap.Pop(&h.topNGames)
-			heap.Push(&h.topNGames, g)
-		}
+	err = h.joiner.Mark(snapshot, partition)
+	if err != nil {
+		return err
 	}
 
-	if h.partitions == len(h.eofs) {
+	for _, gStat := range partial {
+		h.topN.Put(gStat)
+	}
+
+	err = h.topN.Save(snapshot)
+	if err != nil {
+		return err
+	}
+
+	if h.joiner.EOF() {
 		log.Infof("Received all partial results")
 		return h.conclude(ch)
 	}
@@ -82,16 +99,9 @@ func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte, parti
 }
 
 func (h *handler) conclude(ch *middleware.Channel) error {
-	sortedGames := make([]middleware.GameStat, 0, h.topNGames.Len())
-	for h.topNGames.Len() > 0 {
-		sortedGames = append(sortedGames, heap.Pop(&h.topNGames).(middleware.GameStat))
-	}
+	games := h.topN.Get()
 
-	sort.Slice(sortedGames, func(i, j int) bool {
-		return sortedGames[i].Stat > sortedGames[j].Stat
-	})
-
-	result := protocol.Q2Result{TopN: sortedGames}
+	result := protocol.Q2Result{TopN: games}
 	err := ch.SendAny(result, "", h.output)
 	if err != nil {
 		return err
@@ -136,11 +146,23 @@ func main() {
 
 	nConfig := middleware.Config[*handler]{
 		Builder: func(clientID int) *handler {
+			database_path := middleware.Cat("client", clientID)
+			db, err := database.NewDatabase(database_path)
+			utils.Expect(err, "unrecoverable error")
+
+			joiner := middleware.NewJoinerDisk("joiner", cfg.Partitions)
+			err = joiner.Load(db)
+			utils.Expect(err, "unrecoverable error")
+
+			topN := middleware.NewTopNDisk("TopN", cfg.TopN)
+			err = topN.LoadDisk(db)
+			utils.Expect(err, "unrecoverable error")
+
 			return &handler{
+				db:         db,
 				output:     middleware.Results,
-				topN:       cfg.TopN,
-				topNGames:  make([]middleware.GameStat, 0, cfg.TopN),
-				eofs:       make(map[int]struct{}),
+				joiner:     joiner,
+				topN:       topN,
 				partitions: cfg.Partitions,
 			}
 		},
