@@ -117,14 +117,14 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 	return d.Ack(false)
 }
 
-func (n *Node[T]) freeResources(clientID int, h T) {
-	log.Infof("Freeing resources for client %v", clientID)
-	err := h.Free()
-	if err != nil {
-		log.Errorf("Error freeing handler files: %v", err)
-	}
-	delete(n.clients, clientID)
-}
+// func (n *Node[T]) freeResources(clientID int, h T) {
+// 	log.Infof("Freeing resources for client %v", clientID)
+// 	err := h.Free()
+// 	if err != nil {
+// 		log.Errorf("Error freeing handler files: %v", err)
+// 	}
+// 	delete(n.clients, clientID)
+// }
 
 func (n *Node[T]) sendAlive(ctx context.Context) error {
 	udpAddr, err := net.ResolveUDPAddr("udp", utils.NODE_UDP_ADDR)
