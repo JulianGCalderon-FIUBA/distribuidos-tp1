@@ -59,7 +59,7 @@ func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte) error
 	for _, g := range partial {
 		if h.topNGames.Len() < h.topN {
 			heap.Push(&h.topNGames, g)
-		} else if g.Stat > h.topNGames.Peek().(middleware.GameStat).Stat {
+		} else if g.Stat > h.topNGames.Peek().Stat {
 			heap.Pop(&h.topNGames)
 			heap.Push(&h.topNGames, g)
 		}

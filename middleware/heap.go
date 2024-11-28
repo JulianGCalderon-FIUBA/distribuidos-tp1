@@ -19,6 +19,6 @@ func (g *GameHeap) Pop() any {
 	return x
 }
 
-func (g *GameHeap) Peek() any {
+func (g *GameHeap) Peek() GameStat {
 	return (*g)[0]
 }

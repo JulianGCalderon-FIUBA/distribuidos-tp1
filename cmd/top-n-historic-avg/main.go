@@ -58,7 +58,7 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 				Name:  g.Name,
 				Stat:  g.AveragePlaytimeForever,
 			})
-		} else if g.AveragePlaytimeForever > h.results.Peek().(middleware.GameStat).Stat {
+		} else if g.AveragePlaytimeForever > h.results.Peek().Stat {
 			heap.Pop(&h.results)
 			heap.Push(&h.results, middleware.GameStat{
 				AppID: g.AppID,
