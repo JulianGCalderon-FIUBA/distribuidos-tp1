@@ -11,7 +11,7 @@ import (
 
 var log = logging.MustGetLogger("log")
 
-const CLIENT = 1
+const CLIENT = 3
 
 const Q1 = 1
 const Q2 = 1
