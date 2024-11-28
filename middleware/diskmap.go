@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"distribuidos/tp1/database"
-	"distribuidos/tp1/utils"
 	"encoding/binary"
 	"io"
 	"os"
@@ -28,6 +27,10 @@ func NewDiskMap(name string) (*DiskMap, error) {
 		name: name,
 		db:   db,
 	}, nil
+}
+
+func (m *DiskMap) NewSnapshot() (*database.Snapshot, error) {
+	return m.db.NewSnapshot()
 }
 
 func (m *DiskMap) Get(k string) (*GameStat, error) {
@@ -81,21 +84,8 @@ func (m *DiskMap) GetAll() ([]GameStat, error) {
 	return stats, nil
 }
 
-func (m *DiskMap) Insert(stat GameStat) error {
-	snapshot, err := m.db.NewSnapshot()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		switch err {
-		case nil:
-			cerr := snapshot.Commit()
-			utils.Expect(cerr, "unrecoverable error")
-		default:
-			cerr := snapshot.Abort()
-			utils.Expect(cerr, "unrecoverable error")
-		}
-	}()
+func (m *DiskMap) Insert(snapshot *database.Snapshot, stat GameStat) error {
+
 	path := m.GamesPath(strconv.Itoa(int(stat.AppID)))
 	file, err := snapshot.Create(path)
 	if err != nil {
@@ -115,21 +105,7 @@ func (m *DiskMap) Insert(stat GameStat) error {
 	return binary.Write(file, binary.LittleEndian, []byte(stat.Name))
 }
 
-func (m *DiskMap) Increment(id uint64, value uint64) error {
-	snapshot, err := m.db.NewSnapshot()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		switch err {
-		case nil:
-			cerr := snapshot.Commit()
-			utils.Expect(cerr, "unrecoverable error")
-		default:
-			cerr := snapshot.Abort()
-			utils.Expect(cerr, "unrecoverable error")
-		}
-	}()
+func (m *DiskMap) Increment(snapshot *database.Snapshot, id uint64, value uint64) error {
 
 	path := m.GamesPath(strconv.Itoa(int(id)))
 	exists, err := snapshot.Exists(path)
@@ -165,25 +141,12 @@ func (m *DiskMap) Increment(id uint64, value uint64) error {
 	return binary.Write(file, binary.LittleEndian, value)
 }
 
-func (m *DiskMap) Rename(id uint64, name string) error {
-	snapshot, err := m.db.NewSnapshot()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		switch err {
-		case nil:
-			cerr := snapshot.Commit()
-			utils.Expect(cerr, "unrecoverable error")
-		default:
-			cerr := snapshot.Abort()
-			utils.Expect(cerr, "unrecoverable error")
-		}
-	}()
+func (m *DiskMap) Rename(snapshot *database.Snapshot, id uint64, name string) error {
+
 	path := m.GamesPath(strconv.Itoa(int(id)))
 	file, err := snapshot.Update(path)
 	if os.IsNotExist(err) {
-		return m.Insert(GameStat{
+		return m.Insert(snapshot, GameStat{
 			AppID: id,
 			Name:  name,
 		})
