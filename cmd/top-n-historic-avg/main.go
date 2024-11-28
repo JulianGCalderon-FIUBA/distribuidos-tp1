@@ -1,12 +1,11 @@
 package main
 
 import (
-	"container/heap"
 	"context"
+	"distribuidos/tp1/database"
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/utils"
 	"os/signal"
-	"sort"
 	"syscall"
 
 	"github.com/spf13/viper"
@@ -37,35 +36,53 @@ func getConfig() (config, error) {
 }
 
 type handler struct {
+	db        *database.Database
 	output    string
-	topN      int
-	results   middleware.GameHeap
-	sequencer *middleware.Sequencer
+	topN      *middleware.TopNDisk
+	sequencer *middleware.SequencerDisk
 }
 
 func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
+	snapshot, err := h.db.NewSnapshot()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		switch err {
+		case nil:
+			cerr := snapshot.Commit()
+			utils.Expect(cerr, "unrecoverable error")
+		default:
+			cerr := snapshot.Abort()
+			utils.Expect(cerr, "unrecoverable error")
+		}
+	}()
+
 	batch, err := middleware.Deserialize[middleware.Batch[middleware.Game]](data)
 	if err != nil {
 		return err
 	}
 
-	h.sequencer.Mark(batch.BatchID, batch.EOF)
+	if h.sequencer.Seen(batch.BatchID) {
+		return nil
+	}
+	err = h.sequencer.MarkDisk(snapshot, batch.BatchID, batch.EOF)
+	if err != nil {
+		return err
+	}
 
 	for _, g := range batch.Data {
-		if h.results.Len() < h.topN {
-			heap.Push(&h.results, middleware.GameStat{
-				AppID: g.AppID,
-				Name:  g.Name,
-				Stat:  g.AveragePlaytimeForever,
-			})
-		} else if g.AveragePlaytimeForever > h.results.Peek().Stat {
-			heap.Pop(&h.results)
-			heap.Push(&h.results, middleware.GameStat{
-				AppID: g.AppID,
-				Name:  g.Name,
-				Stat:  g.AveragePlaytimeForever,
-			})
+		gStat := middleware.GameStat{
+			AppID: g.AppID,
+			Name:  g.Name,
+			Stat:  g.AveragePlaytimeForever,
 		}
+		h.topN.Put(gStat)
+	}
+
+	err = h.topN.Save(snapshot)
+	if err != nil {
+		return err
 	}
 
 	if h.sequencer.EOF() {
@@ -80,16 +97,9 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 }
 
 func (h *handler) conclude(ch *middleware.Channel) error {
-	sortedGames := make([]middleware.GameStat, 0, h.results.Len())
-	for h.results.Len() > 0 {
-		sortedGames = append(sortedGames, heap.Pop(&h.results).(middleware.GameStat))
-	}
+	games := h.topN.Get()
 
-	sort.Slice(sortedGames, func(i, j int) bool {
-		return sortedGames[i].Stat > sortedGames[j].Stat
-	})
-
-	err := ch.Send(sortedGames, "", h.output)
+	err := ch.Send(games, "", h.output)
 	if err != nil {
 		return err
 	}
@@ -123,11 +133,23 @@ func main() {
 
 	nodeCfg := middleware.Config[*handler]{
 		Builder: func(clientID int) *handler {
+			database_path := middleware.Cat("client", clientID)
+			db, err := database.NewDatabase(database_path)
+			utils.Expect(err, "unrecoverable error")
+
+			sequencer := middleware.NewSequencerDisk("sequencer")
+			err = sequencer.LoadDisk(db)
+			utils.Expect(err, "unrecoverable error")
+
+			topN := middleware.NewTopNDisk("TopN", cfg.TopN)
+			err = topN.LoadDisk(db)
+			utils.Expect(err, "unrecoverable error")
+
 			return &handler{
+				db:        db,
 				output:    middleware.PartialQ2,
-				topN:      cfg.TopN,
-				results:   make(middleware.GameHeap, cfg.TopN),
-				sequencer: middleware.NewSequencer(),
+				sequencer: sequencer,
+				topN:      topN,
 			}
 		},
 		Endpoints: map[string]middleware.HandlerFunc[*handler]{
