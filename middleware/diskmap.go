@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"distribuidos/tp1/database"
-	"distribuidos/tp1/utils"
 	"encoding/binary"
 	"io"
 	"os"
@@ -13,27 +12,26 @@ import (
 const GAMES_DIR string = "games"
 
 type DiskMap struct {
-	name string
-	db   *database.Database
+	games   map[uint64]string
+	reviews map[uint64]uint64
 }
 
-func NewDiskMap(name string) (*DiskMap, error) {
-
-	db, err := database.NewDatabase(name)
-	if err != nil {
-		return nil, err
-	}
-
+func NewDiskMap() *DiskMap {
 	return &DiskMap{
-		name: name,
-		db:   db,
-	}, nil
+		games:   make(map[uint64]string),
+		reviews: make(map[uint64]uint64),
+	}
 }
 
-func (m *DiskMap) Get(k string) (*GameStat, error) {
+func (m *DiskMap) Start() {
+	clear(m.games)
+	clear(m.reviews)
+}
+
+func (m *DiskMap) Get(db *database.Database, k string) (*GameStat, error) {
 	fileName := m.GamesPath(k)
 
-	file, err := m.db.Get(fileName)
+	file, err := db.Get(fileName)
 	if os.IsNotExist(err) {
 		return nil, nil
 	}
@@ -55,16 +53,26 @@ func (m *DiskMap) Get(k string) (*GameStat, error) {
 		return nil, err
 	}
 
+	value, ok := m.reviews[header.AppId]
+	if ok {
+		header.Stat += value
+	}
+	name := string(content[n:])
+	gname, ok := m.games[header.AppId]
+	if ok {
+		name = gname
+	}
+
 	return &GameStat{
 		AppID: header.AppId,
 		Stat:  header.Stat,
-		Name:  string(content[n:]),
+		Name:  name,
 	}, nil
 
 }
 
-func (m *DiskMap) GetAll() ([]GameStat, error) {
-	entries, err := m.db.GetAll(GAMES_DIR)
+func (m *DiskMap) GetAll(db *database.Database) ([]GameStat, error) {
+	entries, err := db.GetAll(GAMES_DIR)
 	if err != nil {
 		return nil, err
 	}
@@ -72,30 +80,18 @@ func (m *DiskMap) GetAll() ([]GameStat, error) {
 	stats := make([]GameStat, 0)
 
 	for _, e := range entries {
-		g, err := m.Get(path.Base(e))
+		g, err := m.Get(db, path.Base(e))
 		if err != nil {
 			return nil, err
 		}
+
 		stats = append(stats, *g)
 	}
 	return stats, nil
 }
 
-func (m *DiskMap) Insert(stat GameStat) error {
-	snapshot, err := m.db.NewSnapshot()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		switch err {
-		case nil:
-			cerr := snapshot.Commit()
-			utils.Expect(cerr, "unrecoverable error")
-		default:
-			cerr := snapshot.Abort()
-			utils.Expect(cerr, "unrecoverable error")
-		}
-	}()
+func (m *DiskMap) Insert(snapshot *database.Snapshot, stat GameStat) error {
+	m.games[stat.AppID] = stat.Name
 	path := m.GamesPath(strconv.Itoa(int(stat.AppID)))
 	file, err := snapshot.Create(path)
 	if err != nil {
@@ -115,22 +111,8 @@ func (m *DiskMap) Insert(stat GameStat) error {
 	return binary.Write(file, binary.LittleEndian, []byte(stat.Name))
 }
 
-func (m *DiskMap) Increment(id uint64, value uint64) error {
-	snapshot, err := m.db.NewSnapshot()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		switch err {
-		case nil:
-			cerr := snapshot.Commit()
-			utils.Expect(cerr, "unrecoverable error")
-		default:
-			cerr := snapshot.Abort()
-			utils.Expect(cerr, "unrecoverable error")
-		}
-	}()
-
+func (m *DiskMap) Increment(snapshot *database.Snapshot, id uint64, value uint64) error {
+	m.reviews[id] = value
 	path := m.GamesPath(strconv.Itoa(int(id)))
 	exists, err := snapshot.Exists(path)
 	if err != nil {
@@ -165,29 +147,10 @@ func (m *DiskMap) Increment(id uint64, value uint64) error {
 	return binary.Write(file, binary.LittleEndian, value)
 }
 
-func (m *DiskMap) Rename(id uint64, name string) error {
-	snapshot, err := m.db.NewSnapshot()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		switch err {
-		case nil:
-			cerr := snapshot.Commit()
-			utils.Expect(cerr, "unrecoverable error")
-		default:
-			cerr := snapshot.Abort()
-			utils.Expect(cerr, "unrecoverable error")
-		}
-	}()
+func (m *DiskMap) Rename(snapshot *database.Snapshot, id uint64, name string) error {
+	m.games[id] = name
 	path := m.GamesPath(strconv.Itoa(int(id)))
 	file, err := snapshot.Update(path)
-	if os.IsNotExist(err) {
-		return m.Insert(GameStat{
-			AppID: id,
-			Name:  name,
-		})
-	}
 	if err != nil {
 		return err
 	}

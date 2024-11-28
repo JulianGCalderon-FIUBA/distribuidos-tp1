@@ -5,13 +5,8 @@ import (
 	"distribuidos/tp1/database"
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/utils"
-	"encoding/binary"
-	"io"
-	"os"
 	"os/signal"
-	"path"
 	"slices"
-	"strconv"
 	"syscall"
 
 	logging "github.com/op/go-logging"
@@ -53,6 +48,7 @@ func getConfig() (config, error) {
 
 type handler struct {
 	db              *database.Database
+	diskMap         *middleware.DiskMap
 	gameSequencer   *middleware.SequencerDisk
 	reviewSequencer *middleware.SequencerDisk
 
@@ -76,6 +72,8 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 		}
 	}()
 
+	h.diskMap.Start()
+
 	batch, err := middleware.Deserialize[middleware.Batch[middleware.Game]](data)
 	if err != nil {
 		return err
@@ -90,26 +88,8 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 		return err
 	}
 
-	games := make(map[uint64]string)
-
 	for _, g := range batch.Data {
-		path := path.Join(GAMES_DIR, strconv.Itoa(int(g.AppID)))
-		exists, err := snapshot.Exists(path)
-		if err != nil {
-			return err
-		}
-		if exists {
-			err = rename(snapshot, path, g.Name)
-			if err != nil {
-				return err
-			}
-		} else {
-			err = insert(snapshot, path, g)
-			if err != nil {
-				return err
-			}
-		}
-		games[g.AppID] = g.Name
+		err = h.diskMap.Rename(snapshot, g.AppID, g.Name)
 	}
 
 	if h.gameSequencer.EOF() {
@@ -117,36 +97,10 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 	}
 
 	if h.gameSequencer.EOF() && h.reviewSequencer.EOF() {
-		return h.conclude(ch, nil, games)
+		return h.conclude(ch)
 	}
 
 	return nil
-}
-
-func rename(snapshot *database.Snapshot, path string, name string) error {
-	statsFile, err := snapshot.Append(path)
-	if err != nil {
-		return err
-	}
-	return binary.Write(statsFile, binary.LittleEndian, []byte(name))
-}
-
-func insert(snapshot *database.Snapshot, path string, g middleware.Game) error {
-	statsFile, err := snapshot.Create(path)
-	if err != nil {
-		return err
-	}
-	header := struct {
-		AppId uint64
-		Stats uint64
-	}{
-		AppId: g.AppID,
-	}
-	err = binary.Write(statsFile, binary.LittleEndian, header)
-	if err != nil {
-		return nil
-	}
-	return binary.Write(statsFile, binary.LittleEndian, []byte(g.Name))
 }
 
 func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
@@ -164,6 +118,8 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 			utils.Expect(cerr, "unrecoverable error")
 		}
 	}()
+
+	h.diskMap.Start()
 
 	batch, err := middleware.Deserialize[middleware.Batch[middleware.Review]](data)
 	if err != nil {
@@ -185,35 +141,7 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 	}
 
 	for id, stat := range reviews {
-		path := path.Join(GAMES_DIR, strconv.Itoa(int(id)))
-		exists, err := snapshot.Exists(path)
-		if err != nil {
-			return err
-		}
-		statsFile, err := snapshot.Update(path)
-		if err != nil {
-			return err
-		}
-
-		header := struct {
-			Id   uint64
-			Stat uint64
-		}{
-			Id:   id,
-			Stat: stat,
-		}
-
-		if exists {
-			err = binary.Read(statsFile, binary.LittleEndian, &header)
-			if err != nil {
-				return err
-			}
-			stat += header.Stat
-		}
-		err = increment(statsFile, id, stat)
-		if err != nil {
-			return err
-		}
+		err = h.diskMap.Increment(snapshot, id, stat)
 	}
 
 	if h.reviewSequencer.EOF() {
@@ -221,33 +149,17 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 	}
 
 	if h.reviewSequencer.EOF() && h.gameSequencer.EOF() {
-		return h.conclude(ch, reviews, nil)
+		return h.conclude(ch)
 	}
 
 	return nil
 }
 
-func increment(statsFile *os.File, id uint64, stat uint64) error {
-	_, err := statsFile.Seek(0, 0)
+func (h *handler) conclude(ch *middleware.Channel) error {
+	stats, err := h.getAll()
 	if err != nil {
 		return err
 	}
-	err = binary.Write(statsFile, binary.LittleEndian, id)
-	if err != nil {
-		return err
-	}
-	return binary.Write(statsFile, binary.LittleEndian, stat)
-}
-
-func (h *handler) conclude(ch *middleware.Channel, reviews map[uint64]uint64, games map[uint64]string) error {
-	stats, err := h.getAll(reviews, games)
-	if err != nil {
-		return err
-	}
-
-	stats = slices.DeleteFunc(stats, func(g middleware.GameStat) bool {
-		return g.Stat == 0 || g.Name == ""
-	})
 
 	batch := middleware.Batch[middleware.GameStat]{
 		Data:    []middleware.GameStat{},
@@ -279,56 +191,15 @@ func (h *handler) conclude(ch *middleware.Channel, reviews map[uint64]uint64, ga
 	return nil
 }
 
-func (h *handler) getAll(reviews map[uint64]uint64, games map[uint64]string) ([]middleware.GameStat, error) {
-	entries, err := h.db.GetAll(GAMES_DIR)
+func (h *handler) getAll() ([]middleware.GameStat, error) {
+	stats, err := h.diskMap.GetAll(h.db)
 	if err != nil {
 		return nil, err
 	}
 
-	stats := make([]middleware.GameStat, 0)
-
-	for _, e := range entries {
-		file, err := h.db.Get(e)
-		if err != nil {
-			return nil, err
-		}
-		content, err := io.ReadAll(file)
-		if err != nil {
-			return nil, err
-		}
-
-		var header struct {
-			AppId uint64
-			Stat  uint64
-		}
-		n, err := binary.Decode(content, binary.LittleEndian, &header)
-		if err != nil {
-			return nil, err
-		}
-
-		if reviews != nil {
-			stat, ok := reviews[header.AppId]
-			if ok {
-				header.Stat += stat
-			}
-		}
-
-		name := string(content[n:])
-
-		if games != nil {
-			gname, ok := games[header.AppId]
-			if ok {
-				name = gname
-			}
-		}
-
-		g := middleware.GameStat{
-			AppID: header.AppId,
-			Stat:  header.Stat,
-			Name:  name,
-		}
-		stats = append(stats, g)
-	}
+	stats = slices.DeleteFunc(stats, func(g middleware.GameStat) bool {
+		return g.Stat == 0 || g.Name == ""
+	})
 
 	return stats, nil
 }
@@ -362,6 +233,9 @@ func main() {
 			db, err := database.NewDatabase(database_path)
 			utils.Expect(err, "unrecoverable error")
 
+			diskMap := middleware.NewDiskMap()
+			utils.Expect(err, "unrecoverable error")
+
 			gameSequencer := middleware.NewSequencerDisk("game-sequencer")
 			err = gameSequencer.LoadDisk(db)
 			utils.Expect(err, "unrecoverable error")
@@ -371,6 +245,7 @@ func main() {
 
 			return &handler{
 				db:              db,
+				diskMap:         diskMap,
 				gameSequencer:   gameSequencer,
 				reviewSequencer: reviewSequencer,
 				batchSize:       cfg.BatchSize,
