@@ -147,7 +147,7 @@ func (r *Restarter) monitorNode(ctx context.Context, containerName string, port 
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(time.Duration(rand.Intn(2000)+1000) * time.Millisecond):
+		case <-time.After(time.Duration(rand.Intn(4000)+3000) * time.Millisecond):
 			msg := KeepAlive{}
 			addr, _ := utils.GetUDPAddr(containerName, port)
 			err := r.safeSend(ctx, msg, addr)
