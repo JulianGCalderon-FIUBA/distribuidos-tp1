@@ -53,10 +53,20 @@ func (m *DiskMap) Get(db *database.Database, k string) (*GameStat, error) {
 		return nil, err
 	}
 
+	value, ok := m.reviews[header.AppId]
+	if ok {
+		header.Stat += value
+	}
+	name := string(content[n:])
+	gname, ok := m.games[header.AppId]
+	if ok {
+		name = gname
+	}
+
 	return &GameStat{
 		AppID: header.AppId,
 		Stat:  header.Stat,
-		Name:  string(content[n:]),
+		Name:  name,
 	}, nil
 
 }
@@ -73,16 +83,6 @@ func (m *DiskMap) GetAll(db *database.Database) ([]GameStat, error) {
 		g, err := m.Get(db, path.Base(e))
 		if err != nil {
 			return nil, err
-		}
-
-		value, ok := m.reviews[g.AppID]
-		if ok {
-			g.Stat += value
-		}
-
-		name, ok := m.games[g.AppID]
-		if ok {
-			g.Name = name
 		}
 
 		stats = append(stats, *g)
