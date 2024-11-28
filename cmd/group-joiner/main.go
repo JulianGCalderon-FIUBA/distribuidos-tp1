@@ -77,7 +77,10 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte, partition int
 	}
 
 	if h.eofReceived == h.totalPartitions {
-		b := middleware.Batch[middleware.GameStat]{EOF: true}
+		b := middleware.Batch[middleware.GameStat]{
+			BatchID: h.lastBatchId,
+			EOF:     true,
+		}
 		err := ch.Send(b, "", h.output)
 		if err != nil {
 			return err
