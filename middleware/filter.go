@@ -19,13 +19,14 @@ type FilterConfig struct {
 type FilterFunc[T any] func(record T) []string
 
 type filterHandler[T any] struct {
-	input      string
-	output     string
-	clientID   int
-	filter     FilterFunc[T]
-	partitions map[string]Batch[T]
-	stats      map[string]int
-	sequencer  *utils.Sequencer
+	input        string
+	output       string
+	clientID     int
+	filter       FilterFunc[T]
+	partitions   map[string]Batch[T]
+	stats        map[string]int
+	sequencer    *utils.Sequencer
+	outputConfig Output
 }
 
 func (h *filterHandler[T]) handle(ch *Channel, data []byte) error {
@@ -82,6 +83,7 @@ func NewFilter[T any](config FilterConfig, f FilterFunc[T]) (*Node[*filterHandle
 		Type: amqp.ExchangeDirect,
 	}
 
+	allKeys := make([]string, 0)
 	queueConfigs := make([]QueueConfig, 0)
 	for queue, keys := range transpose(config.QueuesByKey) {
 		queueConfig := QueueConfig{
@@ -91,8 +93,14 @@ func NewFilter[T any](config FilterConfig, f FilterFunc[T]) (*Node[*filterHandle
 			},
 		}
 		queueConfigs = append(queueConfigs, queueConfig)
+		allKeys = append(allKeys, keys...)
 	}
 	queueConfigs = append(queueConfigs, QueueConfig{Name: config.Queue})
+
+	outputConfig := Output{
+		Exchange: config.Exchange,
+		Keys:     allKeys,
+	}
 
 	err = Topology{
 		Exchanges: []ExchangeConfig{exchangeConfig},
@@ -110,13 +118,14 @@ func NewFilter[T any](config FilterConfig, f FilterFunc[T]) (*Node[*filterHandle
 			}
 
 			return &filterHandler[T]{
-				input:      config.Queue,
-				output:     config.Exchange,
-				clientID:   clientID,
-				filter:     f,
-				partitions: partitions,
-				stats:      make(map[string]int),
-				sequencer:  utils.NewSequencer(),
+				input:        config.Queue,
+				output:       config.Exchange,
+				clientID:     clientID,
+				filter:       f,
+				partitions:   partitions,
+				stats:        make(map[string]int),
+				sequencer:    utils.NewSequencer(),
+				outputConfig: outputConfig,
 			}
 		},
 		Endpoints: map[string]HandlerFunc[*filterHandler[T]]{
@@ -141,4 +150,8 @@ func transpose(queuesByKey map[string][]string) (keysByQueue map[string][]string
 
 func (h *filterHandler[T]) Free() error {
 	return nil
+}
+
+func (h *filterHandler[T]) GetOutput() Output {
+	return h.outputConfig
 }

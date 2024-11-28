@@ -11,6 +11,7 @@ type Channel struct {
 	Ch         *amqp.Channel
 	ClientID   int
 	FinishFlag bool
+	CleanFlag  bool
 }
 
 func (c *Channel) Send(msg any, exchange, key string) error {
@@ -18,11 +19,18 @@ func (c *Channel) Send(msg any, exchange, key string) error {
 	if err != nil {
 		log.Panicf("Failed to serialize result %v", err)
 	}
+
+	cleanFlag := false
+	if c.CleanFlag {
+		cleanFlag = true
+	}
+
 	err = c.Ch.Publish(exchange, key, false, false, amqp.Publishing{
 		DeliveryMode: amqp.Persistent,
 		ContentType:  "",
 		Headers: amqp.Table{
 			"clientID": c.ClientID,
+			"clean":    cleanFlag,
 		},
 		Body: buf,
 	})

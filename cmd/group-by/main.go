@@ -156,6 +156,15 @@ func (h *handler) Free() error {
 	return h.diskMap.Remove()
 }
 
+func (h *handler) GetOutput() middleware.Output {
+	return middleware.Output{
+		Exchange: "",
+		Keys: []string{
+			h.output,
+		},
+	}
+}
+
 func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")

@@ -88,6 +88,11 @@ func (n *Node[T]) Run(ctx context.Context) error {
 
 func (n *Node[T]) processDelivery(d Delivery) error {
 	clientID := int(d.Headers["clientID"].(int32))
+	cleanFlag := d.Headers["clean"].(bool)
+
+	if n.propagateToPipeline(clientID, cleanFlag) {
+		return nil
+	}
 
 	h, ok := n.clients[clientID]
 	if !ok {
@@ -116,6 +121,42 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 	}
 
 	return d.Ack(false)
+}
+
+func (n *Node[T]) propagateToPipeline(clientID int, cleanFlag bool) bool {
+	if clientID == -1 {
+		log.Infof("Gateway crashed, remove all processed data")
+		// clean resources for all clients
+	} else if cleanFlag {
+		log.Infof("Client %v crashed, clean all resources for it", clientID)
+		// clean resources for clientID
+	} else {
+		return false
+	}
+
+	if len(n.clients) == 0 {
+		log.Infof("No clients to clean resources")
+		return true
+	}
+
+	var output Output
+	for _, h := range n.clients {
+		output = h.GetOutput()
+		break
+	}
+
+	for _, key := range output.Keys {
+		ch := &Channel{
+			Ch:        n.ch,
+			ClientID:  clientID,
+			CleanFlag: cleanFlag,
+		}
+		err := ch.Send([]byte{}, output.Exchange, key)
+		if err != nil {
+			log.Error("Failed to propagate to pipeline: %v", err)
+		}
+	}
+	return true
 }
 
 func (n *Node[T]) freeResources(clientID int, h T) {
@@ -158,7 +199,7 @@ func (n *Node[T]) sendAlive(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("Failed to decode message: %v", err)
 		}
-		log.Infof("Received KeepAlive from: %v", rAddr)
+		// log.Infof("Received KeepAlive from: %v", rAddr)
 
 		err = n.send(conn, rAddr, decoded.Id)
 		if err != nil {

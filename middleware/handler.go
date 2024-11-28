@@ -13,6 +13,13 @@ type HandlerBuilder[T Handler] func(clientID int) T
 // multiple HandlerFuncs
 type HandlerFunc[T Handler] func(h T, ch *Channel, data []byte) error
 
+type Output struct {
+	Exchange string
+	Keys     []string
+}
+
 type Handler interface {
 	Free() error
+	// first string indicates exchange, second is the key or queue
+	GetOutput() Output
 }

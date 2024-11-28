@@ -249,7 +249,6 @@ func (r *Restarter) send(ctx context.Context, p Packet, addr *net.UDPAddr) error
 	r.mu.Unlock()
 	select {
 	case <-ch:
-		// log.Infof("Received ack for message %v", p.Id)
 		r.mu.Lock()
 		delete(r.ackMap, p.Id)
 		r.mu.Unlock()

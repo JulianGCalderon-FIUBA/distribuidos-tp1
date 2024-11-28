@@ -68,6 +68,16 @@ func (h *resultsHandler) Free() error {
 	return nil
 }
 
+// ver si esta bien
+func (h *resultsHandler) GetOutput() middleware.Output {
+	return middleware.Output{
+		Exchange: "",
+		Keys: []string{
+			"",
+		},
+	}
+}
+
 func (g *gateway) startResultsEndpoint(ctx context.Context) error {
 	newResultsHandler := func(clientID int) *resultsHandler {
 		g.mu.Lock()

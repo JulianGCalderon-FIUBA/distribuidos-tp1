@@ -44,11 +44,27 @@ func (g *gateway) startDataEndpoint(ctx context.Context) (err error) {
 				Bindings: map[string][]string{middleware.ExchangeReviews: {""}}},
 		},
 	}
-	ch, err := g.rabbit.Channel()
+	rawCh, err := g.rabbit.Channel()
 	if err != nil {
 		return err
 	}
-	err = topology.Declare(ch)
+	err = topology.Declare(rawCh)
+	if err != nil {
+		return err
+	}
+
+	ch := middleware.Channel{
+		Ch:         rawCh,
+		ClientID:   -1,
+		FinishFlag: false,
+		CleanFlag:  false,
+	}
+
+	err = ch.Send([]byte{}, middleware.ExchangeGames, "")
+	if err != nil {
+		return err
+	}
+	err = ch.Send([]byte{}, middleware.ExchangeReviews, "")
 	if err != nil {
 		return err
 	}
