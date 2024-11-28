@@ -151,12 +151,6 @@ func (m *DiskMap) Rename(snapshot *database.Snapshot, id uint64, name string) er
 	m.games[id] = name
 	path := m.GamesPath(strconv.Itoa(int(id)))
 	file, err := snapshot.Update(path)
-	if os.IsNotExist(err) {
-		return m.Insert(snapshot, GameStat{
-			AppID: id,
-			Name:  name,
-		})
-	}
 	if err != nil {
 		return err
 	}
