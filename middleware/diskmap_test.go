@@ -10,6 +10,8 @@ import (
 	"testing"
 )
 
+// diskMap.Start() is used to clear the map before get operation because tests don't contemplate leftover info
+
 func TestInsert(t *testing.T) {
 	os.RemoveAll("tmp_TestInsert")
 	diskMap := middleware.NewDiskMap()
@@ -46,7 +48,7 @@ func TestInsert(t *testing.T) {
 	}
 
 	for _, stat := range stats {
-
+		diskMap.Start()
 		stat1, err := diskMap.Get(db, strconv.Itoa(int(stat.AppID)))
 		if err != nil {
 			t.Fatalf("Failed to get: %v", err)
@@ -135,6 +137,7 @@ func TestUpdate(t *testing.T) {
 	updated := make([]middleware.GameStat, 0)
 
 	for _, stat := range stats {
+		diskMap.Start()
 		stat1, err := diskMap.Get(db, strconv.Itoa(int(stat.AppID)))
 		if err != nil {
 			t.Fatalf("Failed to get: %v", err)
@@ -157,6 +160,7 @@ func TestUpdate(t *testing.T) {
 		t.Fatalf("Failed to commit: %v", err)
 	}
 	for i, stat := range stats {
+		diskMap.Start()
 		stat2, err := diskMap.Get(db, strconv.Itoa(int(stat.AppID)))
 		if err != nil {
 			t.Fatalf("Failed to get: %v", err)
@@ -214,7 +218,7 @@ func TestIncrement(t *testing.T) {
 			}
 
 		}
-
+		diskMap.Start()
 		finalStat, err := diskMap.Get(db, strconv.Itoa(int(stat.AppID)))
 		if err != nil {
 			t.Fatalf("Failed to get: %v", err)
@@ -277,7 +281,7 @@ func TestRename(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to commit: %v", err)
 			}
-
+			diskMap.Start()
 			renamedStat, err := diskMap.Get(db, strconv.Itoa(int(stat.AppID)))
 			if err != nil {
 				t.Fatalf("Failed to get: %v", err)
@@ -367,7 +371,7 @@ func TestAll(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to commit: %v", err)
 		}
-
+		diskMap.Start()
 		actualStat, err := diskMap.Get(db, strconv.Itoa(int(stat.AppID)))
 		if err != nil {
 			t.Fatalf("Failed to get: %v", err)
@@ -435,7 +439,7 @@ func TestGetAll(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to commit: %v", err)
 	}
-
+	diskMap.Start()
 	all, err := diskMap.GetAll(db)
 	if err != nil {
 		t.Fatalf("Failed to get all: %v", err)
