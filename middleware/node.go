@@ -78,9 +78,6 @@ func (n *Node[T]) Run(ctx context.Context) error {
 				return err
 			}
 		case <-ctx.Done():
-			for clientId, h := range n.clients {
-				n.freeResources(clientId, h)
-			}
 			return nil
 		}
 	}
@@ -120,14 +117,14 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 	return d.Ack(false)
 }
 
-func (n *Node[T]) freeResources(clientID int, h T) {
-	log.Infof("Freeing resources for client %v", clientID)
-	err := h.Free()
-	if err != nil {
-		log.Errorf("Error freeing handler files: %v", err)
-	}
-	delete(n.clients, clientID)
-}
+// func (n *Node[T]) freeResources(clientID int, h T) {
+// 	log.Infof("Freeing resources for client %v", clientID)
+// 	err := h.Free()
+// 	if err != nil {
+// 		log.Errorf("Error freeing handler files: %v", err)
+// 	}
+// 	delete(n.clients, clientID)
+// }
 
 func (n *Node[T]) sendAlive(ctx context.Context) error {
 	udpAddr, err := net.ResolveUDPAddr("udp", utils.NODE_UDP_ADDR)
@@ -160,7 +157,7 @@ func (n *Node[T]) sendAlive(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("Failed to decode message: %v", err)
 		}
-		log.Infof("Received KeepAlive from: %v", rAddr)
+		// log.Infof("Received KeepAlive from: %v", rAddr)
 
 		err = n.send(conn, rAddr, decoded.Id)
 		if err != nil {

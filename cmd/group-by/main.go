@@ -125,14 +125,12 @@ func (h *handler) conclude(ch *middleware.Channel) error {
 		BatchID: 0,
 		EOF:     false,
 	}
-
 	if len(games) == 0 {
 		batch.EOF = true
 		return ch.Send(batch, "", h.output)
 	}
 
 	for len(games) > 0 {
-
 		currBatchSize := min(h.batchSize, len(games))
 		var batchData []middleware.GameStat
 		games, batchData = games[currBatchSize:], games[:currBatchSize]
