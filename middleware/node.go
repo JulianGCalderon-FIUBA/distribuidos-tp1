@@ -160,7 +160,7 @@ func (n *Node[T]) sendAlive(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("Failed to decode message: %v", err)
 		}
-		log.Infof("Received KeepAlive from: %v", rAddr)
+		// log.Infof("Received KeepAlive from: %v", rAddr)
 
 		err = n.send(conn, rAddr, decoded.Id)
 		if err != nil {
