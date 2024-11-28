@@ -12,7 +12,7 @@ import (
 
 func TestInsert(t *testing.T) {
 	os.RemoveAll("tmp_TestInsert")
-	diskMap := middleware.NewDiskMap("tmp_TestInsert")
+	diskMap := middleware.NewDiskMap()
 	db, err := database.NewDatabase("tmp_TestInsert")
 	if err != nil {
 		t.Fatalf("Failed init map: %v", err)
@@ -83,7 +83,7 @@ func TestInsert(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	os.RemoveAll("tmp_TestUpdate")
-	diskMap := middleware.NewDiskMap("tmp_TestUpdate")
+	diskMap := middleware.NewDiskMap()
 	db, err := database.NewDatabase("tmp_TestUpdate")
 	if err != nil {
 		t.Fatalf("Failed init map: %v", err)
@@ -174,7 +174,7 @@ func TestUpdate(t *testing.T) {
 
 func TestIncrement(t *testing.T) {
 	os.RemoveAll("tmp_TestIncrement")
-	diskMap := middleware.NewDiskMap("tmp_TestIncrement")
+	diskMap := middleware.NewDiskMap()
 	db, err := database.NewDatabase("tmp_TestIncrement")
 	if err != nil {
 		t.Fatalf("Failed init map: %v", err)
@@ -232,7 +232,7 @@ func TestIncrement(t *testing.T) {
 
 func TestRename(t *testing.T) {
 	os.RemoveAll("tmp_TestRename")
-	diskMap := middleware.NewDiskMap("tmp_TestRename")
+	diskMap := middleware.NewDiskMap()
 	db, err := database.NewDatabase("tmp_TestRename")
 	if err != nil {
 		t.Fatalf("Failed init map: %v", err)
@@ -294,7 +294,7 @@ func TestRename(t *testing.T) {
 
 func TestAll(t *testing.T) {
 	os.RemoveAll("tmp_TestAll")
-	diskMap := middleware.NewDiskMap("tmp_TestAll")
+	diskMap := middleware.NewDiskMap()
 	db, err := database.NewDatabase("tmp_TestAll")
 	if err != nil {
 		t.Fatalf("Failed init map: %v", err)
@@ -390,7 +390,7 @@ func TestAll(t *testing.T) {
 
 func TestGetAll(t *testing.T) {
 	os.RemoveAll("tmp_TestGetAll")
-	diskMap := middleware.NewDiskMap("tmp_TestGetAll")
+	diskMap := middleware.NewDiskMap()
 	db, err := database.NewDatabase("tmp_TestGetAll")
 	if err != nil {
 		t.Fatalf("Failed init map: %v", err)
@@ -401,7 +401,7 @@ func TestGetAll(t *testing.T) {
 		t.Fatalf("Failed init snapshot: %v", err)
 	}
 
-	expected := []*middleware.GameStat{
+	expected := []middleware.GameStat{
 		{
 			AppID: 1,
 			Stat:  1,
@@ -425,7 +425,7 @@ func TestGetAll(t *testing.T) {
 	}
 
 	for _, stat := range expected {
-		err = diskMap.Insert(snapshot, *stat)
+		err = diskMap.Insert(snapshot, stat)
 		if err != nil {
 			t.Fatalf("Failed to insert: %v", err)
 		}

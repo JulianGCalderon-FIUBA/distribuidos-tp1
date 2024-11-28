@@ -12,13 +12,20 @@ import (
 const GAMES_DIR string = "games"
 
 type DiskMap struct {
-	name string
+	games   map[uint64]string
+	reviews map[uint64]uint64
 }
 
-func NewDiskMap(name string) *DiskMap {
+func NewDiskMap() *DiskMap {
 	return &DiskMap{
-		name: name,
+		games:   make(map[uint64]string),
+		reviews: make(map[uint64]uint64),
 	}
+}
+
+func (m *DiskMap) Start() {
+	clear(m.games)
+	clear(m.reviews)
 }
 
 func (m *DiskMap) Get(db *database.Database, k string) (*GameStat, error) {
@@ -54,26 +61,37 @@ func (m *DiskMap) Get(db *database.Database, k string) (*GameStat, error) {
 
 }
 
-func (m *DiskMap) GetAll(db *database.Database) ([]*GameStat, error) {
+func (m *DiskMap) GetAll(db *database.Database) ([]GameStat, error) {
 	entries, err := db.GetAll(GAMES_DIR)
 	if err != nil {
 		return nil, err
 	}
 
-	stats := make([]*GameStat, 0)
+	stats := make([]GameStat, 0)
 
 	for _, e := range entries {
 		g, err := m.Get(db, path.Base(e))
 		if err != nil {
 			return nil, err
 		}
-		stats = append(stats, g)
+
+		value, ok := m.reviews[g.AppID]
+		if ok {
+			g.Stat += value
+		}
+
+		name, ok := m.games[g.AppID]
+		if ok {
+			g.Name = name
+		}
+
+		stats = append(stats, *g)
 	}
 	return stats, nil
 }
 
 func (m *DiskMap) Insert(snapshot *database.Snapshot, stat GameStat) error {
-
+	m.games[stat.AppID] = stat.Name
 	path := m.GamesPath(strconv.Itoa(int(stat.AppID)))
 	file, err := snapshot.Create(path)
 	if err != nil {
@@ -94,7 +112,7 @@ func (m *DiskMap) Insert(snapshot *database.Snapshot, stat GameStat) error {
 }
 
 func (m *DiskMap) Increment(snapshot *database.Snapshot, id uint64, value uint64) error {
-
+	m.reviews[id] = value
 	path := m.GamesPath(strconv.Itoa(int(id)))
 	exists, err := snapshot.Exists(path)
 	if err != nil {
@@ -130,7 +148,7 @@ func (m *DiskMap) Increment(snapshot *database.Snapshot, id uint64, value uint64
 }
 
 func (m *DiskMap) Rename(snapshot *database.Snapshot, id uint64, name string) error {
-
+	m.games[id] = name
 	path := m.GamesPath(strconv.Itoa(int(id)))
 	file, err := snapshot.Update(path)
 	if os.IsNotExist(err) {

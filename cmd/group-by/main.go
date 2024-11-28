@@ -72,6 +72,8 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 		}
 	}()
 
+	h.diskMap.Start()
+
 	batch, err := middleware.Deserialize[middleware.Batch[middleware.Game]](data)
 	if err != nil {
 		return err
@@ -86,11 +88,8 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 		return err
 	}
 
-	games := make(map[uint64]string)
-
 	for _, g := range batch.Data {
 		err = h.diskMap.Rename(snapshot, g.AppID, g.Name)
-		games[g.AppID] = g.Name
 	}
 
 	if h.gameSequencer.EOF() {
@@ -98,7 +97,7 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 	}
 
 	if h.gameSequencer.EOF() && h.reviewSequencer.EOF() {
-		return h.conclude(ch, nil, games)
+		return h.conclude(ch)
 	}
 
 	return nil
@@ -119,6 +118,8 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 			utils.Expect(cerr, "unrecoverable error")
 		}
 	}()
+
+	h.diskMap.Start()
 
 	batch, err := middleware.Deserialize[middleware.Batch[middleware.Review]](data)
 	if err != nil {
@@ -148,14 +149,14 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 	}
 
 	if h.reviewSequencer.EOF() && h.gameSequencer.EOF() {
-		return h.conclude(ch, reviews, nil)
+		return h.conclude(ch)
 	}
 
 	return nil
 }
 
-func (h *handler) conclude(ch *middleware.Channel, reviews map[uint64]uint64, games map[uint64]string) error {
-	stats, err := h.getAll(reviews, games)
+func (h *handler) conclude(ch *middleware.Channel) error {
+	stats, err := h.getAll()
 	if err != nil {
 		return err
 	}
@@ -190,35 +191,17 @@ func (h *handler) conclude(ch *middleware.Channel, reviews map[uint64]uint64, ga
 	return nil
 }
 
-func (h *handler) getAll(reviews map[uint64]uint64, games map[uint64]string) ([]middleware.GameStat, error) {
+func (h *handler) getAll() ([]middleware.GameStat, error) {
 	stats, err := h.diskMap.GetAll(h.db)
 	if err != nil {
 		return nil, err
 	}
 
-	fullStats := make([]middleware.GameStat, 0)
-
-	for _, s := range stats {
-		if reviews != nil {
-			value, ok := reviews[s.AppID]
-			if ok {
-				s.Stat += value
-			}
-		}
-
-		if games != nil {
-			name, ok := games[s.AppID]
-			if ok {
-				s.Name = name
-			}
-		}
-		fullStats = append(fullStats, *s)
-	}
-	fullStats = slices.DeleteFunc(fullStats, func(g middleware.GameStat) bool {
+	stats = slices.DeleteFunc(stats, func(g middleware.GameStat) bool {
 		return g.Stat == 0 || g.Name == ""
 	})
 
-	return fullStats, nil
+	return stats, nil
 }
 
 func (h *handler) Free() error {
@@ -250,7 +233,7 @@ func main() {
 			db, err := database.NewDatabase(database_path)
 			utils.Expect(err, "unrecoverable error")
 
-			diskMap := middleware.NewDiskMap(database_path)
+			diskMap := middleware.NewDiskMap()
 			utils.Expect(err, "unrecoverable error")
 
 			gameSequencer := middleware.NewSequencerDisk("game-sequencer")
