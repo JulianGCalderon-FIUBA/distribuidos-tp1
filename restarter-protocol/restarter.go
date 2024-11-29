@@ -155,6 +155,8 @@ func (r *Restarter) monitorNode(ctx context.Context, containerName string, port 
 
 			err := r.safeSend(ctx, msg, containerName, port)
 			if errors.Is(err, ErrFallenNode) {
+				log.Errorf("Node %v has fallen. Restarting...", containerName)
+
 				err := r.restartNode(ctx, containerName)
 				if err != nil {
 					log.Errorf("Failed to restart neighbor: %v", err)
@@ -315,8 +317,6 @@ func (r *Restarter) restartNode(ctx context.Context, containerName string) error
 			return err
 		}
 	}
-
-	log.Infof("Node %v has fallen. Restarting...", containerName)
 
 	cmdStr := fmt.Sprintf("docker start %v", containerName)
 	err := exec.CommandContext(ctx, "/bin/sh", "-c", cmdStr).Run()
