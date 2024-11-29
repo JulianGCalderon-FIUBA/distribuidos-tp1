@@ -161,6 +161,7 @@ func (r *Restarter) monitorNode(ctx context.Context, containerName string, port 
 				}
 				continue
 			}
+
 			if err != nil {
 				log.Errorf("Failed to send keep alive: %v", err)
 			}
@@ -222,7 +223,8 @@ func (r *Restarter) safeSend(ctx context.Context, msg Message, addr *net.UDPAddr
 
 	packet := Packet{
 		Id:  msgId,
-		Msg: msg}
+		Msg: msg,
+	}
 
 	for attempts := 0; attempts < MAX_ATTEMPTS; attempts++ {
 		err = r.send(ctx, packet, addr)
@@ -254,6 +256,7 @@ func (r *Restarter) send(ctx context.Context, p Packet, addr *net.UDPAddr) error
 	r.mu.Lock()
 	ch := r.ackMap[p.Id]
 	r.mu.Unlock()
+
 	select {
 	case <-ch:
 		r.mu.Lock()
