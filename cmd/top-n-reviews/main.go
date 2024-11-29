@@ -85,14 +85,6 @@ func (h *handler) Free() error {
 	return nil
 }
 
-func (h *handler) GetOutput() middleware.Output {
-	return middleware.Output{
-		Exchange: "",
-		Keys: []string{
-			h.output,
-		},
-	}
-}
 func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
@@ -102,6 +94,7 @@ func main() {
 	utils.Expect(err, "Failed to dial rabbit")
 
 	qInput := middleware.Cat(middleware.GroupedQ3, cfg.PartitionID)
+	qOutput := middleware.PartialQ3
 	err = middleware.Topology{
 		Queues: []middleware.QueueConfig{
 			{Name: qInput},
@@ -121,6 +114,10 @@ func main() {
 		},
 		Endpoints: map[string]middleware.HandlerFunc[*handler]{
 			qInput: (*handler).handleBatch,
+		},
+		OutputConfig: middleware.Output{
+			Exchange: "",
+			Keys:     []string{qOutput},
 		},
 	}
 

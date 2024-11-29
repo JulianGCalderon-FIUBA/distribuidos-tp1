@@ -78,15 +78,6 @@ func (h *handler) Free() error {
 	return nil
 }
 
-func (h *handler) GetOutput() middleware.Output {
-	return middleware.Output{
-		Exchange: "",
-		Keys: []string{
-			h.output,
-		},
-	}
-}
-
 func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
@@ -96,11 +87,12 @@ func main() {
 	utils.Expect(err, "Failed to dial rabbit")
 
 	qInput := middleware.GroupedQ5Percentile
+	qOutput := middleware.Results
 
 	err = middleware.Topology{
 		Queues: []middleware.QueueConfig{
 			{Name: qInput},
-			{Name: middleware.Results},
+			{Name: qOutput},
 		},
 	}.Declare(ch)
 	utils.Expect(err, "Failed to declare queues")
@@ -116,6 +108,10 @@ func main() {
 		},
 		Endpoints: map[string]middleware.HandlerFunc[*handler]{
 			middleware.GroupedQ5Percentile: (*handler).handleBatch,
+		},
+		OutputConfig: middleware.Output{
+			Exchange: "",
+			Keys:     []string{qOutput},
 		},
 	}
 

@@ -12,21 +12,31 @@ import (
 )
 
 type gateway struct {
-	config   config
-	rabbit   *amqp.Connection
-	rabbitCh *amqp.Channel
-	mu       *sync.Mutex
-	clients  map[int]chan protocol.Result
+	config            config
+	rabbit            *amqp.Connection
+	rabbitCh          *amqp.Channel
+	mu                *sync.Mutex
+	clients           map[int]chan protocol.Result
+	// cleaningResources *sync.Cond
 }
 
 func newGateway(config config) *gateway {
 	protocol.Register()
 	return &gateway{
-		config:  config,
-		clients: make(map[int]chan protocol.Result),
-		mu:      &sync.Mutex{},
+		config:            config,
+		clients:           make(map[int]chan protocol.Result),
+		mu:                &sync.Mutex{},
+		// cleaningResources: &sync.Cond{},
 	}
 }
+
+// func (g *gateway) waitCleanResources(finish bool) {
+// 	g.cleaningResources.L.Lock()
+// 	defer g.cleaningResources.L.Unlock()
+// 	for !finish {
+// 		g.cleaningResources.Wait()
+// 	}
+// }
 
 func (g *gateway) start(ctx context.Context) error {
 	conn, ch, err := middleware.Dial(g.config.RabbitIP)

@@ -19,6 +19,8 @@ type Config[T Handler] struct {
 	Builder HandlerBuilder[T]
 	// Each queue is registered to a particular HandlerFunc
 	Endpoints map[string]HandlerFunc[T]
+
+	OutputConfig Output
 }
 
 type Node[T Handler] struct {
@@ -90,7 +92,7 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 	clientID := int(d.Headers["clientID"].(int32))
 	cleanFlag := d.Headers["clean"].(bool)
 
-	if n.propagateToPipeline(clientID, cleanFlag) {
+	if n.propagateThroughPipeline(clientID, cleanFlag) {
 		return nil
 	}
 
@@ -123,7 +125,7 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 	return d.Ack(false)
 }
 
-func (n *Node[T]) propagateToPipeline(clientID int, cleanFlag bool) bool {
+func (n *Node[T]) propagateThroughPipeline(clientID int, cleanFlag bool) bool {
 	if clientID == -1 {
 		log.Infof("Gateway crashed, remove all processed data")
 		// clean resources for all clients
@@ -134,24 +136,18 @@ func (n *Node[T]) propagateToPipeline(clientID int, cleanFlag bool) bool {
 		return false
 	}
 
-	if len(n.clients) == 0 {
-		log.Infof("No clients to clean resources")
+	if len(n.config.OutputConfig.Exchange) == 0 && len(n.config.OutputConfig.Keys) == 0 {
+		log.Infof("Finished propagating through pipeline")
 		return true
 	}
 
-	var output Output
-	for _, h := range n.clients {
-		output = h.GetOutput()
-		break
-	}
-
-	for _, key := range output.Keys {
+	for _, key := range n.config.OutputConfig.Keys {
 		ch := &Channel{
 			Ch:        n.ch,
 			ClientID:  clientID,
 			CleanFlag: cleanFlag,
 		}
-		err := ch.Send([]byte{}, output.Exchange, key)
+		err := ch.Send([]byte{}, n.config.OutputConfig.Exchange, key)
 		if err != nil {
 			log.Error("Failed to propagate to pipeline: %v", err)
 		}

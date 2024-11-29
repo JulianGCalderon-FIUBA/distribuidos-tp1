@@ -118,19 +118,19 @@ func NewFilter[T any](config FilterConfig, f FilterFunc[T]) (*Node[*filterHandle
 			}
 
 			return &filterHandler[T]{
-				input:        config.Queue,
-				output:       config.Exchange,
-				clientID:     clientID,
-				filter:       f,
-				partitions:   partitions,
-				stats:        make(map[string]int),
-				sequencer:    utils.NewSequencer(),
-				outputConfig: outputConfig,
+				input:      config.Queue,
+				output:     config.Exchange,
+				clientID:   clientID,
+				filter:     f,
+				partitions: partitions,
+				stats:      make(map[string]int),
+				sequencer:  utils.NewSequencer(),
 			}
 		},
 		Endpoints: map[string]HandlerFunc[*filterHandler[T]]{
 			config.Queue: (*filterHandler[T]).handle,
 		},
+		OutputConfig: outputConfig,
 	}
 
 	return NewNode(nConfig, conn)
@@ -150,8 +150,4 @@ func transpose(queuesByKey map[string][]string) (keysByQueue map[string][]string
 
 func (h *filterHandler[T]) Free() error {
 	return nil
-}
-
-func (h *filterHandler[T]) GetOutput() Output {
-	return h.outputConfig
 }

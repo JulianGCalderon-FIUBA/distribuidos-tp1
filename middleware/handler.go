@@ -20,6 +20,4 @@ type Output struct {
 
 type Handler interface {
 	Free() error
-	// first string indicates exchange, second is the key or queue
-	GetOutput() Output
 }

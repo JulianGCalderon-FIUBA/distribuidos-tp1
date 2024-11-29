@@ -92,15 +92,6 @@ func (h *handler) Free() error {
 	return nil
 }
 
-func (h *handler) GetOutput() middleware.Output {
-	return middleware.Output{
-		Exchange: "",
-		Keys: []string{
-			h.output,
-		},
-	}
-}
-
 func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
@@ -144,6 +135,10 @@ func main() {
 			}
 		},
 		Endpoints: endpoints,
+		OutputConfig: middleware.Output{
+			Exchange: "",
+			Keys:     []string{cfg.Output},
+		},
 	}
 
 	node, err := middleware.NewNode(nodeCfg, conn)
