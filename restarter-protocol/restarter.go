@@ -139,10 +139,9 @@ func (r *Restarter) StartMonitoring(ctx context.Context) {
 			r.monitorNode(ctx, nodeName, utils.NODE_PORT)
 		}(node)
 	}
-	go func() {
-		<-ctx.Done()
-		r.wg.Wait()
-	}()
+
+	<-ctx.Done()
+	r.wg.Wait()
 }
 
 func (r *Restarter) monitorNode(ctx context.Context, containerName string, port int) {
