@@ -3,6 +3,7 @@ package restarter
 import (
 	"context"
 	"distribuidos/tp1/utils"
+	"errors"
 	"fmt"
 	"slices"
 	"strconv"
@@ -85,12 +86,13 @@ func (r *Restarter) sendToRing(ctx context.Context, msg Message) error {
 	next := r.id + 1
 	for {
 		host := fmt.Sprintf("%v%v", RESTARTER_NAME, next%r.replicas)
-		addr, _ := utils.GetUDPAddr(host, utils.RESTARTER_PORT)
-		err := r.safeSend(ctx, msg, addr)
-		if err == nil {
-			return nil
+
+		err := r.safeSend(ctx, msg, host, utils.RESTARTER_PORT)
+		if !errors.Is(err, ErrFallenNode) {
+			return err
 		}
-		log.Infof("Neighbor %v is not answering, sending message to next one", next%r.replicas)
+
+		log.Errorf("Neighbor %v is not answering, sending message to next one", next%r.replicas)
 		next += 1
 	}
 }

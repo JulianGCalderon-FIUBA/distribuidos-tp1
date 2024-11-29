@@ -152,8 +152,8 @@ func (r *Restarter) monitorNode(ctx context.Context, containerName string, port 
 			return
 		case <-time.After(time.Duration(rand.Intn(4000)+3000) * time.Millisecond):
 			msg := KeepAlive{}
-			addr, _ := utils.GetUDPAddr(containerName, port)
-			err := r.safeSend(ctx, msg, addr)
+
+			err := r.safeSend(ctx, msg, containerName, port)
 			if errors.Is(err, ErrFallenNode) {
 				err := r.restartNode(ctx, containerName)
 				if err != nil {
@@ -217,9 +217,14 @@ func (r *Restarter) read(ctx context.Context) error {
 	}
 }
 
-func (r *Restarter) safeSend(ctx context.Context, msg Message, addr *net.UDPAddr) error {
+func (r *Restarter) safeSend(ctx context.Context, msg Message, name string, port int) error {
 	var err error
 	msgId := r.newMsgId()
+
+	addr, err := utils.GetUDPAddr(name, port)
+	if err != nil {
+		return errors.Join(ErrFallenNode, err)
+	}
 
 	packet := Packet{
 		Id:  msgId,
@@ -236,7 +241,6 @@ func (r *Restarter) safeSend(ctx context.Context, msg Message, addr *net.UDPAddr
 
 	}
 
-	log.Errorf("Never got ack for message %d", msgId)
 	return errors.Join(ErrFallenNode, err)
 }
 
