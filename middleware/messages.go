@@ -5,6 +5,11 @@ import (
 	"encoding/gob"
 )
 
+type Output struct {
+	Exchange string
+	Keys     []string
+}
+
 type Score int8
 
 const (

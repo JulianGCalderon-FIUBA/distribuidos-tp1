@@ -89,7 +89,7 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 	clientID := int(d.Headers["clientID"].(int32))
 	cleanFlag := d.Headers["clean"].(bool)
 
-	if n.propagateThroughPipeline(clientID, cleanFlag) {
+	if n.notifyFallenNode(clientID, cleanFlag) {
 		return nil
 	}
 
@@ -124,19 +124,26 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 	return d.Ack(false)
 }
 
-func (n *Node[T]) propagateThroughPipeline(clientID int, cleanFlag bool) bool {
+func (n *Node[T]) notifyFallenNode(clientID int, cleanFlag bool) bool {
 	if clientID == -1 {
-		log.Infof("Gateway crashed, remove all processed data")
-		// clean resources for all clients
+		if len(n.clients) > 0 {
+			log.Infof("Cleaning all system resources")
+			for c := range n.clients {
+				n.freeResources(c)
+			}
+		}
 	} else if cleanFlag {
-		log.Infof("Client %v crashed, clean all resources for it", clientID)
-		// clean resources for clientID
+		_, ok := n.clients[clientID]
+		if ok {
+			log.Infof("Client %v crashed, clean all resources for it", clientID)
+			n.freeResources(clientID)
+		}
 	} else {
 		return false
 	}
 
-	if len(n.config.OutputConfig.Exchange) == 0 && len(n.config.OutputConfig.Keys) == 0 {
-		log.Infof("Finished propagating through pipeline")
+	if len(n.config.OutputConfig.Exchange) == 0 && len(n.config.OutputConfig.Keys) == 0 { // reached results node
+		log.Infof("Finished cleaning system resources")
 		return true
 	}
 
@@ -154,8 +161,11 @@ func (n *Node[T]) propagateThroughPipeline(clientID int, cleanFlag bool) bool {
 	return true
 }
 
-func (n *Node[T]) freeResources(clientID int, h T) {
+func (n *Node[T]) freeResources(clientID int) {
 	log.Infof("Freeing resources for client %v", clientID)
+
+	h := n.clients[clientID]
+
 	err := h.Free()
 	if err != nil {
 		log.Errorf("Error freeing handler files: %v", err)
