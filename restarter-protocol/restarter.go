@@ -245,12 +245,9 @@ func (r *Restarter) send(ctx context.Context, p Packet, addr *net.UDPAddr) error
 	if err != nil {
 		return err
 	}
-	n, err := r.conn.WriteToUDP(encoded, addr)
+	_, err = r.conn.WriteToUDP(encoded, addr)
 	if err != nil {
 		return err
-	}
-	if n != len(encoded) {
-		return fmt.Errorf("Could not send full message")
 	}
 
 	r.mu.Lock()
@@ -281,12 +278,9 @@ func (r *Restarter) sendAck(prevNeighbor *net.UDPAddr, msgId uint64) error {
 		return err
 	}
 
-	n, err := r.conn.WriteToUDP(msg, prevNeighbor)
+	_, err = r.conn.WriteToUDP(msg, prevNeighbor)
 	if err != nil {
 		return err
-	}
-	if n != len(msg) {
-		return fmt.Errorf("Could not send full message")
 	}
 	return nil
 }
