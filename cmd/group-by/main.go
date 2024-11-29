@@ -13,8 +13,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-const GAMES_DIR = "games"
-
 var log = logging.MustGetLogger("log")
 
 type config struct {
