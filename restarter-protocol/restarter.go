@@ -125,9 +125,7 @@ func (r *Restarter) Start(ctx context.Context) error {
 
 	go r.monitorNode(ctx, fmt.Sprintf("%v%v", RESTARTER_NAME, (r.id+1)%r.replicas), utils.RESTARTER_PORT)
 
-	r.read(ctx)
-
-	return nil
+	return r.read(ctx)
 }
 
 func (r *Restarter) StartMonitoring(ctx context.Context) {
@@ -170,13 +168,12 @@ func (r *Restarter) monitorNode(ctx context.Context, containerName string, port 
 	}
 }
 
-func (r *Restarter) read(ctx context.Context) {
+func (r *Restarter) read(ctx context.Context) error {
 	for {
 		buf := make([]byte, MAX_PACKAGE_SIZE)
 		_, recvAddr, err := r.conn.ReadFromUDP(buf)
 		if err != nil {
-			log.Errorf("Failed to read: %v", err)
-			continue
+			return fmt.Errorf("Failed to read: %v", err)
 		}
 
 		packet, err := Decode(buf)
