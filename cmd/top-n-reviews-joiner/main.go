@@ -43,16 +43,26 @@ type handler struct {
 	output     string
 	topN       int
 	topNGames  middleware.GameHeap
+	eofs       map[int]struct{}
 	partitions int
 }
 
-func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte) error {
-	partial, err := middleware.Deserialize[[]middleware.GameStat](data)
-	h.partitions--
+func buildHandler(partition int) middleware.HandlerFunc[*handler] {
+	return func(h *handler, ch *middleware.Channel, data []byte) error {
+		return h.handlePartialResult(ch, data, partition)
+	}
+}
 
+func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte, partition int) error {
+	partial, err := middleware.Deserialize[[]middleware.GameStat](data)
 	if err != nil {
 		return err
 	}
+
+	if _, seen := h.eofs[partition]; seen {
+		return nil
+	}
+	h.eofs[partition] = struct{}{}
 
 	for _, g := range partial {
 		if h.topNGames.Len() < h.topN {
@@ -63,7 +73,7 @@ func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte) error
 		}
 	}
 
-	if h.partitions == 0 {
+	if h.partitions == len(h.eofs) {
 		log.Infof("Received all partial results")
 		return h.conclude(ch)
 	}
@@ -102,12 +112,21 @@ func main() {
 	conn, ch, err := middleware.Dial(cfg.RabbitIP)
 	utils.Expect(err, "Failed to dial rabbit")
 
-	qInput := middleware.PartialQ3
+	queues := make([]middleware.QueueConfig, 0)
+	endpoints := make(map[string]middleware.HandlerFunc[*handler], 0)
+
+	for i := 1; i <= cfg.Partitions; i++ {
+		qName := middleware.Cat(middleware.PartialQ3, i)
+		qcfg := middleware.QueueConfig{
+			Name: qName,
+		}
+		queues = append(queues, qcfg)
+		endpoints[qName] = buildHandler(i)
+	}
+	queues = append(queues, middleware.QueueConfig{Name: middleware.Results})
+
 	err = middleware.Topology{
-		Queues: []middleware.QueueConfig{
-			{Name: qInput},
-			{Name: middleware.Results},
-		},
+		Queues: queues,
 	}.Declare(ch)
 
 	if err != nil {
@@ -120,12 +139,11 @@ func main() {
 				output:     middleware.Results,
 				topN:       cfg.TopN,
 				topNGames:  make([]middleware.GameStat, 0, cfg.TopN),
+				eofs:       make(map[int]struct{}),
 				partitions: cfg.Partitions,
 			}
 		},
-		Endpoints: map[string]middleware.HandlerFunc[*handler]{
-			qInput: (*handler).handlePartialResult,
-		},
+		Endpoints: endpoints,
 	}
 
 	node, err := middleware.NewNode(nConfig, conn)
