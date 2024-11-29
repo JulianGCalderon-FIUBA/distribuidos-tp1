@@ -236,7 +236,7 @@ func (r *Restarter) safeSend(ctx context.Context, msg Message, name string, port
 	for attempts := 0; attempts < MAX_ATTEMPTS; attempts++ {
 		err = r.send(ctx, packet, addr)
 		if errors.Is(err, ErrTimeout) {
-			log.Errorf("Timeout, trying to send again message %v", msgId)
+			log.Warningf("Timeout, trying to send again message %v", msgId)
 		} else {
 			return err
 		}
