@@ -18,6 +18,25 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
+func (g *gateway) notifyFallenNode(outputs []middleware.Output) error {
+	ch := middleware.Channel{
+		Ch:         g.rabbitCh,
+		ClientID:   -1,
+		FinishFlag: false,
+		CleanFlag:  false,
+	}
+
+	for _, output := range outputs {
+		for _, k := range output.Keys {
+			err := ch.Send([]byte{}, output.Exchange, k)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func (g *gateway) startDataEndpoint(ctx context.Context) (err error) {
 	address := fmt.Sprintf(":%v", g.config.DataEndpointPort)
 	listener, err := net.Listen("tcp", address)
@@ -44,6 +63,18 @@ func (g *gateway) startDataEndpoint(ctx context.Context) (err error) {
 				Bindings: map[string][]string{middleware.ExchangeReviews: {""}}},
 		},
 	}
+
+	outputs := []middleware.Output{
+		{
+			Exchange: middleware.ExchangeGames,
+			Keys:     []string{""},
+		},
+		{
+			Exchange: middleware.ExchangeReviews,
+			Keys:     []string{""},
+		},
+	}
+
 	rawCh, err := g.rabbit.Channel()
 	if err != nil {
 		return err
@@ -53,24 +84,13 @@ func (g *gateway) startDataEndpoint(ctx context.Context) (err error) {
 		return err
 	}
 
-	ch := middleware.Channel{
-		Ch:         rawCh,
-		ClientID:   -1,
-		FinishFlag: false,
-		CleanFlag:  false,
-	}
-
-	err = ch.Send([]byte{}, middleware.ExchangeGames, "")
-	if err != nil {
-		return err
-	}
-	err = ch.Send([]byte{}, middleware.ExchangeReviews, "")
-	if err != nil {
-		return err
-	}
+	err = g.notifyFallenNode(outputs)
+	time.Sleep(5 * time.Second)
 
 	wg := &sync.WaitGroup{}
 	defer wg.Wait()
+
+	log.Infof("Starting accepting data connections")
 
 	for {
 		conn, err := listener.Accept()
