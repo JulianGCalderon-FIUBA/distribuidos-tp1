@@ -311,12 +311,19 @@ func (r *Restarter) restartNode(ctx context.Context, containerName string) error
 			return err
 		}
 	}
-	log.Errorf("Node %v has fallen. Restarting...", containerName)
-	time.Sleep(2 * time.Second) // wait if SIGTERM signal triggered
-	cmdStr := fmt.Sprintf("docker start %v", containerName)
-	_, err := exec.CommandContext(ctx, "/bin/sh", "-c", cmdStr).Output()
 
-	return err
+	log.Infof("Node %v has fallen. Restarting...", containerName)
+
+	cmdStr := fmt.Sprintf("docker start %v", containerName)
+	err := exec.CommandContext(ctx, "/bin/sh", "-c", cmdStr).Run()
+	if err != nil {
+		return err
+	}
+
+	// wait if SIGTERM signal triggered
+	time.Sleep(5 * time.Second)
+
+	return nil
 }
 
 func (r *Restarter) isLeader(containerName string) bool {
