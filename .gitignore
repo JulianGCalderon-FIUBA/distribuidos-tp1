@@ -5,3 +5,4 @@ bin
 .build
 .backup
 middleware/tmp_*
+.py-results

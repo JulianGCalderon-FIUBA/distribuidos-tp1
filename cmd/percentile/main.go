@@ -2,10 +2,14 @@ package main
 
 import (
 	"context"
+	"distribuidos/tp1/database"
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/utils"
+	"encoding/binary"
 	"encoding/gob"
+	"errors"
+	"io"
 	"math"
 	"os/signal"
 	"sort"
@@ -34,44 +38,140 @@ func getConfig() (config, error) {
 }
 
 type handler struct {
+	db        *database.Database
+	sequencer *middleware.SequencerDisk
+
 	output     string
-	sorted     []middleware.GameStat
 	percentile float64
-	sequencer  *utils.Sequencer
 }
 
 func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
+
+	snapshot, err := h.db.NewSnapshot()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		switch err {
+		case nil:
+			cerr := snapshot.Commit()
+			utils.Expect(cerr, "unrecoverable error")
+		default:
+			cerr := snapshot.Abort()
+			utils.Expect(cerr, "unrecoverable error")
+		}
+	}()
 
 	batch, err := middleware.Deserialize[middleware.Batch[middleware.GameStat]](data)
 	if err != nil {
 		return err
 	}
 
-	h.sequencer.Mark(batch.BatchID, batch.EOF)
-
-	for _, r := range batch.Data {
-		i := sort.Search(len(h.sorted), func(i int) bool { return h.sorted[i].Stat >= r.Stat })
-		h.sorted = append(h.sorted, middleware.GameStat{})
-		copy(h.sorted[i+1:], h.sorted[i:])
-		h.sorted[i] = r
+	if h.sequencer.Seen(batch.BatchID) {
+		return nil
 	}
 
-	if h.sequencer.EOF() {
-		n := float64(len(h.sorted))
-		index := max(0, int(math.Ceil(h.percentile/100.0*n))-1)
-		results := h.sorted[index:]
-		p := protocol.Q5Result{
-			Percentile90: results,
-		}
+	err = h.sequencer.MarkDisk(snapshot, batch.BatchID, batch.EOF)
+	if err != nil {
+		return err
+	}
 
-		err := ch.SendAny(p, "", h.output)
+	percentileFile, err := snapshot.Append("percentile")
+	if err != nil {
+		return err
+	}
+
+	for _, g := range batch.Data {
+		header := struct {
+			AppId    uint64
+			Stat     uint64
+			NameSize uint64
+		}{
+			AppId:    g.AppID,
+			Stat:     g.Stat,
+			NameSize: uint64(len(g.Name)),
+		}
+		err = binary.Write(percentileFile, binary.LittleEndian, header)
 		if err != nil {
 			return err
 		}
 
+		err = binary.Write(percentileFile, binary.LittleEndian, []byte(g.Name))
+		if err != nil {
+			return err
+		}
+	}
+
+	if h.sequencer.EOF() {
+		err = h.conclude(ch, batch.Data)
+		if err != nil {
+			return err
+		}
 		ch.Finish()
 	}
+
 	return nil
+}
+
+func (h *handler) conclude(ch *middleware.Channel, data []middleware.GameStat) error {
+	sorted, err := h.readData()
+	if err != nil {
+		return err
+	}
+	for _, stat := range data {
+		sorted = sortedInsert(sorted, stat)
+	}
+	n := float64(len(sorted))
+	index := max(0, int(math.Ceil(h.percentile/100.0*n))-1)
+	results := sorted[index:]
+	p := protocol.Q5Result{
+		Percentile90: results,
+	}
+
+	return ch.SendAny(p, "", h.output)
+}
+
+func (h *handler) readData() ([]middleware.GameStat, error) {
+	percentileFile, err := h.db.Get("percentile")
+	if err != nil {
+		return nil, err
+	}
+	sorted := make([]middleware.GameStat, 0)
+
+	for {
+		header := struct {
+			AppId    uint64
+			Stat     uint64
+			NameSize uint64
+		}{}
+		err := binary.Read(percentileFile, binary.LittleEndian, &header)
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		name := make([]byte, header.NameSize)
+		err = binary.Read(percentileFile, binary.LittleEndian, &name)
+		if err != nil {
+			return nil, err
+		}
+		stat := middleware.GameStat{
+			AppID: header.AppId,
+			Name:  string(name),
+			Stat:  header.Stat,
+		}
+		sorted = sortedInsert(sorted, stat)
+	}
+	return sorted, nil
+}
+
+func sortedInsert(sorted []middleware.GameStat, stat middleware.GameStat) []middleware.GameStat {
+	i := sort.Search(len(sorted), func(i int) bool { return sorted[i].Stat >= stat.Stat })
+	sorted = append(sorted, middleware.GameStat{})
+	copy(sorted[i+1:], sorted[i:])
+	sorted[i] = stat
+	return sorted
 }
 
 func (h *handler) Free() error {
@@ -99,11 +199,19 @@ func main() {
 
 	nodeCfg := middleware.Config[*handler]{
 		Builder: func(clientID int) *handler {
+			database_path := middleware.Cat("client", clientID)
+			db, err := database.NewDatabase(database_path)
+			utils.Expect(err, "unrecoverable error")
+
+			sequencer := middleware.NewSequencerDisk("sequencer")
+			err = sequencer.LoadDisk(db)
+			utils.Expect(err, "unrecoverable error")
+
 			return &handler{
 				output:     middleware.Results,
-				sorted:     make([]middleware.GameStat, 0),
 				percentile: float64(cfg.Percentile),
-				sequencer:  utils.NewSequencer(),
+				db:         db,
+				sequencer:  sequencer,
 			}
 		},
 		Endpoints: map[string]middleware.HandlerFunc[*handler]{

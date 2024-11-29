@@ -1,8 +1,6 @@
 package middleware
 
 import (
-	"distribuidos/tp1/utils"
-
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -19,14 +17,13 @@ type FilterConfig struct {
 type FilterFunc[T any] func(record T) []string
 
 type filterHandler[T any] struct {
-	input        string
-	output       string
-	clientID     int
-	filter       FilterFunc[T]
-	partitions   map[string]Batch[T]
-	stats        map[string]int
-	sequencer    *utils.Sequencer
-	outputConfig Output
+	input      string
+	output     string
+	clientID   int
+	filter     FilterFunc[T]
+	partitions map[string]Batch[T]
+	stats      map[string]int
+	sequencer  *Sequencer
 }
 
 func (h *filterHandler[T]) handle(ch *Channel, data []byte) error {
@@ -124,7 +121,7 @@ func NewFilter[T any](config FilterConfig, f FilterFunc[T]) (*Node[*filterHandle
 				filter:     f,
 				partitions: partitions,
 				stats:      make(map[string]int),
-				sequencer:  utils.NewSequencer(),
+				sequencer:  NewSequencer(),
 			}
 		},
 		Endpoints: map[string]HandlerFunc[*filterHandler[T]]{

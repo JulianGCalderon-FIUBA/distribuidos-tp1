@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"os"
 	"os/exec"
@@ -127,6 +128,9 @@ func (r *Restarter) Start(ctx context.Context) error {
 func (r *Restarter) StartMonitoring(ctx context.Context) {
 	for _, node := range r.nodes {
 		r.wg.Add(1)
+
+		time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
+
 		go func(nodeName string) {
 			defer r.wg.Done()
 			r.monitorNode(ctx, nodeName, utils.NODE_PORT)
@@ -139,12 +143,11 @@ func (r *Restarter) StartMonitoring(ctx context.Context) {
 }
 
 func (r *Restarter) monitorNode(ctx context.Context, containerName string, port int) {
-	ticker := time.NewTicker(time.Second * 5)
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker.C:
+		case <-time.After(time.Duration(rand.Intn(4000)+3000) * time.Millisecond):
 			msg := KeepAlive{}
 			addr, _ := utils.GetUDPAddr(containerName, port)
 			err := r.safeSend(ctx, msg, addr)

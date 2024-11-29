@@ -1,4 +1,4 @@
-package utils
+package middleware
 
 type Sequencer struct {
 	missingIDs map[int]struct{}
@@ -29,4 +29,9 @@ func (s *Sequencer) Mark(id int, EOF bool) {
 
 func (s *Sequencer) EOF() bool {
 	return s.fakeEOF && len(s.missingIDs) == 0
+}
+
+func (s *Sequencer) Seen(id int) bool {
+	_, missing := s.missingIDs[id]
+	return id <= s.latestID && !missing
 }

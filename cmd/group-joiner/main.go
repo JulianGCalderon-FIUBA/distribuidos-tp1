@@ -42,7 +42,7 @@ type handler struct {
 	lastBatchId     int
 	eofReceived     int
 	totalPartitions int
-	sequencer       map[int]*utils.Sequencer
+	sequencer       map[int]*middleware.Sequencer
 }
 
 func buildHandler(partition int) middleware.HandlerFunc[*handler] {
@@ -77,7 +77,10 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte, partition int
 	}
 
 	if h.eofReceived == h.totalPartitions {
-		b := middleware.Batch[middleware.GameStat]{EOF: true}
+		b := middleware.Batch[middleware.GameStat]{
+			BatchID: h.lastBatchId,
+			EOF:     true,
+		}
 		err := ch.Send(b, "", h.output)
 		if err != nil {
 			return err
@@ -122,9 +125,9 @@ func main() {
 
 	nodeCfg := middleware.Config[*handler]{
 		Builder: func(clientID int) *handler {
-			sequencer := make(map[int]*utils.Sequencer)
+			sequencer := make(map[int]*middleware.Sequencer)
 			for i := 1; i <= cfg.Partitions; i++ {
-				sequencer[i] = utils.NewSequencer()
+				sequencer[i] = middleware.NewSequencer()
 			}
 			return &handler{
 				output:          cfg.Output,

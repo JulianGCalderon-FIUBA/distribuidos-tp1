@@ -46,8 +46,8 @@ func getConfig() (config, error) {
 
 type handler struct {
 	diskMap         *middleware.DiskMap
-	gameSequencer   *utils.Sequencer
-	reviewSequencer *utils.Sequencer
+	gameSequencer   *middleware.Sequencer
+	reviewSequencer *middleware.Sequencer
 	batchSize       int
 	output          string
 }
@@ -125,14 +125,12 @@ func (h *handler) conclude(ch *middleware.Channel) error {
 		BatchID: 0,
 		EOF:     false,
 	}
-
 	if len(games) == 0 {
 		batch.EOF = true
 		return ch.Send(batch, "", h.output)
 	}
 
 	for len(games) > 0 {
-
 		currBatchSize := min(h.batchSize, len(games))
 		var batchData []middleware.GameStat
 		games, batchData = games[currBatchSize:], games[:currBatchSize]
@@ -183,8 +181,8 @@ func main() {
 
 			return &handler{
 				diskMap:         diskMap,
-				gameSequencer:   utils.NewSequencer(),
-				reviewSequencer: utils.NewSequencer(),
+				gameSequencer:   middleware.NewSequencer(),
+				reviewSequencer: middleware.NewSequencer(),
 				batchSize:       cfg.BatchSize,
 				output:          qOutput,
 			}

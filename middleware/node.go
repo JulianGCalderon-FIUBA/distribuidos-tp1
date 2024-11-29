@@ -80,9 +80,6 @@ func (n *Node[T]) Run(ctx context.Context) error {
 				return err
 			}
 		case <-ctx.Done():
-			for clientId, h := range n.clients {
-				n.freeResources(clientId, h)
-			}
 			return nil
 		}
 	}
@@ -110,9 +107,11 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 	}
 
 	err := n.config.Endpoints[d.Queue](h, ch, d.Body)
-	if ch.FinishFlag {
-		n.freeResources(clientID, h)
-	}
+	// todo: persistir cuales clientes terminaron
+	// todo: free resources
+	// if ch.FinishFlag {
+	// n.freeResources(clientID, h)
+	// }
 
 	if err != nil {
 		log.Errorf("Failed to handle message %v", err)
