@@ -57,3 +57,24 @@ func OpenFileAll(name string, flag int, perm os.FileMode) (*os.File, error) {
 	}
 	return file, err
 }
+
+func InitLogger(logLevel string) error {
+	logLevelCode, err := logging.LogLevel(logLevel)
+	if err != nil {
+		return err
+	}
+
+	base := logging.NewLogBackend(os.Stdout, "", 0)
+
+	format := logging.MustStringFormatter(
+		`%{color}%{time:15:04:05.000} %{level:-4s}%{color:reset} %{message}`,
+	)
+	formatter := logging.NewBackendFormatter(base, format)
+
+	leveled := logging.AddModuleLevel(formatter)
+	leveled.SetLevel(logLevelCode, "")
+
+	logging.SetBackend(leveled)
+
+	return nil
+}
