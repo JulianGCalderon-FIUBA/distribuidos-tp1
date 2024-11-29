@@ -76,15 +76,20 @@ func readNodeConfig() ([]string, error) {
 	return nodes, nil
 }
 
-func NewRestarter(address string, id uint64, replicas uint64) *Restarter {
+func NewRestarter(address string, id uint64, replicas uint64) (*Restarter, error) {
 	nodes, err := readNodeConfig()
-	utils.Expect(err, "Failed to read nodes config")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read nodes config: %v", err)
+	}
 
 	udpAddr, err := net.ResolveUDPAddr("udp", address)
-	utils.Expect(err, "Did not receive a valid address")
-
+	if err != nil {
+		return nil, fmt.Errorf("did not receive a valid address: %v", err)
+	}
 	conn, err := net.ListenUDP("udp", udpAddr)
-	utils.Expect(err, "Failed to start listening from connection")
+	if err != nil {
+		return nil, fmt.Errorf("failed to start listening from connection: %v", err)
+	}
 
 	var mu sync.Mutex
 	cond := sync.NewCond(&mu)
@@ -99,7 +104,7 @@ func NewRestarter(address string, id uint64, replicas uint64) *Restarter {
 		ackMap:       make(map[uint64]chan bool),
 		lastMsgId:    0,
 		wg:           &sync.WaitGroup{},
-	}
+	}, nil
 }
 
 func (r *Restarter) Start(ctx context.Context) error {

@@ -42,10 +42,11 @@ func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to get config")
 
-	r := restarter.NewRestarter(cfg.Address, cfg.Id, cfg.Replicas)
-
 	err = utils.InitLogger(cfg.LogLevel)
 	utils.Expect(err, "Failed to init logger")
+
+	r, err := restarter.NewRestarter(cfg.Address, cfg.Id, cfg.Replicas)
+	utils.Expect(err, "Failed to create restarter")
 
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 
