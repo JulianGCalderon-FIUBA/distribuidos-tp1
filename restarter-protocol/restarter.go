@@ -27,6 +27,7 @@ const RESTARTER_NAME = "restarter-"
 var log = logging.MustGetLogger("log")
 
 var ErrFallenNode = errors.New("Never got ack")
+var ErrTimeout = errors.New("Never got ack")
 
 type Restarter struct {
 	id           uint64
@@ -226,13 +227,16 @@ func (r *Restarter) safeSend(ctx context.Context, msg Message, addr *net.UDPAddr
 
 	for attempts := 0; attempts < MAX_ATTEMPTS; attempts++ {
 		err = r.send(ctx, packet, addr)
-		if err == nil {
-			return nil
+		if errors.Is(err, ErrTimeout) {
+			log.Errorf("Timeout, trying to send again message %v", msgId)
+		} else {
+			return err
 		}
+
 	}
 
 	log.Errorf("Never got ack for message %d", msgId)
-	return ErrFallenNode
+	return errors.Join(ErrFallenNode, err)
 }
 
 func (r *Restarter) send(ctx context.Context, p Packet, addr *net.UDPAddr) error {
@@ -258,8 +262,7 @@ func (r *Restarter) send(ctx context.Context, p Packet, addr *net.UDPAddr) error
 		delete(r.ackMap, p.Id)
 		r.mu.Unlock()
 	case <-time.After(2 * time.Second):
-		log.Infof("Timeout, trying to send again message %v", p.Id)
-		return os.ErrDeadlineExceeded
+		return ErrTimeout
 	case <-ctx.Done():
 		return nil
 	}
