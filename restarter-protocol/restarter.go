@@ -304,14 +304,11 @@ func (r *Restarter) newMsgId() uint64 {
 }
 
 func (r *Restarter) restartNode(ctx context.Context, containerName string) error {
-	if r.isRestarterNode(containerName) {
-		id := (r.id + 1) % r.replicas
-		if id == r.leaderId {
-			log.Infof("Leader has fallen, starting election")
-			err := r.startElection(ctx)
-			if err != nil {
-				return err
-			}
+	if r.isLeader(containerName) {
+		log.Infof("Leader has fallen")
+		err := r.startElection(ctx)
+		if err != nil {
+			return err
 		}
 	}
 	log.Errorf("Node %v has fallen. Restarting...", containerName)
@@ -322,6 +319,12 @@ func (r *Restarter) restartNode(ctx context.Context, containerName string) error
 	return err
 }
 
-func (r *Restarter) isRestarterNode(containerName string) bool {
-	return strings.Contains(containerName, RESTARTER_NAME)
+func (r *Restarter) isLeader(containerName string) bool {
+	if !strings.Contains(containerName, RESTARTER_NAME) {
+		return false
+	}
+
+	neighborId := (r.id + 1) % r.replicas
+
+	return neighborId == r.leaderId
 }
