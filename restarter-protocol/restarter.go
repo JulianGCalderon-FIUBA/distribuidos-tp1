@@ -296,7 +296,8 @@ func (r *Restarter) handleAck(msgId uint64) {
 func (r *Restarter) newMsgId() uint64 {
 	r.mu.Lock()
 	r.lastMsgId += 1
-	r.ackMap[r.lastMsgId] = make(chan bool)
+	// we make the channel buffered to avoid blocking the read loop
+	r.ackMap[r.lastMsgId] = make(chan bool, 1)
 	defer r.mu.Unlock()
 
 	return r.lastMsgId
