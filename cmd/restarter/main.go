@@ -52,7 +52,7 @@ func main() {
 
 	go func() {
 		err = r.Start(ctx)
-		utils.Expect(err, "Failed to start leader election")
+		utils.Expect(err, "Failed to run restarter")
 	}()
 
 	go func() {
