@@ -2,13 +2,12 @@ package main
 
 import (
 	"context"
+	"distribuidos/tp1/database"
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/utils"
 	"encoding/gob"
 	"os/signal"
-	"slices"
-	"sort"
 	"syscall"
 
 	"github.com/spf13/viper"
@@ -37,45 +36,77 @@ func getConfig() (config, error) {
 }
 
 type handler struct {
+	db        *database.Database
 	output    string
-	sorted    []middleware.GameStat
-	N         int
-	sequencer *middleware.Sequencer
+	topN      *middleware.TopNDisk
+	sequencer *middleware.SequencerDisk
 }
 
 func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
+
+	snapshot, err := h.db.NewSnapshot()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		switch err {
+		case nil:
+			cerr := snapshot.Commit()
+			utils.Expect(cerr, "unrecoverable error")
+		default:
+			cerr := snapshot.Abort()
+			utils.Expect(cerr, "unrecoverable error")
+		}
+	}()
 
 	batch, err := middleware.Deserialize[middleware.Batch[middleware.GameStat]](data)
 	if err != nil {
 		return err
 	}
 
-	h.sequencer.Mark(batch.BatchID, batch.EOF)
-
-	for _, r := range batch.Data {
-		i := sort.Search(len(h.sorted), func(i int) bool { return h.sorted[i].Stat >= r.Stat })
-
-		g := middleware.GameStat{
-			AppID: r.AppID,
-			Name:  r.Name,
-			Stat:  r.Stat,
-		}
-
-		h.sorted = append(h.sorted, middleware.GameStat{})
-		copy(h.sorted[i+1:], h.sorted[i:])
-		h.sorted[i] = g
+	if h.sequencer.Seen(batch.BatchID) {
+		return nil
+	}
+	err = h.sequencer.MarkDisk(snapshot, batch.BatchID, batch.EOF)
+	if err != nil {
+		return err
 	}
 
-	if h.sequencer.EOF() {
-		index := max(0, len(h.sorted)-h.N)
-		top := h.sorted[index:]
-		slices.Reverse(top)
+	for _, stat := range batch.Data {
+		h.topN.Put(stat)
+	}
 
-		err := ch.Send(top, "", h.output)
+	err = h.topN.Save(snapshot)
+	if err != nil {
+		return err
+	}
+
+	/* 	if rand.Float64() < 0.01 {
+	   		os.Exit(1)
+	   	}
+	*/
+	if h.sequencer.EOF() {
+		err := h.conclude(ch)
 		if err != nil {
 			return err
 		}
+
 		ch.Finish()
+	}
+
+	/* 	if rand.Float64() < 0.01 {
+		os.Exit(1)
+	} */
+
+	return nil
+}
+
+func (h *handler) conclude(ch *middleware.Channel) error {
+	games := h.topN.Get()
+
+	err := ch.Send(games, "", h.output)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -94,6 +125,7 @@ func main() {
 	utils.Expect(err, "Failed to dial rabbit")
 
 	qInput := middleware.Cat(middleware.GroupedQ3, cfg.PartitionID)
+	qOutput := middleware.Cat(middleware.PartialQ3, cfg.PartitionID)
 	err = middleware.Topology{
 		Queues: []middleware.QueueConfig{
 			{Name: qInput},
@@ -104,11 +136,23 @@ func main() {
 
 	nodeCfg := middleware.Config[*handler]{
 		Builder: func(clientID int) *handler {
+			database_path := middleware.Cat("client", clientID)
+			db, err := database.NewDatabase(database_path)
+			utils.Expect(err, "unrecoverable error")
+
+			sequencer := middleware.NewSequencerDisk("sequencer")
+			err = sequencer.LoadDisk(db)
+			utils.Expect(err, "unrecoverable error")
+
+			topN := middleware.NewTopNDisk("TopN", cfg.N)
+			err = topN.LoadDisk(db)
+			utils.Expect(err, "unrecoverable error")
+
 			return &handler{
-				output:    middleware.PartialQ3,
-				sorted:    make([]middleware.GameStat, 0),
-				N:         cfg.N,
-				sequencer: middleware.NewSequencer(),
+				db:        db,
+				output:    qOutput,
+				sequencer: sequencer,
+				topN:      topN,
 			}
 		},
 		Endpoints: map[string]middleware.HandlerFunc[*handler]{
