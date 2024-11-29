@@ -9,15 +9,15 @@ import (
 	"strconv"
 )
 
-const GAMES_DIR string = "games"
-
 type DiskMap struct {
+	name    string
 	games   map[uint64]string
 	reviews map[uint64]uint64
 }
 
-func NewDiskMap() *DiskMap {
+func NewDiskMap(name string) *DiskMap {
 	return &DiskMap{
+		name:    name,
 		games:   make(map[uint64]string),
 		reviews: make(map[uint64]uint64),
 	}
@@ -72,7 +72,7 @@ func (m *DiskMap) Get(db *database.Database, k string) (*GameStat, error) {
 }
 
 func (m *DiskMap) GetAll(db *database.Database) ([]GameStat, error) {
-	entries, err := db.GetAll(GAMES_DIR)
+	entries, err := db.GetAll(m.name)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +172,7 @@ func (m *DiskMap) Rename(snapshot *database.Snapshot, id uint64, name string) er
 
 // Returns path to specific game inside games folder in database
 func (m *DiskMap) GamesPath(k string) string {
-	return path.Join(GAMES_DIR, k)
+	return path.Join(m.name, k)
 }
 
 /*

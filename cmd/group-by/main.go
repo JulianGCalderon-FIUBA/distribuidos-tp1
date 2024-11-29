@@ -13,6 +13,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+const GAMES_DIR string = "games"
+
 var log = logging.MustGetLogger("log")
 
 type config struct {
@@ -231,7 +233,7 @@ func main() {
 			db, err := database.NewDatabase(database_path)
 			utils.Expect(err, "unrecoverable error")
 
-			diskMap := middleware.NewDiskMap()
+			diskMap := middleware.NewDiskMap(GAMES_DIR)
 			utils.Expect(err, "unrecoverable error")
 
 			gameSequencer := middleware.NewSequencerDisk("game-sequencer")
