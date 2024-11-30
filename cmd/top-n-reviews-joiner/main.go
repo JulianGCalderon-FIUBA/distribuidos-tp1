@@ -39,11 +39,10 @@ func getConfig() (config, error) {
 }
 
 type handler struct {
-	db         *database.Database
-	output     string
-	topN       *middleware.TopNDisk
-	joiner     *middleware.JoinerDisk
-	partitions int
+	db     *database.Database
+	output string
+	topN   *middleware.TopNDisk
+	joiner *middleware.JoinerDisk
 }
 
 func buildHandler(partition int) middleware.HandlerFunc[*handler] {
@@ -153,11 +152,10 @@ func main() {
 			utils.Expect(err, "unrecoverable error")
 
 			return &handler{
-				db:         db,
-				output:     middleware.Results,
-				joiner:     joiner,
-				topN:       topN,
-				partitions: cfg.Partitions,
+				db:     db,
+				output: middleware.Results,
+				joiner: joiner,
+				topN:   topN,
 			}
 		},
 		Endpoints: endpoints,
