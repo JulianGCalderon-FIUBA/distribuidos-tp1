@@ -159,7 +159,7 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) (err error) {
 }
 
 func (h *handler) Free() error {
-	return nil
+	return h.db.RemoveAll()
 }
 
 func main() {
