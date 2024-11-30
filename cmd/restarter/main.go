@@ -17,6 +17,7 @@ type config struct {
 	Id       uint64
 	Address  string
 	Replicas uint64
+	LogLevel string
 }
 
 func getConfig() (config, error) {
@@ -24,11 +25,13 @@ func getConfig() (config, error) {
 
 	v.SetDefault("Id", 0)
 	v.SetDefault("Replicas", 4)
+	v.SetDefault("LogLevel", logging.INFO.String())
 
 	_ = v.BindEnv("Id", "ID")
 
 	_ = v.BindEnv("Replicas", "REPLICAS")
 	_ = v.BindEnv("Address", "ADDRESS")
+	_ = v.BindEnv("LogLevel", "LOG_LEVEL")
 
 	var c config
 	err := v.Unmarshal(&c)
@@ -36,18 +39,22 @@ func getConfig() (config, error) {
 }
 
 func main() {
-
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to get config")
 
-	r := restarter.NewRestarter(cfg.Address, cfg.Id, cfg.Replicas)
+	err = utils.InitLogger(cfg.LogLevel)
+	utils.Expect(err, "Failed to init logger")
+
+	r, err := restarter.NewRestarter(cfg.Address, cfg.Id, cfg.Replicas)
+	utils.Expect(err, "Failed to create restarter")
 
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 
 	go func() {
 		err = r.Start(ctx)
-		utils.Expect(err, "Failed to start leader election")
+		utils.Expect(err, "Failed to run restarter")
 	}()
+
 	go func() {
 		for {
 			r.WaitLeader(true)
@@ -62,5 +69,6 @@ func main() {
 			<-monitorCtx.Done()
 		}
 	}()
+
 	<-ctx.Done()
 }
