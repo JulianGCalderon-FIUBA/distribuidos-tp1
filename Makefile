@@ -13,7 +13,11 @@ docker-build:
 	docker build -t "tp1:latest" .
 .PHONY: compose-build
 
-compose-up: compose-down docker-build
+docker-build-stress:
+	docker build --build-arg GO_TAGS=stress -t "tp1:latest" .
+.PHONY: compose-build
+
+compose-up:
 	docker compose -f compose.yaml up -d
 .PHONY: compose-up
 
@@ -25,6 +29,12 @@ compose-down:
 compose-logs:
 	docker compose -f compose.yaml logs -f
 .PHONY: compose-logs
+
+run: docker-build compose-down compose-up compose-logs
+.PHONY: run
+
+run-stress: docker-build-stress compose-down compose-up compose-logs
+.PHONY: run-stress
 
 write-compose:
 	go run ./scripts/compose > compose.yaml
