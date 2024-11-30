@@ -175,7 +175,7 @@ func sortedInsert(sorted []middleware.GameStat, stat middleware.GameStat) []midd
 }
 
 func (h *handler) Free() error {
-	return nil
+	return h.db.Delete()
 }
 
 func main() {

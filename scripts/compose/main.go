@@ -349,7 +349,7 @@ func generateQ3() {
 		fmt.Println("    environment:")
 		fmt.Println("      - RABBIT_IP=rabbitmq")
 		fmt.Printf("      - PARTITION_ID=%v\n", i)
-		fmt.Println("      - N=5000")
+		fmt.Println("      - N=5")
 		fmt.Println("    networks:")
 		fmt.Println("      - net")
 		fmt.Println("    depends_on:")

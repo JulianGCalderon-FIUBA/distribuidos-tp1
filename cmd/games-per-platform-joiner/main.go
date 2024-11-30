@@ -160,7 +160,7 @@ func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte, parti
 }
 
 func (h *handler) Free() error {
-	return nil
+	return h.db.Delete()
 }
 
 func main() {

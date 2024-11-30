@@ -208,7 +208,7 @@ func (h *handler) getAll() ([]middleware.GameStat, error) {
 }
 
 func (h *handler) Free() error {
-	return nil
+	return h.db.Delete()
 }
 
 func main() {

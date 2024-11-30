@@ -323,7 +323,7 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=1
-      - N=5000
+      - N=5
     networks:
       - net
     depends_on:
@@ -351,7 +351,7 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=2
-      - N=5000
+      - N=5
     networks:
       - net
     depends_on:
@@ -379,7 +379,7 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=3
-      - N=5000
+      - N=5
     networks:
       - net
     depends_on:
