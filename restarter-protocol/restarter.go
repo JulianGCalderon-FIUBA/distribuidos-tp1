@@ -131,18 +131,12 @@ func (r *Restarter) Start(ctx context.Context) error {
 
 func (r *Restarter) StartMonitoring(ctx context.Context) {
 	for _, node := range r.nodes {
-		r.wg.Add(1)
-
 		time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
 
 		go func(nodeName string) {
-			defer r.wg.Done()
 			r.monitorNode(ctx, nodeName, utils.NODE_PORT)
 		}(node)
 	}
-
-	<-ctx.Done()
-	r.wg.Wait()
 }
 
 func (r *Restarter) monitorNode(ctx context.Context, containerName string, port int) {
