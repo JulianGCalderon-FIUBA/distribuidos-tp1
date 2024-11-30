@@ -4,6 +4,11 @@ deps:
 	go mod tidy
 .PHONY: deps
 
+clean:
+	sudo rm -rf .backup
+	sudo rm -rf .results-*
+.PHONY: clean
+
 build: deps
 	go build -o .build/ ./cmd/...
 
