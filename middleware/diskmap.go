@@ -92,6 +92,7 @@ func (m *DiskMap) GetAll(db *database.Database) ([]GameStat, error) {
 
 func (m *DiskMap) Insert(snapshot *database.Snapshot, stat GameStat) error {
 	m.games[stat.AppID] = stat.Name
+	m.reviews[stat.AppID] = stat.AppID
 	path := m.GamesPath(strconv.Itoa(int(stat.AppID)))
 	file, err := snapshot.Create(path)
 	if err != nil {
