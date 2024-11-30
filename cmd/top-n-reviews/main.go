@@ -81,10 +81,6 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 		return err
 	}
 
-	/* 	if rand.Float64() < 0.01 {
-	   		os.Exit(1)
-	   	}
-	*/
 	if h.sequencer.EOF() {
 		err := h.conclude(ch)
 		if err != nil {
@@ -93,10 +89,6 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 
 		ch.Finish()
 	}
-
-	/* 	if rand.Float64() < 0.01 {
-		os.Exit(1)
-	} */
 
 	return nil
 }
