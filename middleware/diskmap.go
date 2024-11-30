@@ -1,36 +1,46 @@
 package middleware
 
 import (
+	"distribuidos/tp1/database"
 	"encoding/binary"
+	"io"
 	"os"
 	"path"
 	"strconv"
 )
 
 type DiskMap struct {
-	name string
-	m    map[uint64]GameStat
+	name    string
+	games   map[uint64]string
+	reviews map[uint64]uint64
 }
 
-func NewDiskMap(name string) (*DiskMap, error) {
-	err := os.MkdirAll(name, os.ModePerm)
+func NewDiskMap(name string) *DiskMap {
+	return &DiskMap{
+		name:    name,
+		games:   make(map[uint64]string),
+		reviews: make(map[uint64]uint64),
+	}
+}
+
+func (m *DiskMap) Start() {
+	clear(m.games)
+	clear(m.reviews)
+}
+
+func (m *DiskMap) Get(db *database.Database, k string) (*GameStat, error) {
+	fileName := m.GamesPath(k)
+
+	file, err := db.Get(fileName)
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	return &DiskMap{
-		name: name,
-		m:    make(map[uint64]GameStat),
-	}, nil
-}
-
-func (m *DiskMap) Get(id uint64) (*GameStat, error) {
-	fileName := path.Join(m.name, strconv.Itoa(int(id)))
-
-	content, err := os.ReadFile(fileName)
-	if os.IsNotExist(err) {
-		return nil, nil
-	} else if err != nil {
+	content, err := io.ReadAll(file)
+	if err != nil {
 		return nil, err
 	}
 
@@ -43,105 +53,109 @@ func (m *DiskMap) Get(id uint64) (*GameStat, error) {
 		return nil, err
 	}
 
+	value, ok := m.reviews[header.AppId]
+	if ok {
+		header.Stat += value
+	}
+	name := string(content[n:])
+	gname, ok := m.games[header.AppId]
+	if ok {
+		name = gname
+	}
+
 	return &GameStat{
 		AppID: header.AppId,
 		Stat:  header.Stat,
-		Name:  string(content[n:]),
+		Name:  name,
 	}, nil
+
 }
 
-func (m *DiskMap) GetAll() ([]GameStat, error) {
-
-	entries, err := os.ReadDir(m.name)
+func (m *DiskMap) GetAll(db *database.Database) ([]GameStat, error) {
+	entries, err := db.GetAll(m.name)
 	if err != nil {
 		return nil, err
 	}
 
-	games := make([]GameStat, 0)
+	stats := make([]GameStat, 0)
 
 	for _, e := range entries {
-		n, err := strconv.Atoi(e.Name())
+		g, err := m.Get(db, path.Base(e))
 		if err != nil {
 			return nil, err
 		}
-		g, err := m.Get(uint64(n))
-		if err != nil {
-			return nil, err
+		if g != nil {
+			stats = append(stats, *g)
 		}
-		games = append(games, *g)
 	}
-
-	return games, nil
+	return stats, nil
 }
 
-func (m *DiskMap) Insert(stat GameStat) error {
-	fileName := path.Join(m.name, strconv.Itoa(int(stat.AppID)))
-
+func (m *DiskMap) Insert(snapshot *database.Snapshot, stat GameStat) error {
+	m.games[stat.AppID] = stat.Name
+	m.reviews[stat.AppID] = stat.AppID
+	path := m.GamesPath(strconv.Itoa(int(stat.AppID)))
+	file, err := snapshot.Create(path)
+	if err != nil {
+		return err
+	}
 	header := struct {
 		AppId uint64
-		Stat  uint64
+		Stats uint64
 	}{
 		AppId: stat.AppID,
-		Stat:  stat.Stat,
+		Stats: stat.Stat,
 	}
-	content, err := binary.Append(nil, binary.LittleEndian, &header)
+	err = binary.Write(file, binary.LittleEndian, header)
 	if err != nil {
-		return err
+		return nil
 	}
-	content = append(content, []byte(stat.Name)...)
-
-	return os.WriteFile(fileName, content, 0644)
+	return binary.Write(file, binary.LittleEndian, []byte(stat.Name))
 }
 
-func (m *DiskMap) Increment(id uint64, value uint64) error {
-	fileName := path.Join(m.name, strconv.Itoa(int(id)))
-	file, err := os.OpenFile(fileName, os.O_RDWR, 0644)
-	if os.IsNotExist(err) {
-		return m.Insert(GameStat{
-			AppID: id,
-			Name:  "",
-			Stat:  value,
-		})
-	} else if err != nil {
+func (m *DiskMap) Increment(snapshot *database.Snapshot, id uint64, value uint64) error {
+	m.reviews[id] = value
+	path := m.GamesPath(strconv.Itoa(int(id)))
+	exists, err := snapshot.Exists(path)
+	if err != nil {
 		return err
 	}
-
-	defer file.Close()
-
-	offset := int64(binary.Size(id))
-	_, err = file.Seek(offset, 0)
+	file, err := snapshot.Update(path)
 	if err != nil {
 		return err
 	}
 
-	var stat uint64
-	err = binary.Read(file, binary.LittleEndian, &stat)
-	if err != nil {
-		return err
+	header := struct {
+		AppID uint64
+		Stat  uint64
+	}{AppID: id, Stat: value}
+
+	if exists {
+		err = binary.Read(file, binary.LittleEndian, &header)
+		if err != nil {
+			return err
+		}
+		value += header.Stat
 	}
 
-	_, err = file.Seek(offset, 0)
+	_, err = file.Seek(0, 0)
 	if err != nil {
 		return err
 	}
-	stat += value
-	return binary.Write(file, binary.LittleEndian, &stat)
+	err = binary.Write(file, binary.LittleEndian, id)
+	if err != nil {
+		return err
+	}
+	return binary.Write(file, binary.LittleEndian, value)
 }
 
-func (m *DiskMap) Rename(id uint64, name string) error {
-	fileName := path.Join(m.name, strconv.Itoa(int(id)))
-	file, err := os.OpenFile(fileName, os.O_RDWR, 0644)
-	if os.IsNotExist(err) {
-		return m.Insert(GameStat{
-			AppID: id,
-			Name:  name,
-		})
-	} else if err != nil {
+func (m *DiskMap) Rename(snapshot *database.Snapshot, id uint64, name string) error {
+	m.games[id] = name
+	path := m.GamesPath(strconv.Itoa(int(id)))
+	file, err := snapshot.Update(path)
+	if err != nil {
 		return err
 	}
-
-	defer file.Close()
-
 	var header struct {
 		AppId uint64
 		Stat  uint64
@@ -155,11 +169,16 @@ func (m *DiskMap) Rename(id uint64, name string) error {
 	if err != nil {
 		return err
 	}
-
-	_, err = file.WriteString(name)
-	return err
+	return binary.Write(file, binary.LittleEndian, []byte(name))
 }
 
+// Returns path to specific game inside games folder in database
+func (m *DiskMap) GamesPath(k string) string {
+	return path.Join(m.name, k)
+}
+
+/*
 func (m *DiskMap) Remove() error {
 	return os.RemoveAll(m.name)
 }
+*/

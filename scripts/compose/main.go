@@ -24,7 +24,7 @@ const DECADE_FILTER = 2
 const GENRE_FITLER = 2
 const SCORE_FILTER = 2
 
-const RESTARTER = 4
+const RESTARTER = 2
 
 var names []string
 
