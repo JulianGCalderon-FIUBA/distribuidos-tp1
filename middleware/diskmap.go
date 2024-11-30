@@ -84,8 +84,9 @@ func (m *DiskMap) GetAll(db *database.Database) ([]GameStat, error) {
 		if err != nil {
 			return nil, err
 		}
-
-		stats = append(stats, *g)
+		if g != nil {
+			stats = append(stats, *g)
+		}
 	}
 	return stats, nil
 }
