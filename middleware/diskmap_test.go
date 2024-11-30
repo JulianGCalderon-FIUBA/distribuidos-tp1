@@ -1,21 +1,28 @@
 package middleware_test
 
 import (
+	"distribuidos/tp1/database"
 	"distribuidos/tp1/middleware"
 	"fmt"
-	"os"
 	"reflect"
+	"strconv"
 	"testing"
 )
 
+// diskMap.Start() is used to clear the map before get operation because tests don't contemplate leftover info
+
 func TestInsert(t *testing.T) {
-	os.RemoveAll("tmp_TestInsert")
-	diskMap, err := middleware.NewDiskMap("tmp_TestInsert")
+	diskMap := middleware.NewDiskMap("map")
+	db, err := database.NewDatabase(t.TempDir())
 	if err != nil {
 		t.Fatalf("Failed init map: %v", err)
 	}
+	snapshot, err := db.NewSnapshot()
+	if err != nil {
+		t.Fatalf("Failed init snapshot: %v", err)
+	}
 
-	for _, stat := range []middleware.GameStat{
+	stats := []middleware.GameStat{
 		{
 			AppID: 1,
 			Stat:  1,
@@ -36,8 +43,11 @@ func TestInsert(t *testing.T) {
 			Stat:  4,
 			Name:  "Stardew Valley",
 		},
-	} {
-		stat1, err := diskMap.Get(stat.AppID)
+	}
+
+	for _, stat := range stats {
+		diskMap.Start()
+		stat1, err := diskMap.Get(db, strconv.Itoa(int(stat.AppID)))
 		if err != nil {
 			t.Fatalf("Failed to get: %v", err)
 		}
@@ -45,12 +55,19 @@ func TestInsert(t *testing.T) {
 			t.Fatalf("Element should not exist")
 		}
 
-		err = diskMap.Insert(stat)
+		err = diskMap.Insert(snapshot, stat)
 		if err != nil {
 			t.Fatalf("Failed to insert: %v", err)
 		}
+	}
+	err = snapshot.Commit()
+	if err != nil {
+		t.Fatalf("Failed to commit: %v", err)
+	}
+	diskMap.Start()
+	for _, stat := range stats {
 
-		stat2, err := diskMap.Get(stat.AppID)
+		stat2, err := diskMap.Get(db, strconv.Itoa(int(stat.AppID)))
 		if err != nil {
 			t.Fatalf("Failed to get: %v", err)
 		}
@@ -65,13 +82,17 @@ func TestInsert(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	os.RemoveAll("tmp_TestUpdate")
-	diskMap, err := middleware.NewDiskMap("tmp_TestUpdate")
+	diskMap := middleware.NewDiskMap("map")
+	db, err := database.NewDatabase(t.TempDir())
 	if err != nil {
 		t.Fatalf("Failed init map: %v", err)
 	}
+	snapshot, err := db.NewSnapshot()
+	if err != nil {
+		t.Fatalf("Failed init snapshot: %v", err)
+	}
 
-	for _, stat := range []middleware.GameStat{
+	stats := []middleware.GameStat{
 		{
 			AppID: 1,
 			Stat:  1,
@@ -92,13 +113,29 @@ func TestUpdate(t *testing.T) {
 			Stat:  4,
 			Name:  "Stardew Valley",
 		},
-	} {
-		err = diskMap.Insert(stat)
+	}
+	for _, stat := range stats {
+		err = diskMap.Insert(snapshot, stat)
 		if err != nil {
 			t.Fatalf("Failed to insert: %v", err)
 		}
+	}
 
-		stat1, err := diskMap.Get(stat.AppID)
+	err = snapshot.Commit()
+	if err != nil {
+		t.Fatalf("Failed to commit: %v", err)
+	}
+
+	snapshot, err = db.NewSnapshot()
+	if err != nil {
+		t.Fatalf("Failed init snapshot: %v", err)
+	}
+
+	updated := make([]middleware.GameStat, 0)
+
+	for _, stat := range stats {
+		diskMap.Start()
+		stat1, err := diskMap.Get(db, strconv.Itoa(int(stat.AppID)))
 		if err != nil {
 			t.Fatalf("Failed to get: %v", err)
 		}
@@ -107,12 +144,21 @@ func TestUpdate(t *testing.T) {
 		}
 
 		stat1.Stat += 10
-		err = diskMap.Insert(*stat1)
+		err = diskMap.Insert(snapshot, *stat1)
 		if err != nil {
 			t.Fatalf("Failed to insert: %v", err)
 		}
 
-		stat2, err := diskMap.Get(stat.AppID)
+		updated = append(updated, *stat1)
+	}
+
+	err = snapshot.Commit()
+	if err != nil {
+		t.Fatalf("Failed to commit: %v", err)
+	}
+	for i, stat := range stats {
+		diskMap.Start()
+		stat2, err := diskMap.Get(db, strconv.Itoa(int(stat.AppID)))
 		if err != nil {
 			t.Fatalf("Failed to get: %v", err)
 		}
@@ -120,19 +166,21 @@ func TestUpdate(t *testing.T) {
 			t.Fatalf("Element should exist")
 		}
 
-		if *stat1 != *stat2 {
+		if updated[i] != *stat2 {
 			t.Fatalf("Element should be the same")
 		}
-
 	}
+
 }
 
 func TestIncrement(t *testing.T) {
-	os.RemoveAll("tmp_TestIncrement")
-	diskMap, err := middleware.NewDiskMap("tmp_TestIncrement")
+	diskMap := middleware.NewDiskMap("map")
+	db, err := database.NewDatabase(t.TempDir())
 	if err != nil {
 		t.Fatalf("Failed init map: %v", err)
 	}
+
+	var snapshot *database.Snapshot
 
 	for _, stat := range []middleware.GameStat{
 		{
@@ -150,16 +198,24 @@ func TestIncrement(t *testing.T) {
 	} {
 		expected := 0
 		for range 10 {
+			snapshot, err = db.NewSnapshot()
+			if err != nil {
+				t.Fatalf("Failed init snapshot: %v", err)
+			}
 			increment := (expected + 1) * int(stat.AppID)
 			expected += increment
-			err := diskMap.Increment(stat.AppID, uint64(increment))
+			err := diskMap.Increment(snapshot, stat.AppID, uint64(increment))
 			if err != nil {
 				t.Fatalf("Failed to increment: %v", err)
 			}
+			err = snapshot.Commit()
+			if err != nil {
+				t.Fatalf("Failed to commit: %v", err)
+			}
 
 		}
-
-		finalStat, err := diskMap.Get(stat.AppID)
+		diskMap.Start()
+		finalStat, err := diskMap.Get(db, strconv.Itoa(int(stat.AppID)))
 		if err != nil {
 			t.Fatalf("Failed to get: %v", err)
 		}
@@ -175,11 +231,17 @@ func TestIncrement(t *testing.T) {
 }
 
 func TestRename(t *testing.T) {
-	os.RemoveAll("tmp_TestRename")
-	diskMap, err := middleware.NewDiskMap("tmp_TestRename")
+	diskMap := middleware.NewDiskMap("map")
+	db, err := database.NewDatabase(t.TempDir())
 	if err != nil {
 		t.Fatalf("Failed init map: %v", err)
 	}
+
+	if err != nil {
+		t.Fatalf("Failed init map: %v", err)
+	}
+
+	var snapshot *database.Snapshot
 
 	for _, stat := range []middleware.GameStat{
 		{
@@ -200,13 +262,22 @@ func TestRename(t *testing.T) {
 		},
 	} {
 		for i := range 10 {
+			snapshot, err = db.NewSnapshot()
+			if err != nil {
+				t.Fatalf("Failed init snapshot: %v", err)
+			}
+
 			expected := fmt.Sprintf("%v-%v", stat.Name, i)
-			err := diskMap.Rename(stat.AppID, expected)
+			err := diskMap.Rename(snapshot, stat.AppID, expected)
 			if err != nil {
 				t.Fatalf("Failed to rename: %v", err)
 			}
-
-			renamedStat, err := diskMap.Get(stat.AppID)
+			err = snapshot.Commit()
+			if err != nil {
+				t.Fatalf("Failed to commit: %v", err)
+			}
+			diskMap.Start()
+			renamedStat, err := diskMap.Get(db, strconv.Itoa(int(stat.AppID)))
 			if err != nil {
 				t.Fatalf("Failed to get: %v", err)
 			}
@@ -221,12 +292,12 @@ func TestRename(t *testing.T) {
 }
 
 func TestAll(t *testing.T) {
-	os.RemoveAll("tmp_TestAll")
-	diskMap, err := middleware.NewDiskMap("tmp_TestAll")
+	diskMap := middleware.NewDiskMap("map")
+	db, err := database.NewDatabase(t.TempDir())
 	if err != nil {
 		t.Fatalf("Failed init map: %v", err)
 	}
-
+	var snapshot *database.Snapshot
 	for _, stat := range []middleware.GameStat{
 		{
 			AppID: 1,
@@ -249,24 +320,53 @@ func TestAll(t *testing.T) {
 			Name:  "Stardew Valley",
 		},
 	} {
+		snapshot, err = db.NewSnapshot()
+		if err != nil {
+			t.Fatalf("Failed init snapshot: %v", err)
+		}
 
-		err = diskMap.Insert(stat)
+		err = diskMap.Insert(snapshot, stat)
 		if err != nil {
 			t.Fatalf("Failed to insert: %v", err)
 		}
 
-		err = diskMap.Increment(stat.AppID, stat.Stat)
+		err = snapshot.Commit()
+		if err != nil {
+			t.Fatalf("Failed to commit: %v", err)
+		}
+
+		snapshot, err = db.NewSnapshot()
+		if err != nil {
+			t.Fatalf("Failed init snapshot: %v", err)
+		}
+
+		err = diskMap.Increment(snapshot, stat.AppID, stat.Stat)
 		if err != nil {
 			t.Fatalf("Failed to increment: %v", err)
 		}
 
+		err = snapshot.Commit()
+		if err != nil {
+			t.Fatalf("Failed to commit: %v", err)
+		}
+
+		snapshot, err = db.NewSnapshot()
+		if err != nil {
+			t.Fatalf("Failed init snapshot: %v", err)
+		}
+
 		newName := fmt.Sprintf("%v-2", stat.Name)
-		err = diskMap.Rename(stat.AppID, newName)
+		err = diskMap.Rename(snapshot, stat.AppID, newName)
 		if err != nil {
 			t.Fatalf("Failed to rename: %v", err)
 		}
 
-		actualStat, err := diskMap.Get(stat.AppID)
+		err = snapshot.Commit()
+		if err != nil {
+			t.Fatalf("Failed to commit: %v", err)
+		}
+		diskMap.Start()
+		actualStat, err := diskMap.Get(db, strconv.Itoa(int(stat.AppID)))
 		if err != nil {
 			t.Fatalf("Failed to get: %v", err)
 		}
@@ -287,10 +387,15 @@ func TestAll(t *testing.T) {
 }
 
 func TestGetAll(t *testing.T) {
-	os.RemoveAll("tmp_TestUpdate")
-	diskMap, err := middleware.NewDiskMap("tmp_TestUpdate")
+	diskMap := middleware.NewDiskMap("map")
+	db, err := database.NewDatabase(t.TempDir())
 	if err != nil {
 		t.Fatalf("Failed init map: %v", err)
+	}
+
+	snapshot, err := db.NewSnapshot()
+	if err != nil {
+		t.Fatalf("Failed init snapshot: %v", err)
 	}
 
 	expected := []middleware.GameStat{
@@ -317,13 +422,18 @@ func TestGetAll(t *testing.T) {
 	}
 
 	for _, stat := range expected {
-		err = diskMap.Insert(stat)
+		err = diskMap.Insert(snapshot, stat)
 		if err != nil {
 			t.Fatalf("Failed to insert: %v", err)
 		}
 	}
 
-	all, err := diskMap.GetAll()
+	err = snapshot.Commit()
+	if err != nil {
+		t.Fatalf("Failed to commit: %v", err)
+	}
+	diskMap.Start()
+	all, err := diskMap.GetAll(db)
 	if err != nil {
 		t.Fatalf("Failed to get all: %v", err)
 	}
