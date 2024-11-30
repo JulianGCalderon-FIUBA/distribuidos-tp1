@@ -5,8 +5,7 @@ deps:
 .PHONY: deps
 
 clean:
-	sudo rm -rf .backup
-	sudo rm -rf .results-*
+	docker run --rm -v $(shell pwd):/work -w /work alpine sh -c 'rm -rf .backup .results-*'
 .PHONY: clean
 
 build: deps
