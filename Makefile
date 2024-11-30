@@ -34,10 +34,10 @@ compose-logs:
 	docker compose -f compose.yaml logs -f
 .PHONY: compose-logs
 
-run: docker-build compose-down compose-up compose-logs
+run: clean docker-build compose-down compose-up compose-logs
 .PHONY: run
 
-run-stress: docker-build-stress compose-down compose-up compose-logs
+run-stress: clean docker-build-stress compose-down compose-up compose-logs
 .PHONY: run-stress
 
 write-compose:
