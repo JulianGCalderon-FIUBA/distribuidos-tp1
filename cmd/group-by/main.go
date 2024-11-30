@@ -142,6 +142,9 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 
 	for id, stat := range reviews {
 		err = h.diskMap.Increment(snapshot, id, stat)
+		if err != nil {
+			return err
+		}
 	}
 
 	if h.reviewSequencer.EOF() {
