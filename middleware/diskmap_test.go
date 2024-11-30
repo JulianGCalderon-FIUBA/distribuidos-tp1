@@ -4,7 +4,6 @@ import (
 	"distribuidos/tp1/database"
 	"distribuidos/tp1/middleware"
 	"fmt"
-	"os"
 	"reflect"
 	"strconv"
 	"testing"
@@ -13,9 +12,8 @@ import (
 // diskMap.Start() is used to clear the map before get operation because tests don't contemplate leftover info
 
 func TestInsert(t *testing.T) {
-	os.RemoveAll("tmp_TestInsert")
-	diskMap := middleware.NewDiskMap("tmp_TestInsert")
-	db, err := database.NewDatabase("tmp_TestInsert")
+	diskMap := middleware.NewDiskMap("map")
+	db, err := database.NewDatabase(t.TempDir())
 	if err != nil {
 		t.Fatalf("Failed init map: %v", err)
 	}
@@ -66,7 +64,7 @@ func TestInsert(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to commit: %v", err)
 	}
-
+	diskMap.Start()
 	for _, stat := range stats {
 
 		stat2, err := diskMap.Get(db, strconv.Itoa(int(stat.AppID)))
@@ -84,9 +82,8 @@ func TestInsert(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	os.RemoveAll("tmp_TestUpdate")
-	diskMap := middleware.NewDiskMap("tmp_TestUpdate")
-	db, err := database.NewDatabase("tmp_TestUpdate")
+	diskMap := middleware.NewDiskMap("map")
+	db, err := database.NewDatabase(t.TempDir())
 	if err != nil {
 		t.Fatalf("Failed init map: %v", err)
 	}
@@ -177,9 +174,8 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestIncrement(t *testing.T) {
-	os.RemoveAll("tmp_TestIncrement")
-	diskMap := middleware.NewDiskMap("tmp_TestIncrement")
-	db, err := database.NewDatabase("tmp_TestIncrement")
+	diskMap := middleware.NewDiskMap("map")
+	db, err := database.NewDatabase(t.TempDir())
 	if err != nil {
 		t.Fatalf("Failed init map: %v", err)
 	}
@@ -235,9 +231,8 @@ func TestIncrement(t *testing.T) {
 }
 
 func TestRename(t *testing.T) {
-	os.RemoveAll("tmp_TestRename")
-	diskMap := middleware.NewDiskMap("tmp_TestRename")
-	db, err := database.NewDatabase("tmp_TestRename")
+	diskMap := middleware.NewDiskMap("map")
+	db, err := database.NewDatabase(t.TempDir())
 	if err != nil {
 		t.Fatalf("Failed init map: %v", err)
 	}
@@ -297,9 +292,8 @@ func TestRename(t *testing.T) {
 }
 
 func TestAll(t *testing.T) {
-	os.RemoveAll("tmp_TestAll")
-	diskMap := middleware.NewDiskMap("tmp_TestAll")
-	db, err := database.NewDatabase("tmp_TestAll")
+	diskMap := middleware.NewDiskMap("map")
+	db, err := database.NewDatabase(t.TempDir())
 	if err != nil {
 		t.Fatalf("Failed init map: %v", err)
 	}
@@ -393,9 +387,8 @@ func TestAll(t *testing.T) {
 }
 
 func TestGetAll(t *testing.T) {
-	os.RemoveAll("tmp_TestGetAll")
-	diskMap := middleware.NewDiskMap("tmp_TestGetAll")
-	db, err := database.NewDatabase("tmp_TestGetAll")
+	diskMap := middleware.NewDiskMap("map")
+	db, err := database.NewDatabase(t.TempDir())
 	if err != nil {
 		t.Fatalf("Failed init map: %v", err)
 	}
