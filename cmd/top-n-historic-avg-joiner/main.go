@@ -1,14 +1,13 @@
 package main
 
 import (
-	"container/heap"
 	"context"
+	"distribuidos/tp1/database"
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/utils"
 	"encoding/gob"
 	"os/signal"
-	"sort"
 	"syscall"
 
 	"github.com/op/go-logging"
@@ -42,30 +41,57 @@ func getConfig() (config, error) {
 }
 
 type handler struct {
+	db         *database.Database
 	output     string
-	topN       int
-	topNGames  middleware.GameHeap
+	topN       *middleware.TopNDisk
+	joiner     *middleware.JoinerDisk
 	partitions int
 }
 
-func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte) error {
-	partial, err := middleware.Deserialize[[]middleware.GameStat](data)
-	h.partitions--
+func buildHandler(partition int) middleware.HandlerFunc[*handler] {
+	return func(h *handler, ch *middleware.Channel, data []byte) error {
+		return h.handlePartialResult(ch, data, partition)
+	}
+}
+func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte, partition int) error {
+	snapshot, err := h.db.NewSnapshot()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		switch err {
+		case nil:
+			cerr := snapshot.Commit()
+			utils.Expect(cerr, "unrecoverable error")
+		default:
+			cerr := snapshot.Abort()
+			utils.Expect(cerr, "unrecoverable error")
+		}
+	}()
 
+	partial, err := middleware.Deserialize[[]middleware.GameStat](data)
 	if err != nil {
 		return err
 	}
 
-	for _, g := range partial {
-		if h.topNGames.Len() < h.topN {
-			heap.Push(&h.topNGames, g)
-		} else if g.Stat > h.topNGames.Peek().(middleware.GameStat).Stat {
-			heap.Pop(&h.topNGames)
-			heap.Push(&h.topNGames, g)
-		}
+	if h.joiner.Seen(partition) {
+		return nil
+	}
+	err = h.joiner.Mark(snapshot, partition)
+	if err != nil {
+		return err
 	}
 
-	if h.partitions == 0 {
+	for _, gStat := range partial {
+		h.topN.Put(gStat)
+	}
+
+	err = h.topN.Save(snapshot)
+	if err != nil {
+		return err
+	}
+
+	if h.joiner.EOF() {
 		log.Infof("Received all partial results")
 		return h.conclude(ch)
 	}
@@ -73,16 +99,9 @@ func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte) error
 }
 
 func (h *handler) conclude(ch *middleware.Channel) error {
-	sortedGames := make([]middleware.GameStat, 0, h.topNGames.Len())
-	for h.topNGames.Len() > 0 {
-		sortedGames = append(sortedGames, heap.Pop(&h.topNGames).(middleware.GameStat))
-	}
+	games := h.topN.Get()
 
-	sort.Slice(sortedGames, func(i, j int) bool {
-		return sortedGames[i].Stat > sortedGames[j].Stat
-	})
-
-	result := protocol.Q2Result{TopN: sortedGames}
+	result := protocol.Q2Result{TopN: games}
 	err := ch.SendAny(result, "", h.output)
 	if err != nil {
 		return err
@@ -104,12 +123,21 @@ func main() {
 	conn, ch, err := middleware.Dial(cfg.RabbitIP)
 	utils.Expect(err, "Failed to dial rabbit")
 
-	qInput := middleware.PartialQ2
+	queues := make([]middleware.QueueConfig, 0)
+	endpoints := make(map[string]middleware.HandlerFunc[*handler], 0)
+
+	for i := 1; i <= cfg.Partitions; i++ {
+		qName := middleware.Cat(middleware.PartialQ2, i)
+		qcfg := middleware.QueueConfig{
+			Name: qName,
+		}
+		queues = append(queues, qcfg)
+		endpoints[qName] = buildHandler(i)
+	}
+	queues = append(queues, middleware.QueueConfig{Name: middleware.Results})
+
 	err = middleware.Topology{
-		Queues: []middleware.QueueConfig{
-			{Name: qInput},
-			{Name: middleware.Results},
-		},
+		Queues: queues,
 	}.Declare(ch)
 
 	if err != nil {
@@ -118,16 +146,27 @@ func main() {
 
 	nConfig := middleware.Config[*handler]{
 		Builder: func(clientID int) *handler {
+			database_path := middleware.Cat("client", clientID)
+			db, err := database.NewDatabase(database_path)
+			utils.Expect(err, "unrecoverable error")
+
+			joiner := middleware.NewJoinerDisk("joiner", cfg.Partitions)
+			err = joiner.Load(db)
+			utils.Expect(err, "unrecoverable error")
+
+			topN := middleware.NewTopNDisk("TopN", cfg.TopN)
+			err = topN.LoadDisk(db)
+			utils.Expect(err, "unrecoverable error")
+
 			return &handler{
+				db:         db,
 				output:     middleware.Results,
-				topN:       cfg.TopN,
-				topNGames:  make([]middleware.GameStat, 0, cfg.TopN),
+				joiner:     joiner,
+				topN:       topN,
 				partitions: cfg.Partitions,
 			}
 		},
-		Endpoints: map[string]middleware.HandlerFunc[*handler]{
-			qInput: (*handler).handlePartialResult,
-		},
+		Endpoints: endpoints,
 	}
 
 	node, err := middleware.NewNode(nConfig, conn)
