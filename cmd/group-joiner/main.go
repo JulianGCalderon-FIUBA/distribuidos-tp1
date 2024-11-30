@@ -2,8 +2,13 @@ package main
 
 import (
 	"context"
+	"distribuidos/tp1/database"
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/utils"
+	"encoding/binary"
+	"errors"
+	"fmt"
+	"io"
 	"os/signal"
 	"syscall"
 
@@ -38,11 +43,10 @@ func getConfig() (config, error) {
 }
 
 type handler struct {
-	output          string
-	lastBatchId     int
-	eofReceived     int
-	totalPartitions int
-	sequencer       map[int]*middleware.Sequencer
+	db          *database.Database
+	output      string
+	lastBatchId int
+	sequencers  map[int]*middleware.SequencerDisk
 }
 
 func buildHandler(partition int) middleware.HandlerFunc[*handler] {
@@ -52,33 +56,77 @@ func buildHandler(partition int) middleware.HandlerFunc[*handler] {
 }
 
 func (h *handler) handleBatch(ch *middleware.Channel, data []byte, partition int) error {
+	snapshot, err := h.db.NewSnapshot()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		switch err {
+		case nil:
+			cerr := snapshot.Commit()
+			utils.Expect(cerr, "unrecoverable error")
+		default:
+			cerr := snapshot.Abort()
+			utils.Expect(cerr, "unrecoverable error")
+		}
+	}()
+
 	batch, err := middleware.Deserialize[middleware.Batch[middleware.GameStat]](data)
 	if err != nil {
 		return err
 	}
 
-	h.sequencer[partition].Mark(batch.BatchID, batch.EOF)
-
-	b := middleware.Batch[middleware.GameStat]{
-		Data:    batch.Data,
-		BatchID: h.lastBatchId,
-		EOF:     false,
+	if h.sequencers[partition].Seen(batch.BatchID) {
+		return nil
 	}
-
-	err = ch.Send(b, "", h.output)
-	h.lastBatchId += 1
+	err = h.sequencers[partition].MarkDisk(snapshot, batch.BatchID, batch.EOF)
 	if err != nil {
 		return err
 	}
 
-	if h.sequencer[partition].EOF() {
-		log.Infof("Received EOF from partition %v", partition)
-		h.eofReceived += 1
+	file, err := snapshot.Update("id")
+	if err != nil {
+		return err
+	}
+	var id uint64
+	err = binary.Read(file, binary.LittleEndian, &id)
+	if err != nil && !errors.Is(err, io.EOF) {
+		return err
 	}
 
-	if h.eofReceived == h.totalPartitions {
+	b := middleware.Batch[middleware.GameStat]{
+		Data:    batch.Data,
+		BatchID: int(id),
+		EOF:     false,
+	}
+
+	id += 1
+	_, err = file.Seek(0, io.SeekStart)
+	if err != nil {
+		return err
+	}
+
+	err = binary.Write(file, binary.LittleEndian, id)
+	if err != nil {
+		return err
+	}
+
+	err = ch.Send(b, "", h.output)
+	if err != nil {
+		return err
+	}
+
+	if h.sequencers[partition].EOF() {
+		log.Infof("Received EOF from partition %v", partition)
+	}
+
+	allEof := true
+	for _, v := range h.sequencers {
+		allEof = allEof && v.EOF()
+	}
+	if allEof {
 		b := middleware.Batch[middleware.GameStat]{
-			BatchID: h.lastBatchId,
+			BatchID: int(id),
 			EOF:     true,
 		}
 		err := ch.Send(b, "", h.output)
@@ -125,16 +173,21 @@ func main() {
 
 	nodeCfg := middleware.Config[*handler]{
 		Builder: func(clientID int) *handler {
-			sequencer := make(map[int]*middleware.Sequencer)
+			database_path := middleware.Cat("client", clientID)
+			db, err := database.NewDatabase(database_path)
+			utils.Expect(err, "unrecoverable error")
+
+			sequencers := make(map[int]*middleware.SequencerDisk)
 			for i := 1; i <= cfg.Partitions; i++ {
-				sequencer[i] = middleware.NewSequencer()
+				sequencers[i] = middleware.NewSequencerDisk(fmt.Sprintf("sequencer-%v", i))
+				err = sequencers[i].LoadDisk(db)
+				utils.Expect(err, "unrecoverable error")
 			}
 			return &handler{
-				output:          cfg.Output,
-				lastBatchId:     0,
-				eofReceived:     0,
-				totalPartitions: cfg.Partitions,
-				sequencer:       sequencer,
+				db:          db,
+				output:      cfg.Output,
+				lastBatchId: 0,
+				sequencers:  sequencers,
 			}
 		},
 		Endpoints: endpoints,
