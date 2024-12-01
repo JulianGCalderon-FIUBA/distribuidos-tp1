@@ -76,6 +76,9 @@ func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte, parti
 
 	c, err := middleware.Deserialize[map[Platform]int](data)
 	if h.joiner.Seen(partition) {
+		if h.joiner.EOF() {
+			ch.Finish()
+		}
 		return nil
 	}
 	err = h.joiner.Mark(snapshot, partition)
@@ -154,7 +157,7 @@ func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte, parti
 			return err
 		}
 
-		utils.MaybeExit(0.50)
+		utils.MaybeExit(0.2)
 
 		ch.Finish()
 		return nil
@@ -164,7 +167,7 @@ func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte, parti
 }
 
 func (h *handler) Free() error {
-	return nil
+	return h.db.Delete()
 }
 
 func main() {

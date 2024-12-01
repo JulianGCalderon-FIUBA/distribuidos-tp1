@@ -68,6 +68,9 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 	}
 
 	if h.sequencer.Seen(batch.BatchID) {
+		if h.sequencer.EOF() {
+			ch.Finish()
+		}
 		return nil
 	}
 
@@ -111,7 +114,7 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 		}
 		ch.Finish()
 
-		utils.MaybeExit(0.50)
+		utils.MaybeExit(0.2)
 
 	}
 
@@ -181,7 +184,7 @@ func sortedInsert(sorted []middleware.GameStat, stat middleware.GameStat) []midd
 }
 
 func (h *handler) Free() error {
-	return nil
+	return h.db.Delete()
 }
 
 func main() {

@@ -74,6 +74,9 @@ func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte, parti
 	}
 
 	if h.joiner.Seen(partition) {
+		if h.joiner.EOF() {
+			ch.Finish()
+		}
 		return nil
 	}
 	err = h.joiner.Mark(snapshot, partition)
@@ -94,7 +97,7 @@ func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte, parti
 
 	if h.joiner.EOF() {
 		log.Infof("Received all partial results")
-		utils.MaybeExit(0.50)
+		utils.MaybeExit(0.2)
 		return h.conclude(ch)
 	}
 	return nil
@@ -114,7 +117,7 @@ func (h *handler) conclude(ch *middleware.Channel) error {
 }
 
 func (h *handler) Free() error {
-	return nil
+	return h.db.Delete()
 }
 
 func main() {

@@ -77,6 +77,13 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte, partition int
 	}
 
 	if h.sequencers[partition].Seen(batch.BatchID) {
+		allEof := true
+		for _, v := range h.sequencers {
+			allEof = allEof && v.EOF()
+		}
+		if allEof {
+			ch.Finish()
+		}
 		return nil
 	}
 	err = h.sequencers[partition].MarkDisk(snapshot, batch.BatchID, batch.EOF)
@@ -138,7 +145,7 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte, partition int
 		}
 		ch.Finish()
 
-		utils.MaybeExit(0.50)
+		utils.MaybeExit(0.2)
 
 	}
 
@@ -146,7 +153,7 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte, partition int
 }
 
 func (h *handler) Free() error {
-	return nil
+	return h.db.Delete()
 }
 
 func main() {
