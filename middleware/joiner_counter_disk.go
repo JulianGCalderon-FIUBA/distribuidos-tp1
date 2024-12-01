@@ -6,7 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
-	"io/fs"
+	"os"
 )
 
 type JoinerDisk struct {
@@ -50,8 +50,7 @@ func (j *JoinerDisk) EOF() bool {
 
 func (j *JoinerDisk) Load(db *database.Database) error {
 	file, err := db.Get(j.name)
-	var pathError *fs.PathError
-	if errors.As(err, &pathError) {
+	if os.IsNotExist(err) {
 		return nil
 	}
 	if err != nil {

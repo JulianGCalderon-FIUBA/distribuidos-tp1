@@ -93,8 +93,7 @@ func (s *Snapshot) Append(k string) (*os.File, error) {
 	var size int64
 	info, err := os.Stat(s.db.KeyPath(k))
 	if err != nil {
-		var pathError *fs.PathError
-		if errors.As(err, &pathError) {
+		if os.IsNotExist(err) {
 			size = 0
 		} else {
 			return nil, err
@@ -122,10 +121,6 @@ func (s *Snapshot) Append(k string) (*os.File, error) {
 	s.files = append(s.files, file)
 
 	return file, err
-}
-
-func (s *Snapshot) Delete(k string) (*os.File, error) {
-	panic("unimplemented")
 }
 
 func (s *Snapshot) Exists(k string) (bool, error) {
