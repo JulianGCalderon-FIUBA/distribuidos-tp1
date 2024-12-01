@@ -38,6 +38,7 @@ func (m *DiskMap) Get(db *database.Database, k string) (*GameStat, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer file.Close()
 
 	content, err := io.ReadAll(file)
 	if err != nil {
