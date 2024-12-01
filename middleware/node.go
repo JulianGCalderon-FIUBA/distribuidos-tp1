@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"distribuidos/tp1/database"
 	"distribuidos/tp1/restarter-protocol"
 	"distribuidos/tp1/utils"
 	"errors"
@@ -24,14 +25,20 @@ type Config[T Handler] struct {
 }
 
 type Node[T Handler] struct {
-	config  Config[T]
-	rabbit  *amqp.Connection
-	ch      *amqp.Channel
-	clients map[int]T
+	config         Config[T]
+	rabbit         *amqp.Connection
+	ch             *amqp.Channel
+	clients        map[int]T
+	db             *database.Database
+	doneClientsSet *DiskSet
 }
 
 func NewNode[T Handler](config Config[T], rabbit *amqp.Connection) (*Node[T], error) {
 	ch, err := rabbit.Channel()
+	if err != nil {
+		return nil, err
+	}
+	err = ch.Confirm(false)
 	if err != nil {
 		return nil, err
 	}
@@ -41,11 +48,20 @@ func NewNode[T Handler](config Config[T], rabbit *amqp.Connection) (*Node[T], er
 		return nil, err
 	}
 
+	db, err := database.NewDatabase("node")
+	utils.Expect(err, "unrecoverable error")
+
+	doneClientsSet := NewSetDisk("ids")
+	err = doneClientsSet.LoadDisk(db)
+	utils.Expect(err, "unrecoverable error")
+
 	return &Node[T]{
-		config:  config,
-		rabbit:  rabbit,
-		ch:      ch,
-		clients: make(map[int]T),
+		config:         config,
+		rabbit:         rabbit,
+		ch:             ch,
+		clients:        make(map[int]T),
+		db:             db,
+		doneClientsSet: doneClientsSet,
 	}, nil
 }
 
@@ -89,7 +105,16 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 	clientID := int(d.Headers["clientID"].(int32))
 	cleanAction := int(d.Headers["cleanAction"].(int32))
 
-	if !n.notifyFallenNode(clientID, cleanAction) {
+	b, err := n.notifyFallenNode(clientID, cleanAction)
+	if err != nil {
+		return err
+	}
+
+	if !b {
+		if n.doneClientsSet.Seen(clientID) {
+			return d.Ack(false)
+		}
+
 		h, ok := n.clients[clientID]
 		if !ok {
 			log.Infof("Building handler for client %v", clientID)
@@ -105,11 +130,15 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 		}
 
 		err := n.config.Endpoints[d.Queue](h, ch, d.Body)
-		// todo: persistir cuales clientes terminaron
-		// todo: free resources
-		// if ch.FinishFlag {
-		// n.freeResources(clientID, h)
-		// }
+
+		if ch.FinishFlag {
+			utils.MaybeExit(0.2)
+			err = n.freeResources(clientID)
+			if err != nil {
+				return err
+			}
+			utils.MaybeExit(0.2)
+		}
 
 		if err != nil {
 			log.Errorf("Failed to handle message %v", err)
@@ -123,30 +152,34 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 	return d.Ack(false)
 }
 
-func (n *Node[T]) notifyFallenNode(clientID int, cleanAction int) bool {
+func (n *Node[T]) notifyFallenNode(clientID int, cleanAction int) (bool, error) {
 	switch cleanAction {
 	case NotClean:
-		return false
+		return false, nil
 	case CleanAll:
 		if len(n.clients) > 0 {
 			log.Infof("Cleaning all system resources")
 			for i := clientID; i > 0; i-- {
-				n.freeResources(i)
+				err := n.freeResources(i)
+				if err != nil {
+					return true, err
+				}
 			}
 		}
-		return true
 
 	case CleanId:
 		_, ok := n.clients[clientID]
 		if ok {
 			log.Infof("Client %v crashed, clean all resources for it", clientID)
-			n.freeResources(clientID)
+			err := n.freeResources(clientID)
+			if err != nil {
+				return true, err
+			}
 		}
-		return true
 	}
 
 	n.propagateFallenNode(clientID, cleanAction)
-	return true
+	return true, nil
 }
 
 func (n *Node[T]) propagateFallenNode(clientID int, cleanAction int) {
@@ -172,18 +205,35 @@ func (n *Node[T]) isResultsNode() bool {
 	return len(n.config.OutputConfig.Exchange) == 0 && len(n.config.OutputConfig.Keys) == 0
 }
 
-func (n *Node[T]) freeResources(clientID int) {
+func (n *Node[T]) freeResources(clientID int) error {
 	h, ok := n.clients[clientID]
 	if !ok {
-		return
+		return nil
 	}
-	log.Infof("Freeing resources for client %v", clientID)
 
-	err := h.Free()
+	log.Infof("Freeing resources for client %v", clientID)
+	snapshot, err := n.db.NewSnapshot()
 	if err != nil {
-		log.Errorf("Error freeing handler files: %v", err)
+		return err
+	}
+
+	err = n.doneClientsSet.MarkDisk(snapshot, clientID)
+	if err != nil {
+		cerr := snapshot.Abort()
+		utils.Expect(cerr, "unrecoverable error")
+
+		return err
+	}
+	cerr := snapshot.Commit()
+	utils.Expect(cerr, "unrecoverable error")
+
+	err = h.Free()
+	if err != nil {
+		return err
 	}
 	delete(n.clients, clientID)
+
+	return nil
 }
 
 func (n *Node[T]) sendAlive(ctx context.Context) error {

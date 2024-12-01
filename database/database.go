@@ -84,7 +84,7 @@ func (db *Database) GetAll(k string) ([]string, error) {
 	return files, nil
 }
 
-func (db *Database) RemoveAll() error {
+func (db *Database) Delete() error {
 	return os.RemoveAll(db.root)
 }
 

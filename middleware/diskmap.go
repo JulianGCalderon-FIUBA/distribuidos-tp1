@@ -177,9 +177,3 @@ func (m *DiskMap) Rename(snapshot *database.Snapshot, id uint64, name string) er
 func (m *DiskMap) GamesPath(k string) string {
 	return path.Join(m.name, k)
 }
-
-/*
-func (m *DiskMap) Remove() error {
-	return os.RemoveAll(m.name)
-}
-*/

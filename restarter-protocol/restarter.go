@@ -30,15 +30,14 @@ var ErrFallenNode = errors.New("Never got ack")
 var ErrTimeout = errors.New("Never got ack")
 
 type Restarter struct {
-	id           uint64
+	id           int
 	nodes        []string
-	replicas     uint64
+	replicas     int
 	conn         *net.UDPConn
 	ackMap       map[uint64]chan bool
 	lastMsgId    uint64
 	condLeaderId *sync.Cond
-	leaderId     uint64
-	hasLeader    bool
+	leaderId     int
 	mu           *sync.Mutex
 	wg           *sync.WaitGroup
 }
@@ -77,7 +76,7 @@ func readNodeConfig() ([]string, error) {
 	return nodes, nil
 }
 
-func NewRestarter(address string, id uint64, replicas uint64) (*Restarter, error) {
+func NewRestarter(address string, id int, replicas int) (*Restarter, error) {
 	nodes, err := readNodeConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read nodes config: %v", err)
@@ -105,6 +104,7 @@ func NewRestarter(address string, id uint64, replicas uint64) (*Restarter, error
 		ackMap:       make(map[uint64]chan bool),
 		lastMsgId:    0,
 		wg:           &sync.WaitGroup{},
+		leaderId:     -1,
 	}, nil
 }
 
@@ -132,10 +132,14 @@ func (r *Restarter) Start(ctx context.Context) error {
 func (r *Restarter) StartMonitoring(ctx context.Context) {
 	for _, node := range r.nodes {
 		time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
-
-		go func(nodeName string) {
-			r.monitorNode(ctx, nodeName, utils.NODE_PORT)
-		}(node)
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			go func(nodeName string) {
+				r.monitorNode(ctx, nodeName, utils.NODE_PORT)
+			}(node)
+		}
 	}
 }
 
@@ -234,7 +238,6 @@ func (r *Restarter) safeSend(ctx context.Context, msg Message, name string, port
 		} else {
 			return err
 		}
-
 	}
 
 	return errors.Join(ErrFallenNode, err)
@@ -251,8 +254,11 @@ func (r *Restarter) send(ctx context.Context, p Packet, addr *net.UDPAddr) error
 	}
 
 	r.mu.Lock()
-	ch := r.ackMap[p.Id]
+	ch, exists := r.ackMap[p.Id]
 	r.mu.Unlock()
+	if !exists {
+		return nil
+	}
 
 	select {
 	case <-ch:
@@ -282,15 +288,19 @@ func (r *Restarter) sendAck(prevNeighbor *net.UDPAddr, msgId uint64) error {
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
 func (r *Restarter) handleAck(msgId uint64) {
 	r.mu.Lock()
-	ch := r.ackMap[msgId]
-	r.mu.Unlock()
+	defer r.mu.Unlock()
 
-	ch <- true
+	ch, exists := r.ackMap[msgId]
+	if exists {
+		close(ch)
+		delete(r.ackMap, msgId)
+	}
 }
 
 func (r *Restarter) newMsgId() uint64 {

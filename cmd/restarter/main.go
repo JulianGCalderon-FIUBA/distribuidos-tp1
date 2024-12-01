@@ -14,9 +14,9 @@ import (
 var log = logging.MustGetLogger("log")
 
 type config struct {
-	Id       uint64
+	Id       int
 	Address  string
-	Replicas uint64
+	Replicas int
 	LogLevel string
 }
 
@@ -60,7 +60,7 @@ func main() {
 			r.WaitLeader(true)
 			log.Infof("I am leader (id %v) and I woke up", cfg.Id)
 			monitorCtx, cancelMonitor := context.WithCancel(ctx)
-			r.StartMonitoring(monitorCtx)
+			go r.StartMonitoring(monitorCtx)
 
 			// stop monitoring
 			r.WaitLeader(false)

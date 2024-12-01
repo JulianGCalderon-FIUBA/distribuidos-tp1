@@ -80,6 +80,9 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 	}
 
 	if h.gameSequencer.Seen(batch.BatchID) {
+		if h.reviewSequencer.EOF() && h.gameSequencer.EOF() {
+			ch.Finish()
+		}
 		return nil
 	}
 
@@ -100,7 +103,7 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 
 	if h.gameSequencer.EOF() && h.reviewSequencer.EOF() {
 		err = h.conclude(ch)
-		utils.MaybeExit(0.50)
+		utils.MaybeExit(0.2)
 		return err
 	}
 
@@ -131,6 +134,9 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 	}
 
 	if h.reviewSequencer.Seen(batch.BatchID) {
+		if h.reviewSequencer.EOF() && h.gameSequencer.EOF() {
+			ch.Finish()
+		}
 		return nil
 	}
 
@@ -159,7 +165,7 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 
 	if h.reviewSequencer.EOF() && h.gameSequencer.EOF() {
 		err := h.conclude(ch)
-		utils.MaybeExit(0.50)
+		utils.MaybeExit(0.2)
 		return err
 	}
 
@@ -216,7 +222,7 @@ func (h *handler) getAll() ([]middleware.GameStat, error) {
 }
 
 func (h *handler) Free() error {
-	return h.db.RemoveAll()
+	return h.db.Delete()
 }
 
 func main() {
