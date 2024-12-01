@@ -151,7 +151,7 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 		}
 	}
 
-	utils.MaybeExit(0.001)
+	utils.MaybeExit(0.0001)
 
 	if h.reviewSequencer.EOF() {
 		log.Infof("Received review EOF")
