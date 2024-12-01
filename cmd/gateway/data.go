@@ -103,6 +103,10 @@ func (g *gateway) handleClientData(ctx context.Context, rawConn net.Conn) (err e
 	if err != nil {
 		return err
 	}
+	err = rawCh.Confirm(false)
+	if err != nil {
+		return err
+	}
 	ch := middleware.Channel{
 		Ch:       rawCh,
 		ClientID: int(hello.ClientID),
