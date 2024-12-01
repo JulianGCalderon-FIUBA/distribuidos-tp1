@@ -215,8 +215,6 @@ func (s *Snapshot) ApplyCommit() error {
 		return err
 	}
 
-	utils.MaybeExit(0.001)
-
 	err = os.RemoveAll(s.root)
 	if err != nil {
 		return err
@@ -250,8 +248,6 @@ func (s *Snapshot) commitFile(modified_path string, info fs.DirEntry, err error)
 		}
 		return os.Rename(modified_path, original_path)
 	}
-
-	utils.MaybeExit(0.001)
 
 	return nil
 }
@@ -301,8 +297,6 @@ func (s *Snapshot) commitAppendFile(modified_path string, info fs.DirEntry, err 
 	if err != nil {
 		return err
 	}
-
-	utils.MaybeExit(0.001)
 
 	return os.Remove(modified_path)
 }
