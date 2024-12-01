@@ -7,7 +7,6 @@ import (
 	"errors"
 	"io"
 	"io/fs"
-	"strconv"
 )
 
 type DiskSet struct {
@@ -32,11 +31,6 @@ func (s *DiskSet) Seen(id int) bool {
 }
 
 func (s *DiskSet) MarkDisk(snapshot *database.Snapshot, id int) error {
-	_, err := snapshot.Create(strconv.Itoa(id))
-	if err != nil {
-		return err
-	}
-
 	file, err := snapshot.Append(s.name)
 	if err != nil {
 		return err
