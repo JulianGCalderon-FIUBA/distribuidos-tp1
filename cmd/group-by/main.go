@@ -103,7 +103,7 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 
 	if h.gameSequencer.EOF() && h.reviewSequencer.EOF() {
 		err = h.conclude(ch)
-		utils.MaybeExit(0.50)
+		utils.MaybeExit(0.2)
 		return err
 	}
 
@@ -165,7 +165,7 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 
 	if h.reviewSequencer.EOF() && h.gameSequencer.EOF() {
 		err := h.conclude(ch)
-		utils.MaybeExit(0.50)
+		utils.MaybeExit(0.2)
 		return err
 	}
 

@@ -114,7 +114,7 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 		}
 		ch.Finish()
 
-		utils.MaybeExit(0.50)
+		utils.MaybeExit(0.2)
 
 	}
 

@@ -157,7 +157,7 @@ func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte, parti
 			return err
 		}
 
-		utils.MaybeExit(0.50)
+		utils.MaybeExit(0.2)
 
 		ch.Finish()
 		return nil

@@ -157,7 +157,7 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) (err error) {
 			return err
 		}
 
-		utils.MaybeExit(0.50)
+		utils.MaybeExit(0.2)
 
 		ch.Finish()
 	}

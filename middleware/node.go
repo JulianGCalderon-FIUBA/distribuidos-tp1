@@ -7,9 +7,7 @@ import (
 	"distribuidos/tp1/utils"
 	"errors"
 	"fmt"
-	"math/rand"
 	"net"
-	"os"
 	"sync"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -123,16 +121,12 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 	err := n.config.Endpoints[d.Queue](h, ch, d.Body)
 
 	if ch.FinishFlag {
-		if rand.Float32() < 0.5 {
-			os.Exit(1)
-		}
+		utils.MaybeExit(0.2)
 		err = n.freeResources(clientID, h)
 		if err != nil {
 			return err
 		}
-		if rand.Float32() < 0.5 {
-			os.Exit(1)
-		}
+		utils.MaybeExit(0.2)
 	}
 
 	if err != nil {
