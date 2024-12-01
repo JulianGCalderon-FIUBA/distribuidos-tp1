@@ -71,6 +71,9 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) (err error) {
 		return err
 	}
 	if h.sequencer.Seen(batch.BatchID) {
+		if h.sequencer.EOF() {
+			ch.Finish()
+		}
 		return nil
 	}
 	err = h.sequencer.MarkDisk(snapshot, batch.BatchID, batch.EOF)

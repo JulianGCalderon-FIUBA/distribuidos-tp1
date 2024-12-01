@@ -64,6 +64,9 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 	}
 
 	if h.sequencer.Seen(batch.BatchID) {
+		if h.sequencer.EOF() {
+			ch.Finish()
+		}
 		return nil
 	}
 	err = h.sequencer.MarkDisk(snapshot, batch.BatchID, batch.EOF)

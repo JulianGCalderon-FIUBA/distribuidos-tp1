@@ -80,6 +80,9 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 	}
 
 	if h.gameSequencer.Seen(batch.BatchID) {
+		if h.reviewSequencer.EOF() && h.gameSequencer.EOF() {
+			ch.Finish()
+		}
 		return nil
 	}
 
@@ -127,6 +130,9 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 	}
 
 	if h.reviewSequencer.Seen(batch.BatchID) {
+		if h.reviewSequencer.EOF() && h.gameSequencer.EOF() {
+			ch.Finish()
+		}
 		return nil
 	}
 

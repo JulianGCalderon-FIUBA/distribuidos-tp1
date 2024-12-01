@@ -74,6 +74,9 @@ func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte, parti
 	}
 
 	if h.joiner.Seen(partition) {
+		if h.joiner.EOF() {
+			ch.Finish()
+		}
 		return nil
 	}
 	err = h.joiner.Mark(snapshot, partition)
