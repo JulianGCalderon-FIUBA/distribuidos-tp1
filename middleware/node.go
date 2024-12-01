@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"distribuidos/tp1/database"
 	"distribuidos/tp1/restarter-protocol"
 	"distribuidos/tp1/utils"
 	"errors"
@@ -22,10 +23,12 @@ type Config[T Handler] struct {
 }
 
 type Node[T Handler] struct {
-	config  Config[T]
-	rabbit  *amqp.Connection
-	ch      *amqp.Channel
-	clients map[int]T
+	config         Config[T]
+	rabbit         *amqp.Connection
+	ch             *amqp.Channel
+	clients        map[int]T
+	db             *database.Database
+	doneClientsSet *DiskSet
 }
 
 func NewNode[T Handler](config Config[T], rabbit *amqp.Connection) (*Node[T], error) {
@@ -39,11 +42,16 @@ func NewNode[T Handler](config Config[T], rabbit *amqp.Connection) (*Node[T], er
 		return nil, err
 	}
 
+	db, err := database.NewDatabase("node")
+	utils.Expect(err, "unrecoverable error")
+
 	return &Node[T]{
-		config:  config,
-		rabbit:  rabbit,
-		ch:      ch,
-		clients: make(map[int]T),
+		config:         config,
+		rabbit:         rabbit,
+		ch:             ch,
+		clients:        make(map[int]T),
+		db:             db,
+		doneClientsSet: NewSetDisk("ids"),
 	}, nil
 }
 
@@ -85,6 +93,9 @@ func (n *Node[T]) Run(ctx context.Context) error {
 
 func (n *Node[T]) processDelivery(d Delivery) error {
 	clientID := int(d.Headers["clientID"].(int32))
+	if n.doneClientsSet.Seen(clientID) {
+		return nil
+	}
 
 	h, ok := n.clients[clientID]
 	if !ok {
@@ -100,11 +111,13 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 	}
 
 	err := n.config.Endpoints[d.Queue](h, ch, d.Body)
-	// todo: persistir cuales clientes terminaron
-	// todo: free resources
-	// if ch.FinishFlag {
-	// n.freeResources(clientID, h)
-	// }
+
+	if ch.FinishFlag {
+		err = n.freeResources(clientID, h)
+		if err != nil {
+			return err
+		}
+	}
 
 	if err != nil {
 		log.Errorf("Failed to handle message %v", err)
@@ -117,14 +130,34 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 	return d.Ack(false)
 }
 
-// func (n *Node[T]) freeResources(clientID int, h T) {
-// 	log.Infof("Freeing resources for client %v", clientID)
-// 	err := h.Free()
-// 	if err != nil {
-// 		log.Errorf("Error freeing handler files: %v", err)
-// 	}
-// 	delete(n.clients, clientID)
-// }
+func (n *Node[T]) freeResources(clientID int, h T) error {
+	log.Infof("Freeing resources for client %v", clientID)
+	err := h.Free()
+	if err != nil {
+		return err
+	}
+	snapshot, err := n.db.NewSnapshot()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		switch err {
+		case nil:
+			cerr := snapshot.Commit()
+			utils.Expect(cerr, "unrecoverable error")
+		default:
+			cerr := snapshot.Abort()
+			utils.Expect(cerr, "unrecoverable error")
+		}
+	}()
+	err = n.doneClientsSet.MarkDisk(snapshot, clientID)
+	if err != nil {
+		return err
+	}
+	delete(n.clients, clientID)
+
+	return nil
+}
 
 func (n *Node[T]) sendAlive(ctx context.Context) error {
 	udpAddr, err := net.ResolveUDPAddr("udp", utils.NODE_UDP_ADDR)
