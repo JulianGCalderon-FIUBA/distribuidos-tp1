@@ -13,8 +13,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 3
-    logging:
-      driver: none
   gateway:
     container_name: gateway
     image: tp1:latest

@@ -131,6 +131,9 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte, partition int
 	for _, v := range h.sequencers {
 		allEof = allEof && v.EOF()
 	}
+
+	utils.MaybeExit(0.001)
+
 	if allEof {
 		b := middleware.Batch[middleware.GameStat]{
 			BatchID: int(id),
@@ -141,6 +144,9 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte, partition int
 			return err
 		}
 		ch.Finish()
+
+		utils.MaybeExit(0.50)
+
 	}
 
 	return nil

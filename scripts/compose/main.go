@@ -98,8 +98,6 @@ func generateRabbit() {
 	fmt.Println("      interval: 5s")
 	fmt.Println("      timeout: 5s")
 	fmt.Println("      retries: 3")
-	fmt.Println("    logging:")
-	fmt.Println("      driver: none")
 }
 
 func generateGateway() {
