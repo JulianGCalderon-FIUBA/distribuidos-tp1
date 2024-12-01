@@ -102,12 +102,17 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 		}
 	}
 
+	utils.MaybeExit(0.001)
+
 	if h.sequencer.EOF() {
 		err = h.conclude(ch, batch.Data)
 		if err != nil {
 			return err
 		}
 		ch.Finish()
+
+		utils.MaybeExit(0.50)
+
 	}
 
 	return nil
@@ -136,6 +141,7 @@ func (h *handler) readData() ([]middleware.GameStat, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer percentileFile.Close()
 	sorted := make([]middleware.GameStat, 0)
 
 	for {

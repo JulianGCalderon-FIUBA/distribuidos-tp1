@@ -3,8 +3,11 @@ package restarter
 import (
 	"context"
 	"distribuidos/tp1/utils"
+	"errors"
 	"fmt"
 	"slices"
+	"strconv"
+	"strings"
 )
 
 func (r *Restarter) WaitLeader(amILeader bool) {
@@ -22,12 +25,13 @@ func (r *Restarter) amILeader() bool {
 
 func (r *Restarter) startElection(ctx context.Context) error {
 	log.Infof("Starting election")
+
 	e := &Election{Ids: []uint64{r.id}}
 	return r.sendToRing(ctx, e)
 }
 
 func (r *Restarter) handleElection(ctx context.Context, msg Election) error {
-	log.Infof("Received Election message")
+	log.Infof("Received Election message with ids: %v", idsToString(msg.Ids))
 
 	if slices.Contains(msg.Ids, r.id) {
 		return r.startCoordinator(ctx, msg.Ids)
@@ -39,6 +43,7 @@ func (r *Restarter) handleElection(ctx context.Context, msg Election) error {
 
 func (r *Restarter) startCoordinator(ctx context.Context, ids []uint64) error {
 	log.Infof("Starting coordinator")
+
 	leader := slices.Max(ids)
 	r.condLeaderId.L.Lock()
 	r.leaderId = leader
@@ -58,7 +63,7 @@ func (r *Restarter) startCoordinator(ctx context.Context, ids []uint64) error {
 }
 
 func (r *Restarter) handleCoordinator(ctx context.Context, msg Coordinator) error {
-	log.Infof("Received Coordinator message")
+	log.Infof("Received Coordinator message with ids %v", idsToString(msg.Ids))
 
 	if slices.Contains(msg.Ids, r.id) {
 		return nil
@@ -81,12 +86,23 @@ func (r *Restarter) sendToRing(ctx context.Context, msg Message) error {
 	next := r.id + 1
 	for {
 		host := fmt.Sprintf("%v%v", RESTARTER_NAME, next%r.replicas)
-		addr, _ := utils.GetUDPAddr(host, utils.RESTARTER_PORT)
-		err := r.safeSend(ctx, msg, addr)
-		if err == nil {
-			return nil
+
+		err := r.safeSend(ctx, msg, host, utils.RESTARTER_PORT)
+		if !errors.Is(err, ErrFallenNode) {
+			return err
 		}
-		log.Infof("Neighbor %v is not answering, sending message to next one", next%r.replicas)
+
+		log.Errorf("Neighbor %v is not answering, sending message to next one", next%r.replicas)
 		next += 1
 	}
+}
+
+func idsToString(ids []uint64) string {
+	ids_str := make([]string, len(ids))
+
+	for i, id := range ids {
+		ids_str[i] = strconv.Itoa(int(id))
+	}
+
+	return strings.Join(ids_str, ",")
 }

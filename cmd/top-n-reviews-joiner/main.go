@@ -1,14 +1,13 @@
 package main
 
 import (
-	"container/heap"
 	"context"
+	"distribuidos/tp1/database"
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/utils"
 	"encoding/gob"
 	"os/signal"
-	"sort"
 	"syscall"
 
 	"github.com/op/go-logging"
@@ -40,47 +39,66 @@ func getConfig() (config, error) {
 }
 
 type handler struct {
-	output     string
-	topN       int
-	topNGames  middleware.GameHeap
-	partitions int
+	db     *database.Database
+	output string
+	topN   *middleware.TopNDisk
+	joiner *middleware.JoinerDisk
 }
 
-func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte) error {
-	partial, err := middleware.Deserialize[[]middleware.GameStat](data)
-	h.partitions--
+func buildHandler(partition int) middleware.HandlerFunc[*handler] {
+	return func(h *handler, ch *middleware.Channel, data []byte) error {
+		return h.handlePartialResult(ch, data, partition)
+	}
+}
 
+func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte, partition int) error {
+	snapshot, err := h.db.NewSnapshot()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		switch err {
+		case nil:
+			cerr := snapshot.Commit()
+			utils.Expect(cerr, "unrecoverable error")
+		default:
+			cerr := snapshot.Abort()
+			utils.Expect(cerr, "unrecoverable error")
+		}
+	}()
+
+	partial, err := middleware.Deserialize[[]middleware.GameStat](data)
 	if err != nil {
 		return err
 	}
 
-	for _, g := range partial {
-		if h.topNGames.Len() < h.topN {
-			heap.Push(&h.topNGames, g)
-		} else if g.Stat > h.topNGames.Peek().(middleware.GameStat).Stat {
-			heap.Pop(&h.topNGames)
-			heap.Push(&h.topNGames, g)
-		}
+	if h.joiner.Seen(partition) {
+		return nil
+	}
+	err = h.joiner.Mark(snapshot, partition)
+	for _, gStat := range partial {
+		h.topN.Put(gStat)
 	}
 
-	if h.partitions == 0 {
+	err = h.topN.Save(snapshot)
+	if err != nil {
+		return err
+	}
+
+	utils.MaybeExit(0.001)
+
+	if h.joiner.EOF() {
 		log.Infof("Received all partial results")
-		return h.conclude(ch)
+		err = h.conclude(ch)
+		utils.MaybeExit(0.50)
+		return err
 	}
 	return nil
 }
 
 func (h *handler) conclude(ch *middleware.Channel) error {
-	sortedGames := make([]middleware.GameStat, 0, h.topNGames.Len())
-	for h.topNGames.Len() > 0 {
-		sortedGames = append(sortedGames, heap.Pop(&h.topNGames).(middleware.GameStat))
-	}
-
-	sort.Slice(sortedGames, func(i, j int) bool {
-		return sortedGames[i].Stat > sortedGames[j].Stat
-	})
-
-	result := protocol.Q3Result{TopN: sortedGames}
+	games := h.topN.Get()
+	result := protocol.Q3Result{TopN: games}
 	err := ch.SendAny(result, "", h.output)
 	if err != nil {
 		return err
@@ -102,13 +120,22 @@ func main() {
 	conn, ch, err := middleware.Dial(cfg.RabbitIP)
 	utils.Expect(err, "Failed to dial rabbit")
 
-	qInput := middleware.PartialQ3
 	qOutput := middleware.Results
+	queues := make([]middleware.QueueConfig, 0)
+	endpoints := make(map[string]middleware.HandlerFunc[*handler], 0)
+
+	for i := 1; i <= cfg.Partitions; i++ {
+		qName := middleware.Cat(middleware.PartialQ3, i)
+		qcfg := middleware.QueueConfig{
+			Name: qName,
+		}
+		queues = append(queues, qcfg)
+		endpoints[qName] = buildHandler(i)
+	}
+	queues = append(queues, middleware.QueueConfig{Name: middleware.Results})
+
 	err = middleware.Topology{
-		Queues: []middleware.QueueConfig{
-			{Name: qInput},
-			{Name: qOutput},
-		},
+		Queues: queues,
 	}.Declare(ch)
 
 	if err != nil {
@@ -117,16 +144,26 @@ func main() {
 
 	nConfig := middleware.Config[*handler]{
 		Builder: func(clientID int) *handler {
+			database_path := middleware.Cat("client", clientID)
+			db, err := database.NewDatabase(database_path)
+			utils.Expect(err, "unrecoverable error")
+
+			joiner := middleware.NewJoinerDisk("joiner", cfg.Partitions)
+			err = joiner.Load(db)
+			utils.Expect(err, "unrecoverable error")
+
+			topN := middleware.NewTopNDisk("TopN", cfg.TopN)
+			err = topN.LoadDisk(db)
+			utils.Expect(err, "unrecoverable error")
+
 			return &handler{
-				output:     middleware.Results,
-				topN:       cfg.TopN,
-				topNGames:  make([]middleware.GameStat, 0, cfg.TopN),
-				partitions: cfg.Partitions,
+				db:     db,
+				output: qOutput,
+				joiner: joiner,
+				topN:   topN,
 			}
 		},
-		Endpoints: map[string]middleware.HandlerFunc[*handler]{
-			qInput: (*handler).handlePartialResult,
-		},
+		Endpoints: endpoints,
 		OutputConfig: middleware.Output{
 			Exchange: "",
 			Keys:     []string{qOutput},

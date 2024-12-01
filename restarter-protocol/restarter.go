@@ -27,6 +27,7 @@ const RESTARTER_NAME = "restarter-"
 var log = logging.MustGetLogger("log")
 
 var ErrFallenNode = errors.New("Never got ack")
+var ErrTimeout = errors.New("Never got ack")
 
 type Restarter struct {
 	id           uint64
@@ -76,15 +77,20 @@ func readNodeConfig() ([]string, error) {
 	return nodes, nil
 }
 
-func NewRestarter(address string, id uint64, replicas uint64) *Restarter {
+func NewRestarter(address string, id uint64, replicas uint64) (*Restarter, error) {
 	nodes, err := readNodeConfig()
-	utils.Expect(err, "Failed to read nodes config")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read nodes config: %v", err)
+	}
 
 	udpAddr, err := net.ResolveUDPAddr("udp", address)
-	utils.Expect(err, "Did not receive a valid address")
-
+	if err != nil {
+		return nil, fmt.Errorf("did not receive a valid address: %v", err)
+	}
 	conn, err := net.ListenUDP("udp", udpAddr)
-	utils.Expect(err, "Failed to start listening from connection")
+	if err != nil {
+		return nil, fmt.Errorf("failed to start listening from connection: %v", err)
+	}
 
 	var mu sync.Mutex
 	cond := sync.NewCond(&mu)
@@ -99,7 +105,7 @@ func NewRestarter(address string, id uint64, replicas uint64) *Restarter {
 		ackMap:       make(map[uint64]chan bool),
 		lastMsgId:    0,
 		wg:           &sync.WaitGroup{},
-	}
+	}, nil
 }
 
 func (r *Restarter) Start(ctx context.Context) error {
@@ -120,26 +126,17 @@ func (r *Restarter) Start(ctx context.Context) error {
 
 	go r.monitorNode(ctx, fmt.Sprintf("%v%v", RESTARTER_NAME, (r.id+1)%r.replicas), utils.RESTARTER_PORT)
 
-	r.read(ctx)
-
-	return nil
+	return r.read(ctx)
 }
 
 func (r *Restarter) StartMonitoring(ctx context.Context) {
 	for _, node := range r.nodes {
-		r.wg.Add(1)
-
 		time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
 
 		go func(nodeName string) {
-			defer r.wg.Done()
 			r.monitorNode(ctx, nodeName, utils.NODE_PORT)
 		}(node)
 	}
-	go func() {
-		<-ctx.Done()
-		r.wg.Wait()
-	}()
 }
 
 func (r *Restarter) monitorNode(ctx context.Context, containerName string, port int) {
@@ -149,15 +146,18 @@ func (r *Restarter) monitorNode(ctx context.Context, containerName string, port 
 			return
 		case <-time.After(time.Duration(rand.Intn(4000)+3000) * time.Millisecond):
 			msg := KeepAlive{}
-			addr, _ := utils.GetUDPAddr(containerName, port)
-			err := r.safeSend(ctx, msg, addr)
+
+			err := r.safeSend(ctx, msg, containerName, port)
 			if errors.Is(err, ErrFallenNode) {
+				log.Errorf("Node %v has fallen. Restarting...", containerName)
+
 				err := r.restartNode(ctx, containerName)
 				if err != nil {
 					log.Errorf("Failed to restart neighbor: %v", err)
 				}
 				continue
 			}
+
 			if err != nil {
 				log.Errorf("Failed to send keep alive: %v", err)
 			}
@@ -165,13 +165,12 @@ func (r *Restarter) monitorNode(ctx context.Context, containerName string, port 
 	}
 }
 
-func (r *Restarter) read(ctx context.Context) {
+func (r *Restarter) read(ctx context.Context) error {
 	for {
 		buf := make([]byte, MAX_PACKAGE_SIZE)
 		_, recvAddr, err := r.conn.ReadFromUDP(buf)
 		if err != nil {
-			log.Errorf("Failed to read: %v", err)
-			continue
+			return fmt.Errorf("Failed to read: %v", err)
 		}
 
 		packet, err := Decode(buf)
@@ -206,7 +205,6 @@ func (r *Restarter) read(ctx context.Context) {
 				}
 			}()
 		case KeepAlive:
-			// log.Infof("Received keep alive from %v", recvAddr)
 			err = r.sendAck(recvAddr, packet.Id)
 			if err != nil {
 				log.Errorf("Failed to send ack: %v", err)
@@ -215,23 +213,31 @@ func (r *Restarter) read(ctx context.Context) {
 	}
 }
 
-func (r *Restarter) safeSend(ctx context.Context, msg Message, addr *net.UDPAddr) error {
+func (r *Restarter) safeSend(ctx context.Context, msg Message, name string, port int) error {
 	var err error
 	msgId := r.newMsgId()
 
+	addr, err := utils.GetUDPAddr(name, port)
+	if err != nil {
+		return errors.Join(ErrFallenNode, err)
+	}
+
 	packet := Packet{
 		Id:  msgId,
-		Msg: msg}
+		Msg: msg,
+	}
 
 	for attempts := 0; attempts < MAX_ATTEMPTS; attempts++ {
 		err = r.send(ctx, packet, addr)
-		if err == nil {
-			return nil
+		if errors.Is(err, ErrTimeout) {
+			log.Warningf("Timeout, trying to send again message %v", msgId)
+		} else {
+			return err
 		}
+
 	}
 
-	log.Errorf("Never got ack for message %d", msgId)
-	return ErrFallenNode
+	return errors.Join(ErrFallenNode, err)
 }
 
 func (r *Restarter) send(ctx context.Context, p Packet, addr *net.UDPAddr) error {
@@ -239,25 +245,22 @@ func (r *Restarter) send(ctx context.Context, p Packet, addr *net.UDPAddr) error
 	if err != nil {
 		return err
 	}
-	n, err := r.conn.WriteToUDP(encoded, addr)
+	_, err = r.conn.WriteToUDP(encoded, addr)
 	if err != nil {
 		return err
-	}
-	if n != len(encoded) {
-		return fmt.Errorf("Could not send full message")
 	}
 
 	r.mu.Lock()
 	ch := r.ackMap[p.Id]
 	r.mu.Unlock()
+
 	select {
 	case <-ch:
 		r.mu.Lock()
 		delete(r.ackMap, p.Id)
 		r.mu.Unlock()
 	case <-time.After(2 * time.Second):
-		log.Infof("Timeout, trying to send again message %v", p.Id)
-		return os.ErrDeadlineExceeded
+		return ErrTimeout
 	case <-ctx.Done():
 		return nil
 	}
@@ -275,12 +278,9 @@ func (r *Restarter) sendAck(prevNeighbor *net.UDPAddr, msgId uint64) error {
 		return err
 	}
 
-	n, err := r.conn.WriteToUDP(msg, prevNeighbor)
+	_, err = r.conn.WriteToUDP(msg, prevNeighbor)
 	if err != nil {
 		return err
-	}
-	if n != len(msg) {
-		return fmt.Errorf("Could not send full message")
 	}
 	return nil
 }
@@ -296,31 +296,40 @@ func (r *Restarter) handleAck(msgId uint64) {
 func (r *Restarter) newMsgId() uint64 {
 	r.mu.Lock()
 	r.lastMsgId += 1
-	r.ackMap[r.lastMsgId] = make(chan bool)
+	// we make the channel buffered to avoid blocking the read loop
+	r.ackMap[r.lastMsgId] = make(chan bool, 1)
 	defer r.mu.Unlock()
 
 	return r.lastMsgId
 }
 
 func (r *Restarter) restartNode(ctx context.Context, containerName string) error {
-	if r.isRestarterNode(containerName) {
-		id := (r.id + 1) % r.replicas
-		if id == r.leaderId {
-			log.Infof("Leader has fallen, starting election")
-			err := r.startElection(ctx)
-			if err != nil {
-				return err
-			}
+	if r.isLeader(containerName) {
+		log.Infof("Leader has fallen")
+		err := r.startElection(ctx)
+		if err != nil {
+			return err
 		}
 	}
-	log.Errorf("Node %v has fallen. Restarting...", containerName)
-	time.Sleep(2 * time.Second) // wait if SIGTERM signal triggered
-	cmdStr := fmt.Sprintf("docker start %v", containerName)
-	_, err := exec.CommandContext(ctx, "/bin/sh", "-c", cmdStr).Output()
 
-	return err
+	cmdStr := fmt.Sprintf("docker start %v", containerName)
+	err := exec.CommandContext(ctx, "/bin/sh", "-c", cmdStr).Run()
+	if err != nil {
+		return err
+	}
+
+	// wait if SIGTERM signal triggered
+	time.Sleep(5 * time.Second)
+
+	return nil
 }
 
-func (r *Restarter) isRestarterNode(containerName string) bool {
-	return strings.Contains(containerName, RESTARTER_NAME)
+func (r *Restarter) isLeader(containerName string) bool {
+	if !strings.Contains(containerName, RESTARTER_NAME) {
+		return false
+	}
+
+	neighborId := (r.id + 1) % r.replicas
+
+	return neighborId == r.leaderId
 }

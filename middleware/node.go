@@ -36,7 +36,7 @@ func NewNode[T Handler](config Config[T], rabbit *amqp.Connection) (*Node[T], er
 		return nil, err
 	}
 
-	err = ch.Qos(1000, 0, false)
+	err = ch.Qos(1, 0, false)
 	if err != nil {
 		return nil, err
 	}

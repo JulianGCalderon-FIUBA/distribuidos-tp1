@@ -2,16 +2,18 @@ package main
 
 import (
 	"context"
+	"distribuidos/tp1/database"
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/utils"
 	"os/signal"
 	"slices"
-	"strconv"
 	"syscall"
 
 	logging "github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
+
+const GAMES_DIR string = "games"
 
 var log = logging.MustGetLogger("log")
 
@@ -45,97 +47,147 @@ func getConfig() (config, error) {
 }
 
 type handler struct {
+	db              *database.Database
 	diskMap         *middleware.DiskMap
-	gameSequencer   *middleware.Sequencer
-	reviewSequencer *middleware.Sequencer
-	batchSize       int
-	output          string
+	gameSequencer   *middleware.SequencerDisk
+	reviewSequencer *middleware.SequencerDisk
+
+	batchSize int
+	output    string
 }
 
 func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
+	snapshot, err := h.db.NewSnapshot()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		switch err {
+		case nil:
+			cerr := snapshot.Commit()
+			utils.Expect(cerr, "unrecoverable error")
+		default:
+			cerr := snapshot.Abort()
+			utils.Expect(cerr, "unrecoverable error")
+		}
+	}()
+
+	h.diskMap.Start()
+
 	batch, err := middleware.Deserialize[middleware.Batch[middleware.Game]](data)
 	if err != nil {
 		return err
 	}
 
-	h.gameSequencer.Mark(batch.BatchID, batch.EOF)
+	if h.gameSequencer.Seen(batch.BatchID) {
+		return nil
+	}
+
+	err = h.gameSequencer.MarkDisk(snapshot, batch.BatchID, batch.EOF)
+	if err != nil {
+		return err
+	}
 
 	for _, g := range batch.Data {
-		err = h.diskMap.Rename(g.AppID, g.Name)
-		if err != nil {
-			return err
-		}
+		err = h.diskMap.Rename(snapshot, g.AppID, g.Name)
 	}
+
+	utils.MaybeExit(0.001)
 
 	if h.gameSequencer.EOF() {
 		log.Infof("Received game EOF")
 	}
 
 	if h.gameSequencer.EOF() && h.reviewSequencer.EOF() {
-		return h.conclude(ch)
+		err = h.conclude(ch)
+		utils.MaybeExit(0.50)
+		return err
 	}
 
 	return nil
 }
 
 func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
+	snapshot, err := h.db.NewSnapshot()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		switch err {
+		case nil:
+			cerr := snapshot.Commit()
+			utils.Expect(cerr, "unrecoverable error")
+		default:
+			cerr := snapshot.Abort()
+			utils.Expect(cerr, "unrecoverable error")
+		}
+	}()
+
+	h.diskMap.Start()
+
 	batch, err := middleware.Deserialize[middleware.Batch[middleware.Review]](data)
 	if err != nil {
 		return err
 	}
 
-	h.reviewSequencer.Mark(batch.BatchID, batch.EOF)
+	if h.reviewSequencer.Seen(batch.BatchID) {
+		return nil
+	}
+
+	err = h.reviewSequencer.MarkDisk(snapshot, batch.BatchID, batch.EOF)
+	if err != nil {
+		return err
+	}
 
 	reviews := make(map[uint64]uint64)
-
 	for _, r := range batch.Data {
 		reviews[r.AppID] += 1
 	}
 
 	for id, stat := range reviews {
-		err = h.diskMap.Increment(id, stat)
+		err = h.diskMap.Increment(snapshot, id, stat)
 		if err != nil {
 			return err
 		}
 	}
+
+	utils.MaybeExit(0.0001)
 
 	if h.reviewSequencer.EOF() {
 		log.Infof("Received review EOF")
 	}
 
 	if h.reviewSequencer.EOF() && h.gameSequencer.EOF() {
-		return h.conclude(ch)
+		err := h.conclude(ch)
+		utils.MaybeExit(0.50)
+		return err
 	}
 
 	return nil
 }
 
 func (h *handler) conclude(ch *middleware.Channel) error {
-	games, err := h.diskMap.GetAll()
+	stats, err := h.getAll()
 	if err != nil {
 		return err
 	}
-
-	games = slices.DeleteFunc(games, func(g middleware.GameStat) bool {
-		return g.Stat == 0 || g.Name == ""
-	})
 
 	batch := middleware.Batch[middleware.GameStat]{
 		Data:    []middleware.GameStat{},
 		BatchID: 0,
 		EOF:     false,
 	}
-	if len(games) == 0 {
+	if len(stats) == 0 {
 		batch.EOF = true
 		return ch.Send(batch, "", h.output)
 	}
 
-	for len(games) > 0 {
-		currBatchSize := min(h.batchSize, len(games))
+	for len(stats) > 0 {
+		currBatchSize := min(h.batchSize, len(stats))
 		var batchData []middleware.GameStat
-		games, batchData = games[currBatchSize:], games[:currBatchSize]
+		stats, batchData = stats[currBatchSize:], stats[:currBatchSize]
 
-		batch.EOF = len(games) == 0
+		batch.EOF = len(stats) == 0
 		batch.Data = batchData
 
 		err := ch.Send(batch, "", h.output)
@@ -150,8 +202,21 @@ func (h *handler) conclude(ch *middleware.Channel) error {
 	return nil
 }
 
+func (h *handler) getAll() ([]middleware.GameStat, error) {
+	stats, err := h.diskMap.GetAll(h.db)
+	if err != nil {
+		return nil, err
+	}
+
+	stats = slices.DeleteFunc(stats, func(g middleware.GameStat) bool {
+		return g.Stat == 0 || g.Name == ""
+	})
+
+	return stats, nil
+}
+
 func (h *handler) Free() error {
-	return h.diskMap.Remove()
+	return nil
 }
 
 func main() {
@@ -175,14 +240,25 @@ func main() {
 
 	nodeCfg := middleware.Config[*handler]{
 		Builder: func(clientID int) *handler {
-			path := middleware.Cat("group-by", strconv.Itoa(clientID))
-			diskMap, err := middleware.NewDiskMap(path)
-			utils.Expect(err, "Failed to build new disk map")
+			database_path := middleware.Cat("client", clientID)
+			db, err := database.NewDatabase(database_path)
+			utils.Expect(err, "unrecoverable error")
+
+			diskMap := middleware.NewDiskMap(GAMES_DIR)
+			utils.Expect(err, "unrecoverable error")
+
+			gameSequencer := middleware.NewSequencerDisk("game-sequencer")
+			err = gameSequencer.LoadDisk(db)
+			utils.Expect(err, "unrecoverable error")
+			reviewSequencer := middleware.NewSequencerDisk("review-sequencer")
+			err = reviewSequencer.LoadDisk(db)
+			utils.Expect(err, "unrecoverable error")
 
 			return &handler{
+				db:              db,
 				diskMap:         diskMap,
-				gameSequencer:   middleware.NewSequencer(),
-				reviewSequencer: middleware.NewSequencer(),
+				gameSequencer:   gameSequencer,
+				reviewSequencer: reviewSequencer,
 				batchSize:       cfg.BatchSize,
 				output:          qOutput,
 			}
