@@ -61,7 +61,7 @@ func NewNode[T Handler](config Config[T], rabbit *amqp.Connection) (*Node[T], er
 		ch:             ch,
 		clients:        make(map[int]T),
 		db:             db,
-		doneClientsSet: NewSetDisk("ids"),
+		doneClientsSet: doneClientsSet,
 	}, nil
 }
 
