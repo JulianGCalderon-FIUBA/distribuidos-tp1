@@ -163,15 +163,6 @@ func (h *handler) Free() error {
 	return h.db.RemoveAll()
 }
 
-func (h *handler) GetOutput() middleware.Output {
-	return middleware.Output{
-		Exchange: "",
-		Keys: []string{
-			h.output,
-		},
-	}
-}
-
 func main() {
 	cfg, err := getConfig()
 	utils.Expect(err, "Failed to read config")
@@ -192,7 +183,8 @@ func main() {
 		endpoints[qName] = buildHandler(i)
 	}
 
-	queues = append(queues, middleware.QueueConfig{Name: middleware.Results})
+	qOutput := middleware.Results
+	queues = append(queues, middleware.QueueConfig{Name: qOutput})
 
 	err = middleware.Topology{
 		Queues: queues,
@@ -214,11 +206,15 @@ func main() {
 
 			return &handler{
 				db:     db,
-				output: middleware.Results,
+				output: qOutput,
 				joiner: joiner,
 			}
 		},
 		Endpoints: endpoints,
+		OutputConfig: middleware.Output{
+			Exchange: "",
+			Keys:     []string{qOutput},
+		},
 	}
 
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
