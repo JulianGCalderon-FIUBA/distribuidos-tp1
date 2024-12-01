@@ -6,7 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
-	"io/fs"
+	"os"
 )
 
 type DiskSet struct {
@@ -46,8 +46,7 @@ func (s *DiskSet) MarkDisk(snapshot *database.Snapshot, id int) error {
 
 func (s *DiskSet) LoadDisk(db *database.Database) error {
 	file, err := db.Get(s.name)
-	var pathError *fs.PathError
-	if errors.As(err, &pathError) {
+	if os.IsNotExist(err) {
 		return nil
 	}
 	if err != nil {
