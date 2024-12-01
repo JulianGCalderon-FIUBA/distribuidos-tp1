@@ -19,11 +19,12 @@ import (
 )
 
 func (g *gateway) notifyFallenNode(outputs []middleware.Output) error {
+
 	ch := middleware.Channel{
 		Ch:         g.rabbitCh,
-		ClientID:   -1,
+		ClientID:   int(g.clientCounter),
 		FinishFlag: false,
-		CleanFlag:  false,
+		CleanAction:  middleware.CleanAll,
 	}
 
 	for _, output := range outputs {
@@ -140,8 +141,9 @@ func (g *gateway) handleClientData(ctx context.Context, rawConn net.Conn) (err e
 		return err
 	}
 	ch := middleware.Channel{
-		Ch:       rawCh,
-		ClientID: int(hello.ClientID),
+		Ch:        rawCh,
+		ClientID:  int(hello.ClientID),
+		CleanAction: middleware.NotClean,
 	}
 
 	wg := &sync.WaitGroup{}

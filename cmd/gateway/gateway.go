@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"distribuidos/tp1/database"
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/utils"
@@ -12,31 +13,31 @@ import (
 )
 
 type gateway struct {
-	config            config
-	rabbit            *amqp.Connection
-	rabbitCh          *amqp.Channel
-	mu                *sync.Mutex
-	clients           map[int]chan protocol.Result
-	// cleaningResources *sync.Cond
+	config        config
+	rabbit        *amqp.Connection
+	rabbitCh      *amqp.Channel
+	mu            *sync.Mutex
+	clients       map[int]chan protocol.Result
+	clientCounter uint64
+	db            *database.Database
 }
 
 func newGateway(config config) *gateway {
+	database_path := "gateway"
+	db, err := database.NewDatabase(database_path)
+
+	if err != nil {
+		utils.Expect(err, "Could not create database")
+	}
+
 	protocol.Register()
 	return &gateway{
-		config:            config,
-		clients:           make(map[int]chan protocol.Result),
-		mu:                &sync.Mutex{},
-		// cleaningResources: &sync.Cond{},
+		config:  config,
+		clients: make(map[int]chan protocol.Result),
+		mu:      &sync.Mutex{},
+		db:      db,
 	}
 }
-
-// func (g *gateway) waitCleanResources(finish bool) {
-// 	g.cleaningResources.L.Lock()
-// 	defer g.cleaningResources.L.Unlock()
-// 	for !finish {
-// 		g.cleaningResources.Wait()
-// 	}
-// }
 
 func (g *gateway) start(ctx context.Context) error {
 	conn, ch, err := middleware.Dial(g.config.RabbitIP)
