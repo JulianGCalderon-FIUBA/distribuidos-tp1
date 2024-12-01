@@ -3,6 +3,7 @@ package main
 import (
 	"distribuidos/tp1/middleware"
 	"encoding/csv"
+	"flag"
 	"fmt"
 	"os"
 
@@ -28,7 +29,12 @@ const RESTARTER = 4
 
 var names []string
 
+var volumes bool
+
 func main() {
+	flag.BoolVar(&volumes, "volumes", true, "setup bind mounts")
+	flag.Parse()
+
 	generateInit()
 	generateRabbit()
 	generateGateway()
@@ -223,8 +229,10 @@ func generateQ1() {
 		fmt.Println("    environment:")
 		fmt.Println("      - RABBIT_IP=rabbitmq")
 		fmt.Printf("      - PARTITION_ID=%v\n", i)
-		fmt.Println("    volumes:")
-		fmt.Printf("      - ./.backup/q1-count-%v:/work\n", i)
+		if volumes {
+			fmt.Println("    volumes:")
+			fmt.Printf("      - ./.backup/q1-count-%v:/work\n", i)
+		}
 		fmt.Println("    networks:")
 		fmt.Println("      - net")
 		fmt.Println("    depends_on:")
@@ -238,8 +246,10 @@ func generateQ1() {
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Printf("      - PARTITIONS=%v\n", Q1)
-	fmt.Println("    volumes:")
-	fmt.Println("      - ./.backup/q1-joiner:/work")
+	if volumes {
+		fmt.Println("    volumes:")
+		fmt.Println("      - ./.backup/q1-joiner:/work")
+	}
 	fmt.Println("    networks:")
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
@@ -272,8 +282,10 @@ func generateQ2() {
 		fmt.Printf("      - PARTITION_ID=%v\n", i)
 		fmt.Printf("      - INPUT=%v\n", middleware.GamesQ2)
 		fmt.Println("      - TOP_N=10")
-		fmt.Println("    volumes:")
-		fmt.Printf("      - ./.backup/q2-top-%v:/work\n", i)
+		if volumes {
+			fmt.Println("    volumes:")
+			fmt.Printf("      - ./.backup/q2-top-%v:/work\n", i)
+		}
 		fmt.Println("    networks:")
 		fmt.Println("      - net")
 		fmt.Println("    depends_on:")
@@ -289,8 +301,10 @@ func generateQ2() {
 	fmt.Printf("      - PARTITIONS=%v\n", Q2)
 	fmt.Printf("      - INPUT=%v\n", middleware.PartialQ2)
 	fmt.Println("      - TOP_N=10")
-	fmt.Println("    volumes:")
-	fmt.Println("      - ./.backup/q2-joiner:/work")
+	if volumes {
+		fmt.Println("    volumes:")
+		fmt.Println("      - ./.backup/q2-joiner:/work")
+	}
 	fmt.Println("    networks:")
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
@@ -340,8 +354,10 @@ func generateQ3() {
 		fmt.Printf("      - GAME_INPUT=%v\n", middleware.GamesQ3)
 		fmt.Printf("      - REVIEW_INPUT=%v\n", middleware.ReviewsQ3)
 		fmt.Printf("      - OUTPUT=%v\n", middleware.GroupedQ3)
-		fmt.Println("    volumes:")
-		fmt.Printf("      - ./.backup/q3-group-%v:/work\n", i)
+		if volumes {
+			fmt.Println("    volumes:")
+			fmt.Printf("      - ./.backup/q3-group-%v:/work\n", i)
+		}
 		fmt.Println("    networks:")
 		fmt.Println("      - net")
 		fmt.Println("    depends_on:")
@@ -356,8 +372,10 @@ func generateQ3() {
 		fmt.Println("      - RABBIT_IP=rabbitmq")
 		fmt.Printf("      - PARTITION_ID=%v\n", i)
 		fmt.Println("      - N=5")
-		fmt.Println("    volumes:")
-		fmt.Printf("      - ./.backup/q3-top-%v:/work\n", i)
+		if volumes {
+			fmt.Println("    volumes:")
+			fmt.Printf("      - ./.backup/q3-top-%v:/work\n", i)
+		}
 		fmt.Println("    networks:")
 		fmt.Println("      - net")
 		fmt.Println("    depends_on:")
@@ -372,8 +390,10 @@ func generateQ3() {
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Println("      - TOP_N=5")
 	fmt.Printf("      - PARTITIONS=%v\n", Q3)
-	fmt.Println("    volumes:")
-	fmt.Println("      - ./.backup/q3-joiner:/work")
+	if volumes {
+		fmt.Println("    volumes:")
+		fmt.Println("      - ./.backup/q3-joiner:/work")
+	}
 	fmt.Println("    networks:")
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
@@ -423,8 +443,10 @@ func generateQ4() {
 		fmt.Printf("      - GAME_INPUT=%v\n", middleware.GamesQ4)
 		fmt.Printf("      - REVIEW_INPUT=%v\n", middleware.ReviewsQ4)
 		fmt.Printf("      - OUTPUT=%v\n", middleware.GroupedQ4Joiner)
-		fmt.Println("    volumes:")
-		fmt.Printf("      - ./.backup/q4-group-%v:/work\n", i)
+		if volumes {
+			fmt.Println("    volumes:")
+			fmt.Printf("      - ./.backup/q4-group-%v:/work\n", i)
+		}
 		fmt.Println("    networks:")
 		fmt.Println("      - net")
 		fmt.Println("    depends_on:")
@@ -441,8 +463,10 @@ func generateQ4() {
 	fmt.Printf("      - PARTITIONS=%v\n", Q4)
 	fmt.Printf("      - INPUT=%v\n", middleware.GroupedQ4Joiner)
 	fmt.Printf("      - OUTPUT=%v\n", middleware.GroupedQ4Filter)
-	fmt.Println("    volumes:")
-	fmt.Println("      - ./.backup/q4-joiner:/work")
+	if volumes {
+		fmt.Println("    volumes:")
+		fmt.Println("      - ./.backup/q4-joiner:/work")
+	}
 	fmt.Println("    networks:")
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
@@ -505,8 +529,10 @@ func generateQ5() {
 		fmt.Printf("      - GAME_INPUT=%v\n", middleware.GamesQ5)
 		fmt.Printf("      - REVIEW_INPUT=%v\n", middleware.ReviewsQ5)
 		fmt.Printf("      - OUTPUT=%v\n", middleware.GroupedQ5Joiner)
-		fmt.Println("    volumes:")
-		fmt.Printf("      - ./.backup/q5-group-%v:/work\n", i)
+		if volumes {
+			fmt.Println("    volumes:")
+			fmt.Printf("      - ./.backup/q5-group-%v:/work\n", i)
+		}
 		fmt.Println("    networks:")
 		fmt.Println("      - net")
 		fmt.Println("    depends_on:")
@@ -523,8 +549,10 @@ func generateQ5() {
 	fmt.Printf("      - PARTITIONS=%v\n", Q5)
 	fmt.Printf("      - INPUT=%v\n", middleware.GroupedQ5Joiner)
 	fmt.Printf("      - OUTPUT=%v\n", middleware.GroupedQ5Percentile)
-	fmt.Println("    volumes:")
-	fmt.Println("      - ./.backup/q5-joiner:/work")
+	if volumes {
+		fmt.Println("    volumes:")
+		fmt.Println("      - ./.backup/q5-joiner:/work")
+	}
 	fmt.Println("    networks:")
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
@@ -538,8 +566,10 @@ func generateQ5() {
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
 	fmt.Println("      - PERCENTILE=90")
-	fmt.Println("    volumes:")
-	fmt.Println("      - ./.backup/q5-percentile:/work")
+	if volumes {
+		fmt.Println("    volumes:")
+		fmt.Println("      - ./.backup/q5-percentile:/work")
+	}
 	fmt.Println("    networks:")
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")

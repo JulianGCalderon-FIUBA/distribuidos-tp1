@@ -43,3 +43,7 @@ run-stress: clean docker-build-stress compose-down compose-up compose-logs
 write-compose:
 	go run ./scripts/compose > compose.yaml
 .PHONY: write-compose
+
+write-compose-no-volume:
+	go run ./scripts/compose -volumes=false > compose.yaml
+.PHONY: write-compose
