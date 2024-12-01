@@ -92,12 +92,16 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 		err = h.diskMap.Rename(snapshot, g.AppID, g.Name)
 	}
 
+	utils.MaybeExit(0.001)
+
 	if h.gameSequencer.EOF() {
 		log.Infof("Received game EOF")
 	}
 
 	if h.gameSequencer.EOF() && h.reviewSequencer.EOF() {
-		return h.conclude(ch)
+		err = h.conclude(ch)
+		utils.MaybeExit(0.50)
+		return err
 	}
 
 	return nil
@@ -147,12 +151,16 @@ func (h *handler) handleReview(ch *middleware.Channel, data []byte) error {
 		}
 	}
 
+	utils.MaybeExit(0.0001)
+
 	if h.reviewSequencer.EOF() {
 		log.Infof("Received review EOF")
 	}
 
 	if h.reviewSequencer.EOF() && h.gameSequencer.EOF() {
-		return h.conclude(ch)
+		err := h.conclude(ch)
+		utils.MaybeExit(0.50)
+		return err
 	}
 
 	return nil

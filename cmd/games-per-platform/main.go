@@ -136,6 +136,8 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) (err error) {
 		return err
 	}
 
+	utils.MaybeExit(0.001)
+
 	if h.sequencer.EOF() {
 		count := map[Platform]int{
 			Windows: int(windowsCounter),
@@ -151,6 +153,8 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) (err error) {
 		if err != nil {
 			return err
 		}
+
+		utils.MaybeExit(0.50)
 
 		ch.Finish()
 	}

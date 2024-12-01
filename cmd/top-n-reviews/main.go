@@ -81,12 +81,15 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte) error {
 		return err
 	}
 
+	utils.MaybeExit(0.001)
+
 	if h.sequencer.EOF() {
 		err := h.conclude(ch)
 		if err != nil {
 			return err
 		}
 
+		utils.MaybeExit(0.50)
 		ch.Finish()
 	}
 
