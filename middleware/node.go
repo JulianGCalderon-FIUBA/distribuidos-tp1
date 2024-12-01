@@ -87,84 +87,97 @@ func (n *Node[T]) Run(ctx context.Context) error {
 
 func (n *Node[T]) processDelivery(d Delivery) error {
 	clientID := int(d.Headers["clientID"].(int32))
-	cleanFlag := d.Headers["clean"].(bool)
+	cleanAction := int(d.Headers["cleanAction"].(int32))
 
-	if n.notifyFallenNode(clientID, cleanFlag) {
-		return nil
-	}
+	if !n.notifyFallenNode(clientID, cleanAction) {
+		h, ok := n.clients[clientID]
+		if !ok {
+			log.Infof("Building handler for client %v", clientID)
+			h = n.config.Builder(clientID)
+			n.clients[clientID] = h
+		}
 
-	h, ok := n.clients[clientID]
-	if !ok {
-		log.Infof("Building handler for client %v", clientID)
-		h = n.config.Builder(clientID)
-		n.clients[clientID] = h
-	}
+		ch := &Channel{
+			Ch:          n.ch,
+			ClientID:    clientID,
+			FinishFlag:  false,
+			CleanAction: NotClean,
+		}
 
-	ch := &Channel{
-		Ch:         n.ch,
-		ClientID:   clientID,
-		FinishFlag: false,
-	}
+		err := n.config.Endpoints[d.Queue](h, ch, d.Body)
+		// todo: persistir cuales clientes terminaron
+		// todo: free resources
+		// if ch.FinishFlag {
+		// n.freeResources(clientID, h)
+		// }
 
-	err := n.config.Endpoints[d.Queue](h, ch, d.Body)
-	// todo: persistir cuales clientes terminaron
-	// todo: free resources
-	// if ch.FinishFlag {
-	// n.freeResources(clientID, h)
-	// }
-
-	if err != nil {
-		log.Errorf("Failed to handle message %v", err)
-		err = d.Nack(false, false)
 		if err != nil {
-			return err
+			log.Errorf("Failed to handle message %v", err)
+			err = d.Nack(false, false)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
 	return d.Ack(false)
 }
 
-func (n *Node[T]) notifyFallenNode(clientID int, cleanFlag bool) bool {
-	if clientID == -1 {
+func (n *Node[T]) notifyFallenNode(clientID int, cleanAction int) bool {
+	switch cleanAction {
+	case NotClean:
+		return false
+	case CleanAll:
 		if len(n.clients) > 0 {
 			log.Infof("Cleaning all system resources")
-			for c := range n.clients {
-				n.freeResources(c)
+			for i := clientID; i > 0; i-- {
+				n.freeResources(i)
 			}
 		}
-	} else if cleanFlag {
+		return true
+
+	case CleanId:
 		_, ok := n.clients[clientID]
 		if ok {
 			log.Infof("Client %v crashed, clean all resources for it", clientID)
 			n.freeResources(clientID)
 		}
-	} else {
-		return false
+		return true
 	}
 
-	if len(n.config.OutputConfig.Exchange) == 0 && len(n.config.OutputConfig.Keys) == 0 { // reached results node
+	n.propagateFallenNode(clientID, cleanAction)
+	return true
+}
+
+func (n *Node[T]) propagateFallenNode(clientID int, cleanAction int) {
+	if n.isResultsNode() {
 		log.Infof("Finished cleaning system resources")
-		return true
+		return
 	}
 
 	for _, key := range n.config.OutputConfig.Keys {
 		ch := &Channel{
-			Ch:        n.ch,
-			ClientID:  clientID,
-			CleanFlag: cleanFlag,
+			Ch:          n.ch,
+			ClientID:    clientID,
+			CleanAction: cleanAction,
 		}
 		err := ch.Send([]byte{}, n.config.OutputConfig.Exchange, key)
 		if err != nil {
 			log.Error("Failed to propagate to pipeline: %v", err)
 		}
 	}
-	return true
+}
+
+func (n *Node[T]) isResultsNode() bool {
+	return len(n.config.OutputConfig.Exchange) == 0 && len(n.config.OutputConfig.Keys) == 0
 }
 
 func (n *Node[T]) freeResources(clientID int) {
+	h, ok := n.clients[clientID]
+	if !ok {
+		return
+	}
 	log.Infof("Freeing resources for client %v", clientID)
-
-	h := n.clients[clientID]
 
 	err := h.Free()
 	if err != nil {

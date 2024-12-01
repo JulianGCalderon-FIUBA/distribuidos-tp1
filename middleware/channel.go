@@ -8,10 +8,10 @@ import (
 var log = logging.MustGetLogger("log")
 
 type Channel struct {
-	Ch         *amqp.Channel
-	ClientID   int
-	FinishFlag bool
-	CleanFlag  bool
+	Ch          *amqp.Channel
+	ClientID    int
+	FinishFlag  bool
+	CleanAction int
 }
 
 func (c *Channel) Send(msg any, exchange, key string) error {
@@ -20,17 +20,12 @@ func (c *Channel) Send(msg any, exchange, key string) error {
 		log.Panicf("Failed to serialize result %v", err)
 	}
 
-	cleanFlag := false
-	if c.CleanFlag {
-		cleanFlag = true
-	}
-
 	err = c.Ch.Publish(exchange, key, false, false, amqp.Publishing{
 		DeliveryMode: amqp.Persistent,
 		ContentType:  "",
 		Headers: amqp.Table{
-			"clientID": c.ClientID,
-			"clean":    cleanFlag,
+			"clientID":    c.ClientID,
+			"cleanAction": c.CleanAction,
 		},
 		Body: buf,
 	})

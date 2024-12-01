@@ -10,6 +10,12 @@ type Output struct {
 	Keys     []string
 }
 
+const (
+	NotClean int = 0
+	CleanAll int = 1
+	CleanId  int = 2
+)
+
 type Score int8
 
 const (
