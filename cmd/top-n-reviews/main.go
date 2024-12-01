@@ -108,7 +108,7 @@ func (h *handler) conclude(ch *middleware.Channel) error {
 }
 
 func (h *handler) Free() error {
-	return nil
+	return h.db.RemoveAll()
 }
 
 func main() {

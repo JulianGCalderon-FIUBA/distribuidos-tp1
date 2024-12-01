@@ -146,7 +146,7 @@ func (h *handler) handleBatch(ch *middleware.Channel, data []byte, partition int
 }
 
 func (h *handler) Free() error {
-	return nil
+	return h.db.RemoveAll()
 }
 
 func main() {
