@@ -47,3 +47,7 @@ write-compose:
 write-compose-no-volume:
 	go run ./scripts/compose -volumes=false > compose.yaml
 .PHONY: write-compose
+
+docker-tree:
+	tail -n +2 .node-config.csv | xargs -I _ docker exec _ sh -c 'printf "\n--- _ ---\n\n"; tree *'
+.PHONY: write-compose
