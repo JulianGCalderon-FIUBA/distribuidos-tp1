@@ -85,9 +85,13 @@ func (h *handler) handlePartialResult(ch *middleware.Channel, data []byte, parti
 		return err
 	}
 
+	utils.MaybeExit(0.001)
+
 	if h.joiner.EOF() {
 		log.Infof("Received all partial results")
-		return h.conclude(ch)
+		err = h.conclude(ch)
+		utils.MaybeExit(0.50)
+		return err
 	}
 	return nil
 }
