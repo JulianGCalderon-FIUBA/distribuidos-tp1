@@ -7,7 +7,9 @@ import (
 	"distribuidos/tp1/utils"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net"
+	"os"
 	"sync"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -36,6 +38,10 @@ func NewNode[T Handler](config Config[T], rabbit *amqp.Connection) (*Node[T], er
 	if err != nil {
 		return nil, err
 	}
+	err = ch.Confirm(false)
+	if err != nil {
+		return nil, err
+	}
 
 	err = ch.Qos(1000, 0, false)
 	if err != nil {
@@ -43,6 +49,10 @@ func NewNode[T Handler](config Config[T], rabbit *amqp.Connection) (*Node[T], er
 	}
 
 	db, err := database.NewDatabase("node")
+	utils.Expect(err, "unrecoverable error")
+
+	doneClientsSet := NewSetDisk("ids")
+	err = doneClientsSet.LoadDisk(db)
 	utils.Expect(err, "unrecoverable error")
 
 	return &Node[T]{
@@ -94,7 +104,7 @@ func (n *Node[T]) Run(ctx context.Context) error {
 func (n *Node[T]) processDelivery(d Delivery) error {
 	clientID := int(d.Headers["clientID"].(int32))
 	if n.doneClientsSet.Seen(clientID) {
-		return nil
+		return d.Ack(false)
 	}
 
 	h, ok := n.clients[clientID]
@@ -113,9 +123,15 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 	err := n.config.Endpoints[d.Queue](h, ch, d.Body)
 
 	if ch.FinishFlag {
+		if rand.Float32() < 0.5 {
+			os.Exit(1)
+		}
 		err = n.freeResources(clientID, h)
 		if err != nil {
 			return err
+		}
+		if rand.Float32() < 0.5 {
+			os.Exit(1)
 		}
 	}
 
@@ -132,10 +148,6 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 
 func (n *Node[T]) freeResources(clientID int, h T) error {
 	log.Infof("Freeing resources for client %v", clientID)
-	err := h.Free()
-	if err != nil {
-		return err
-	}
 	snapshot, err := n.db.NewSnapshot()
 	if err != nil {
 		return err
@@ -151,6 +163,10 @@ func (n *Node[T]) freeResources(clientID int, h T) error {
 		}
 	}()
 	err = n.doneClientsSet.MarkDisk(snapshot, clientID)
+	if err != nil {
+		return err
+	}
+	err = h.Free()
 	if err != nil {
 		return err
 	}
