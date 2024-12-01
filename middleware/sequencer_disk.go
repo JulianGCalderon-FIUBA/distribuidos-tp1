@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
+	"os"
 )
 
 type SequencerDisk struct {
@@ -72,8 +72,7 @@ func (s *SequencerDisk) MarkDisk(snapshot *database.Snapshot, id int, EOF bool) 
 
 func (s *SequencerDisk) LoadDisk(db *database.Database) error {
 	file, err := db.Get(s.name)
-	var pathError *fs.PathError
-	if errors.As(err, &pathError) {
+	if os.IsNotExist(err) {
 		return nil
 	}
 	if err != nil {
