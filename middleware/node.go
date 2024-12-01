@@ -146,20 +146,17 @@ func (n *Node[T]) freeResources(clientID int, h T) error {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		switch err {
-		case nil:
-			cerr := snapshot.Commit()
-			utils.Expect(cerr, "unrecoverable error")
-		default:
-			cerr := snapshot.Abort()
-			utils.Expect(cerr, "unrecoverable error")
-		}
-	}()
+
 	err = n.doneClientsSet.MarkDisk(snapshot, clientID)
 	if err != nil {
+		cerr := snapshot.Abort()
+		utils.Expect(cerr, "unrecoverable error")
+
 		return err
 	}
+	cerr := snapshot.Commit()
+	utils.Expect(cerr, "unrecoverable error")
+
 	err = h.Free()
 	if err != nil {
 		return err
