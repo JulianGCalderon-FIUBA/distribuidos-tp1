@@ -20,7 +20,7 @@ func (r *Restarter) WaitLeader(amILeader bool) {
 
 // requires lock
 func (r *Restarter) amILeader() bool {
-	return (r.id == r.leaderId) && r.hasLeader
+	return (r.id == r.leaderId)
 }
 
 func (r *Restarter) startElection(ctx context.Context) error {
@@ -47,7 +47,6 @@ func (r *Restarter) startCoordinator(ctx context.Context, ids []uint64) error {
 	leader := slices.Max(ids)
 	r.condLeaderId.L.Lock()
 	r.leaderId = int(leader)
-	r.hasLeader = true
 	r.condLeaderId.L.Unlock()
 
 	r.condLeaderId.Signal()
@@ -71,7 +70,6 @@ func (r *Restarter) handleCoordinator(ctx context.Context, msg Coordinator) erro
 
 	r.condLeaderId.L.Lock()
 	r.leaderId = int(msg.Leader)
-	r.hasLeader = true
 	r.condLeaderId.L.Unlock()
 
 	r.condLeaderId.Signal()

@@ -38,7 +38,6 @@ type Restarter struct {
 	lastMsgId    uint64
 	condLeaderId *sync.Cond
 	leaderId     int
-	hasLeader    bool
 	mu           *sync.Mutex
 	wg           *sync.WaitGroup
 }
