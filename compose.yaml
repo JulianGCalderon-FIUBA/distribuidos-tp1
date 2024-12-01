@@ -172,6 +172,8 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=1
+    volumes:
+      - ./.backup/q1-count-1:/work
     networks:
       - net
     depends_on:
@@ -183,6 +185,8 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=2
+    volumes:
+      - ./.backup/q1-count-2:/work
     networks:
       - net
     depends_on:
@@ -194,6 +198,8 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=3
+    volumes:
+      - ./.backup/q1-count-3:/work
     networks:
       - net
     depends_on:
@@ -205,6 +211,8 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PARTITIONS=3
+    volumes:
+      - ./.backup/q1-joiner:/work
     networks:
       - net
     depends_on:
@@ -231,6 +239,8 @@ services:
       - PARTITION_ID=1
       - INPUT=games-Q2
       - TOP_N=10
+    volumes:
+      - ./.backup/q2-top-1:/work
     networks:
       - net
     depends_on:
@@ -244,6 +254,8 @@ services:
       - PARTITION_ID=2
       - INPUT=games-Q2
       - TOP_N=10
+    volumes:
+      - ./.backup/q2-top-2:/work
     networks:
       - net
     depends_on:
@@ -257,6 +269,8 @@ services:
       - PARTITION_ID=3
       - INPUT=games-Q2
       - TOP_N=10
+    volumes:
+      - ./.backup/q2-top-3:/work
     networks:
       - net
     depends_on:
@@ -270,6 +284,8 @@ services:
       - PARTITIONS=3
       - INPUT=partial-Q2-joiner
       - TOP_N=10
+    volumes:
+      - ./.backup/q2-joiner:/work
     networks:
       - net
     depends_on:
@@ -324,6 +340,8 @@ services:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=1
       - N=5
+    volumes:
+      - ./.backup/q3-top-1:/work
     networks:
       - net
     depends_on:
@@ -352,6 +370,8 @@ services:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=2
       - N=5
+    volumes:
+      - ./.backup/q3-top-2:/work
     networks:
       - net
     depends_on:
@@ -380,6 +400,8 @@ services:
       - RABBIT_IP=rabbitmq
       - PARTITION_ID=3
       - N=5
+    volumes:
+      - ./.backup/q3-top-3:/work
     networks:
       - net
     depends_on:
@@ -392,6 +414,8 @@ services:
       - RABBIT_IP=rabbitmq
       - TOP_N=5
       - PARTITIONS=3
+    volumes:
+      - ./.backup/q3-joiner:/work
     networks:
       - net
     depends_on:
@@ -479,6 +503,8 @@ services:
       - PARTITIONS=3
       - INPUT=grouped-Q4-joiner
       - OUTPUT=grouped-Q4-filter
+    volumes:
+      - ./.backup/q4-joiner:/work
     networks:
       - net
     depends_on:
@@ -577,6 +603,8 @@ services:
       - PARTITIONS=3
       - INPUT=grouped-Q5-joiner
       - OUTPUT=grouped-Q5-percentil
+    volumes:
+      - ./.backup/q5-joiner:/work
     networks:
       - net
     depends_on:
@@ -588,6 +616,8 @@ services:
     environment:
       - RABBIT_IP=rabbitmq
       - PERCENTILE=90
+    volumes:
+      - ./.backup/q5-percentile:/work
     networks:
       - net
     depends_on:
