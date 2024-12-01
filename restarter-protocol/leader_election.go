@@ -26,17 +26,17 @@ func (r *Restarter) amILeader() bool {
 func (r *Restarter) startElection(ctx context.Context) error {
 	log.Infof("Starting election")
 
-	e := &Election{Ids: []uint64{r.id}}
+	e := &Election{Ids: []uint64{uint64(r.id)}}
 	return r.sendToRing(ctx, e)
 }
 
 func (r *Restarter) handleElection(ctx context.Context, msg Election) error {
 	log.Infof("Received Election message with ids: %v", idsToString(msg.Ids))
 
-	if slices.Contains(msg.Ids, r.id) {
+	if slices.Contains(msg.Ids, uint64(r.id)) {
 		return r.startCoordinator(ctx, msg.Ids)
 	}
-	msg.Ids = append(msg.Ids, r.id)
+	msg.Ids = append(msg.Ids, uint64(r.id))
 
 	return r.sendToRing(ctx, msg)
 }
@@ -46,7 +46,7 @@ func (r *Restarter) startCoordinator(ctx context.Context, ids []uint64) error {
 
 	leader := slices.Max(ids)
 	r.condLeaderId.L.Lock()
-	r.leaderId = leader
+	r.leaderId = int(leader)
 	r.hasLeader = true
 	r.condLeaderId.L.Unlock()
 
@@ -56,7 +56,7 @@ func (r *Restarter) startCoordinator(ctx context.Context, ids []uint64) error {
 
 	coor := Coordinator{
 		Leader: leader,
-		Ids:    []uint64{r.id},
+		Ids:    []uint64{uint64(r.id)},
 	}
 
 	return r.sendToRing(ctx, coor)
@@ -65,12 +65,12 @@ func (r *Restarter) startCoordinator(ctx context.Context, ids []uint64) error {
 func (r *Restarter) handleCoordinator(ctx context.Context, msg Coordinator) error {
 	log.Infof("Received Coordinator message with ids %v", idsToString(msg.Ids))
 
-	if slices.Contains(msg.Ids, r.id) {
+	if slices.Contains(msg.Ids, uint64(r.id)) {
 		return nil
 	}
 
 	r.condLeaderId.L.Lock()
-	r.leaderId = msg.Leader
+	r.leaderId = int(msg.Leader)
 	r.hasLeader = true
 	r.condLeaderId.L.Unlock()
 
@@ -78,7 +78,7 @@ func (r *Restarter) handleCoordinator(ctx context.Context, msg Coordinator) erro
 
 	log.Infof("Leader is %v", msg.Leader)
 
-	msg.Ids = append(msg.Ids, r.id)
+	msg.Ids = append(msg.Ids, uint64(r.id))
 	return r.sendToRing(ctx, msg)
 }
 
