@@ -105,86 +105,87 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 	clientID := int(d.Headers["clientID"].(int32))
 	cleanAction := int(d.Headers["cleanAction"].(int32))
 
-	b, err := n.notifyFallenNode(clientID, cleanAction)
-	if err != nil {
-		return err
-	}
-
-	if !b {
-		if n.doneClientsSet.Seen(clientID) {
-			return d.Ack(false)
-		}
-
-		h, ok := n.clients[clientID]
-		if !ok {
-			log.Infof("Building handler for client %v", clientID)
-			h = n.config.Builder(clientID)
-			n.clients[clientID] = h
-		}
-
-		ch := &Channel{
-			Ch:          n.ch,
-			ClientID:    clientID,
-			FinishFlag:  false,
-			CleanAction: NotClean,
-		}
-
-		err := n.config.Endpoints[d.Queue](h, ch, d.Body)
-
-		if ch.FinishFlag {
-			utils.MaybeExit(0.2)
-			err = n.freeResources(clientID)
-			if err != nil {
-				return err
-			}
-			utils.MaybeExit(0.2)
-		}
-
+	if cleanAction != NotClean {
+		err := n.notifyFallenNode(clientID, cleanAction)
 		if err != nil {
-			log.Errorf("Failed to handle message %v", err)
-			err = d.Nack(false, false)
-			if err != nil {
-				return err
-			}
+			return err
 		}
+		return d.Ack(false)
 	}
 
+	if n.doneClientsSet.Seen(clientID) {
+		return d.Ack(false)
+	}
+
+	h, ok := n.clients[clientID]
+	if !ok {
+		log.Infof("Building handler for client %v", clientID)
+		h = n.config.Builder(clientID)
+		n.clients[clientID] = h
+	}
+
+	ch := &Channel{
+		Ch:          n.ch,
+		ClientID:    clientID,
+		FinishFlag:  false,
+		CleanAction: NotClean,
+	}
+
+	err := n.config.Endpoints[d.Queue](h, ch, d.Body)
+
+	if ch.FinishFlag {
+		utils.MaybeExit(0.2)
+		err = n.freeResources(clientID, h)
+		if err != nil {
+			return err
+		}
+		utils.MaybeExit(0.2)
+	}
+
+	if err != nil {
+		log.Errorf("Failed to handle message %v", err)
+		err = d.Nack(false, false)
+		if err != nil {
+			return err
+		}
+	}
 	return d.Ack(false)
 }
 
-func (n *Node[T]) notifyFallenNode(clientID int, cleanAction int) (bool, error) {
+func (n *Node[T]) notifyFallenNode(clientID int, cleanAction int) error {
 	switch cleanAction {
-	case NotClean:
-		return false, nil
 	case CleanAll:
 		if len(n.clients) > 0 {
 			log.Infof("Cleaning all system resources")
 			for i := clientID; i > 0; i-- {
-				err := n.freeResources(i)
-				if err != nil {
-					return true, err
+				h, ok := n.clients[i]
+				if ok {
+					err := n.freeResources(i, h)
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}
 
 	case CleanId:
-		_, ok := n.clients[clientID]
+		h, ok := n.clients[clientID]
 		if ok {
 			log.Infof("Client %v crashed, clean all resources for it", clientID)
-			err := n.freeResources(clientID)
+			err := n.freeResources(clientID, h)
 			if err != nil {
-				return true, err
+				return err
 			}
 		}
 	}
 
 	n.propagateFallenNode(clientID, cleanAction)
-	return true, nil
+	return nil
 }
 
 func (n *Node[T]) propagateFallenNode(clientID int, cleanAction int) {
 	if n.isResultsNode() {
-		log.Infof("Finished cleaning system resources")
+		// log.Infof("Finished cleaning system resources")
 		return
 	}
 
@@ -205,12 +206,7 @@ func (n *Node[T]) isResultsNode() bool {
 	return len(n.config.OutputConfig.Exchange) == 0 && len(n.config.OutputConfig.Keys) == 0
 }
 
-func (n *Node[T]) freeResources(clientID int) error {
-	h, ok := n.clients[clientID]
-	if !ok {
-		return nil
-	}
-
+func (n *Node[T]) freeResources(clientID int, h Handler) error {
 	log.Infof("Freeing resources for client %v", clientID)
 	snapshot, err := n.db.NewSnapshot()
 	if err != nil {
@@ -267,7 +263,6 @@ func (n *Node[T]) sendAlive(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("Failed to decode message: %v", err)
 		}
-		// log.Infof("Received KeepAlive from: %v", rAddr)
 
 		err = n.send(conn, rAddr, decoded.Id)
 		if err != nil {
