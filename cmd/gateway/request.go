@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/utils"
 	"encoding/binary"
@@ -150,6 +151,13 @@ func (g *gateway) handleClient(ctx context.Context, netConn net.Conn, clientID i
 		return err
 	}
 
+	go func(clientID int) {
+		err = g.detectFallenClient(conn, clientID)
+		if err != nil {
+			log.Errorf("Failed monitoring client %v", err)
+		}
+	}(clientID)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -168,5 +176,16 @@ func (g *gateway) handleClient(ctx context.Context, netConn net.Conn, clientID i
 			}
 		}
 
+	}
+}
+
+func (g *gateway) detectFallenClient(conn *protocol.Conn, clientID int) error {
+	for {
+		var anyMsg any
+		err := conn.Recv(&anyMsg)
+		if err != nil {
+			log.Infof("Client %v disconnected", clientID)
+			return g.notifyFallenNode(clientID, middleware.CleanId)
+		}
 	}
 }

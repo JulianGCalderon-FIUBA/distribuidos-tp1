@@ -171,7 +171,7 @@ func (n *Node[T]) notifyFallenNode(clientID int, cleanAction int) error {
 	case CleanId:
 		h, ok := n.clients[clientID]
 		if ok {
-			log.Infof("Client %v crashed, clean all resources for it", clientID)
+			log.Infof("Client %v disconnected, cleaning its resources", clientID)
 			err := n.freeResources(clientID, h)
 			if err != nil {
 				return err
@@ -185,7 +185,6 @@ func (n *Node[T]) notifyFallenNode(clientID int, cleanAction int) error {
 
 func (n *Node[T]) propagateFallenNode(clientID int, cleanAction int) {
 	if n.isResultsNode() {
-		// log.Infof("Finished cleaning system resources")
 		return
 	}
 

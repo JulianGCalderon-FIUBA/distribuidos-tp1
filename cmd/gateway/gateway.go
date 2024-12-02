@@ -20,6 +20,7 @@ type gateway struct {
 	clients       map[int]chan protocol.Result
 	clientCounter uint64
 	db            *database.Database
+	outputs       []middleware.Output
 }
 
 func newGateway(config config) *gateway {
@@ -36,6 +37,7 @@ func newGateway(config config) *gateway {
 		clients: make(map[int]chan protocol.Result),
 		mu:      &sync.Mutex{},
 		db:      db,
+		outputs: []middleware.Output{},
 	}
 }
 

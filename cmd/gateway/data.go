@@ -18,7 +18,7 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func (g *gateway) notifyFallenNode(outputs []middleware.Output, clientID int, cleanAction int) error {
+func (g *gateway) notifyFallenNode(clientID int, cleanAction int) error {
 	rawCh, err := g.rabbit.Channel()
 	if err != nil {
 		return err
@@ -35,7 +35,7 @@ func (g *gateway) notifyFallenNode(outputs []middleware.Output, clientID int, cl
 		CleanAction: cleanAction,
 	}
 
-	for _, output := range outputs {
+	for _, output := range g.outputs {
 		for _, k := range output.Keys {
 			err := ch.Send([]byte{}, output.Exchange, k)
 			if err != nil {
@@ -84,6 +84,8 @@ func (g *gateway) startDataEndpoint(ctx context.Context) (err error) {
 		},
 	}
 
+	g.outputs = outputs
+
 	rawCh, err := g.rabbit.Channel()
 	if err != nil {
 		return err
@@ -93,7 +95,7 @@ func (g *gateway) startDataEndpoint(ctx context.Context) (err error) {
 		return err
 	}
 
-	err = g.notifyFallenNode(outputs, int(g.clientCounter), middleware.CleanAll)
+	err = g.notifyFallenNode(int(g.clientCounter), middleware.CleanAll)
 
 	wg := &sync.WaitGroup{}
 	defer wg.Wait()
@@ -152,8 +154,8 @@ func (g *gateway) handleClientData(ctx context.Context, rawConn net.Conn) (err e
 		return err
 	}
 	ch := middleware.Channel{
-		Ch:        rawCh,
-		ClientID:  int(hello.ClientID),
+		Ch:          rawCh,
+		ClientID:    int(hello.ClientID),
 		CleanAction: middleware.NotClean,
 	}
 
