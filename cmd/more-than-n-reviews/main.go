@@ -60,7 +60,6 @@ func main() {
 				middleware.ResultsQ4,
 			},
 		},
-		
 	}
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 	p, err := middleware.NewFilter(filterCfg, h.Filter)
