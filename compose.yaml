@@ -629,7 +629,7 @@ services:
       - ADDRESS=restarter-0:14300
       - REPLICAS=4
     volumes:
-      - ./.node-config.csv:/work/.node-config.csv
+      - ./.restarter-config:/work/.restarter-config
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - gateway
@@ -644,7 +644,7 @@ services:
       - ADDRESS=restarter-1:14300
       - REPLICAS=4
     volumes:
-      - ./.node-config.csv:/work/.node-config.csv
+      - ./.restarter-config:/work/.restarter-config
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - gateway
@@ -659,7 +659,7 @@ services:
       - ADDRESS=restarter-2:14300
       - REPLICAS=4
     volumes:
-      - ./.node-config.csv:/work/.node-config.csv
+      - ./.restarter-config:/work/.restarter-config
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - gateway
@@ -674,7 +674,7 @@ services:
       - ADDRESS=restarter-3:14300
       - REPLICAS=4
     volumes:
-      - ./.node-config.csv:/work/.node-config.csv
+      - ./.restarter-config:/work/.restarter-config
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - gateway
