@@ -95,7 +95,7 @@ func (h *handler) handleGame(ch *middleware.Channel, data []byte) error {
 		err = h.diskMap.Rename(snapshot, g.AppID, g.Name)
 	}
 
-	utils.MaybeExit(0.001)
+	utils.MaybeExit(0.0001)
 
 	if h.gameSequencer.EOF() {
 		log.Infof("Received game EOF")
