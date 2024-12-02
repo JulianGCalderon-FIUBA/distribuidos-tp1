@@ -37,9 +37,17 @@ compose-logs:
 run: docker-build compose-down clean compose-up compose-logs
 .PHONY: run
 
-run-stress: clean docker-build-stress compose-down compose-up compose-logs
+run-stress: docker-build-stress compose-down clean compose-up compose-logs
 .PHONY: run-stress
 
 write-compose:
 	go run ./scripts/compose > compose.yaml
+.PHONY: write-compose
+
+write-compose-no-volume:
+	go run ./scripts/compose -volumes=false > compose.yaml
+.PHONY: write-compose
+
+docker-tree:
+	tail -n +2 .node-config.csv | xargs -I _ docker exec _ sh -c 'printf "\n--- _ ---\n\n"; tree *'
 .PHONY: write-compose
