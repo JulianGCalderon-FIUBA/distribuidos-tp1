@@ -137,6 +137,8 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 		}
 	}
 
+	utils.MaybeExit(0.0002)
+
 	return d.Ack(false)
 }
 
@@ -197,7 +199,6 @@ func (n *Node[T]) sendAlive(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("Failed to decode message: %v", err)
 		}
-		// log.Infof("Received KeepAlive from: %v", rAddr)
 
 		err = n.send(conn, rAddr, decoded.Id)
 		if err != nil {
