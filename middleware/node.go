@@ -137,7 +137,7 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 		}
 	}
 
-	utils.MaybeExit(0.0001)
+	utils.MaybeExit(0.0002)
 
 	return d.Ack(false)
 }
