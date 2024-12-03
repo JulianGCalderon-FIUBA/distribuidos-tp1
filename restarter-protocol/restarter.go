@@ -3,13 +3,10 @@ package restarter
 import (
 	"context"
 	"distribuidos/tp1/utils"
-	"encoding/csv"
 	"errors"
 	"fmt"
-	"io"
 	"math/rand"
 	"net"
-	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -18,7 +15,7 @@ import (
 	"github.com/op/go-logging"
 )
 
-const CONFIG_PATH = ".node-config.csv"
+const CONFIG_PATH = ".restarter-config"
 const MAX_ATTEMPTS = 3
 const MAX_PACKAGE_SIZE = 1024
 
@@ -42,42 +39,8 @@ type Restarter struct {
 	wg           *sync.WaitGroup
 }
 
-func readNodeConfig() ([]string, error) {
-	file, err := os.Open(CONFIG_PATH)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	csvReader := csv.NewReader(file)
-
-	_, err = csvReader.Read()
-	if err != nil {
-		return nil, err
-	}
-
-	var nodes []string
-
-	for {
-		node, err := csvReader.Read()
-		if errors.Is(err, &csv.ParseError{}) {
-			log.Errorf("Failed to parse row: %v", err)
-			continue
-		}
-		if errors.Is(err, io.EOF) {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		nodes = append(nodes, node[0])
-	}
-	return nodes, nil
-}
-
 func NewRestarter(address string, id int, replicas int) (*Restarter, error) {
-	nodes, err := readNodeConfig()
+	nodes, err := utils.ReadNodes(CONFIG_PATH)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read nodes config: %v", err)
 	}
