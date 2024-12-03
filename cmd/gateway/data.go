@@ -215,9 +215,6 @@ func (g *gateway) receiveData(unm *protocol.Conn, w io.Writer) error {
 	}
 }
 
-// todo: refactor queue functions to avoid repeating code as they are almost
-// identical, except in the data type
-
 func (g *gateway) queueGames(r io.Reader, ch middleware.Channel) error {
 	csvReader := csv.NewReader(r)
 	csvReader.FieldsPerRecord = -1
