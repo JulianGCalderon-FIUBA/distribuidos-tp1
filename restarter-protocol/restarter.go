@@ -1,17 +1,13 @@
 package restarter
 
 import (
-	"bufio"
 	"context"
 	"distribuidos/tp1/utils"
 	"errors"
 	"fmt"
-	"iter"
 	"math/rand"
 	"net"
-	"os"
 	"os/exec"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -43,31 +39,8 @@ type Restarter struct {
 	wg           *sync.WaitGroup
 }
 
-func readNodes(p string) ([]string, error) {
-	file, err := os.Open(p)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	nodes := slices.Collect(scannerIterator(scanner))
-
-	return nodes, scanner.Err()
-}
-
-func scannerIterator(scanner *bufio.Scanner) iter.Seq[string] {
-	return func(yield func(string) bool) {
-		for scanner.Scan() {
-			if !yield(scanner.Text()) {
-				return
-			}
-		}
-	}
-}
-
 func NewRestarter(address string, id int, replicas int) (*Restarter, error) {
-	nodes, err := readNodes(CONFIG_PATH)
+	nodes, err := utils.ReadNodes(CONFIG_PATH)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read nodes config: %v", err)
 	}

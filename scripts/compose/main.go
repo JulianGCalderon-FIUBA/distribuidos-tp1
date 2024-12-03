@@ -50,6 +50,7 @@ func main() {
 	generateQ4()
 	generateQ5()
 	generateRestarter()
+	generateKiller()
 	generateNet()
 
 	writeRestarterConfig(".restarter-config")
@@ -621,6 +622,23 @@ func generateRestarter() {
 		fmt.Println("      - net")
 		addNodeConfig(fmt.Sprintf("restarter-%v", i))
 	}
+}
+
+func generateKiller() {
+	fmt.Println("  killer:")
+	fmt.Println("    container_name: killer")
+	fmt.Println("    image: tp1:latest")
+	fmt.Println("    entrypoint: /build/killer")
+	fmt.Println("    environment:")
+	fmt.Println("      - NODES_PATH=.killer-config")
+	fmt.Println("      - PERIOD=5000")
+	fmt.Println("    volumes:")
+	fmt.Println("      - ./.killer-config:/work/.killer-config")
+	fmt.Println("      - /var/run/docker.sock:/var/run/docker.sock")
+	fmt.Println("    depends_on:")
+	fmt.Println("      - gateway")
+	fmt.Println("    networks:")
+	fmt.Println("      - net")
 }
 
 func generateNet() {
