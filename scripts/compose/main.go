@@ -67,9 +67,6 @@ func writeRestarterConfig(filename string) {
 	defer file.Close()
 
 	for _, name := range names {
-		if strings.Contains(name, "client") {
-			continue
-		}
 		if strings.Contains(name, "restarter") {
 			continue
 		}
@@ -90,9 +87,6 @@ func writeKillerConfig(filename string) {
 	defer file.Close()
 
 	for _, name := range names {
-		if strings.Contains(name, "client") {
-			continue
-		}
 		if name == "restarter-0" {
 			continue
 		}
@@ -162,7 +156,6 @@ func generateClient() {
 		fmt.Println("      - net")
 		fmt.Println("    depends_on:")
 		fmt.Println("      - gateway")
-		addNodeConfig(fmt.Sprintf("client-%v", i))
 	}
 }
 
