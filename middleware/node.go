@@ -158,22 +158,21 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 func (n *Node[T]) notifyFallenNode(clientID int, cleanAction int) error {
 	switch cleanAction {
 	case CleanAll:
-		if len(n.clients) > 0 {
-			log.Infof("Cleaning all system resources")
-			for i := clientID; i > 0; i-- {
-				h, ok := n.clients[i]
-				if ok {
-					err := n.freeResources(i, h)
-					if err != nil {
-						return err
-					}
+		if len(n.clients) == 0 {
+			break
+		}
+		log.Infof("Cleaning all system resources")
+		for i := clientID; i > 0; i-- {
+			if h, ok := n.clients[i]; ok {
+				err := n.freeResources(i, h)
+				if err != nil {
+					return err
 				}
 			}
 		}
 
 	case CleanId:
-		h, ok := n.clients[clientID]
-		if ok {
+		if h, ok := n.clients[clientID]; ok {
 			log.Infof("Client %v disconnected, cleaning its resources", clientID)
 			err := n.freeResources(clientID, h)
 			if err != nil {
