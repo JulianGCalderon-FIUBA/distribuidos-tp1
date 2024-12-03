@@ -151,7 +151,12 @@ func (g *gateway) handleClient(ctx context.Context, netConn net.Conn, clientID i
 		return err
 	}
 
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+
+	wg.Add(1)
 	go func(clientID int) {
+		defer wg.Done()
 		err = g.detectFallenClient(conn, clientID)
 		if err != nil {
 			log.Errorf("Failed monitoring client %v", err)
@@ -175,17 +180,15 @@ func (g *gateway) handleClient(ctx context.Context, netConn net.Conn, clientID i
 				log.Infof("Failed to send result to client")
 			}
 		}
-
 	}
 }
 
+// waits until the client finishes receiving all results to stop monitoring it
 func (g *gateway) detectFallenClient(conn *protocol.Conn, clientID int) error {
-	for {
-		var anyMsg any
-		err := conn.Recv(&anyMsg)
-		if err != nil {
-			log.Infof("Client %v disconnected", clientID)
-			return g.notifyFallenNode(clientID, middleware.CleanId)
-		}
+	var finish protocol.Finish
+	err := conn.Recv(&finish)
+	if err != nil {
+		return g.notifyFallenNode(clientID, middleware.CleanId)
 	}
+	return nil
 }
