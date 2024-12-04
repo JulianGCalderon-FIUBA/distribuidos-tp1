@@ -87,12 +87,9 @@ func (g *gateway) startRequestEndpoint(ctx context.Context) (err error) {
 		err = errors.Join(err, closeErr)
 	}()
 
-	clientCounter, err := g.loadClientCounter()
 	if err != nil {
 		return fmt.Errorf("Failed to load client counter: %v", err)
 	}
-
-	g.clientCounter = clientCounter
 
 	wg := &sync.WaitGroup{}
 	defer wg.Wait()

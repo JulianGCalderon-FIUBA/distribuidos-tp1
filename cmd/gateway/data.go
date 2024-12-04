@@ -14,37 +14,7 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	amqp "github.com/rabbitmq/amqp091-go"
 )
-
-func (g *gateway) notifyFallenNode(clientID int, cleanAction int) error {
-	rawCh, err := g.rabbit.Channel()
-	if err != nil {
-		return err
-	}
-	err = rawCh.Confirm(false)
-	if err != nil {
-		return err
-	}
-
-	ch := middleware.Channel{
-		Ch:          rawCh,
-		ClientID:    clientID,
-		FinishFlag:  false,
-		CleanAction: cleanAction,
-	}
-
-	for _, output := range g.outputs {
-		for _, k := range output.Keys {
-			err := ch.Send([]byte{}, output.Exchange, k)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
 
 func (g *gateway) startDataEndpoint(ctx context.Context) (err error) {
 	address := fmt.Sprintf(":%v", g.config.DataEndpointPort)
@@ -57,45 +27,6 @@ func (g *gateway) startDataEndpoint(ctx context.Context) (err error) {
 		closeErr := closer.Close()
 		err = errors.Join(err, closeErr)
 	}()
-
-	topology := middleware.Topology{
-		Exchanges: []middleware.ExchangeConfig{
-			{Name: middleware.ExchangeGames, Type: amqp.ExchangeFanout},
-			{Name: middleware.ExchangeReviews, Type: amqp.ExchangeFanout},
-		},
-		Queues: []middleware.QueueConfig{
-			{Name: middleware.GamesQ1,
-				Bindings: map[string][]string{middleware.ExchangeGames: {""}}},
-			{Name: middleware.GamesGenre,
-				Bindings: map[string][]string{middleware.ExchangeGames: {""}}},
-			{Name: middleware.ReviewsScore,
-				Bindings: map[string][]string{middleware.ExchangeReviews: {""}}},
-		},
-	}
-
-	outputs := []middleware.Output{
-		{
-			Exchange: middleware.ExchangeGames,
-			Keys:     []string{""},
-		},
-		{
-			Exchange: middleware.ExchangeReviews,
-			Keys:     []string{""},
-		},
-	}
-
-	g.outputs = outputs
-
-	rawCh, err := g.rabbit.Channel()
-	if err != nil {
-		return err
-	}
-	err = topology.Declare(rawCh)
-	if err != nil {
-		return err
-	}
-
-	err = g.notifyFallenNode(int(g.clientCounter), middleware.CleanAll)
 
 	wg := &sync.WaitGroup{}
 	defer wg.Wait()
