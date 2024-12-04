@@ -14,16 +14,16 @@ var log = logging.MustGetLogger("log")
 
 const CLIENT = 3
 
-const Q1 = 1
-const Q2 = 1
-const Q3 = 1
-const Q4 = 1
-const Q5 = 1
+const Q1 = 3
+const Q2 = 3
+const Q3 = 3
+const Q4 = 3
+const Q5 = 3
 
-const LANGUAGE_FILTER = 1
-const DECADE_FILTER = 1
-const GENRE_FITLER = 1
-const SCORE_FILTER = 1
+const LANGUAGE_FILTER = 2
+const DECADE_FILTER = 2
+const GENRE_FITLER = 2
+const SCORE_FILTER = 2
 
 const RESTARTER = 4
 
