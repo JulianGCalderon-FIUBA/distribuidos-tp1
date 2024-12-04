@@ -9,7 +9,7 @@ services:
     networks:
       - net
     healthcheck:
-      test: ["CMD", "rabbitmqctl", "status"]
+      test: [ "CMD", "rabbitmqctl", "status" ]
       interval: 5s
       timeout: 5s
       retries: 3
@@ -19,6 +19,8 @@ services:
     entrypoint: /build/gateway
     environment:
       - RABBIT_IP=rabbitmq
+    volumes:
+      - ./.backup/gateway:/work
     networks:
       - net
     depends_on:

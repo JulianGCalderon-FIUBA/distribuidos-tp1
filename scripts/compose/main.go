@@ -113,6 +113,10 @@ func generateGateway() {
 	fmt.Println("    entrypoint: /build/gateway")
 	fmt.Println("    environment:")
 	fmt.Println("      - RABBIT_IP=rabbitmq")
+	if volumes {
+		fmt.Println("    volumes:")
+		fmt.Println("      - ./.backup/gateway:/work")
+	}
 	fmt.Println("    networks:")
 	fmt.Println("      - net")
 	fmt.Println("    depends_on:")
