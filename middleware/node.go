@@ -166,7 +166,7 @@ func (n *Node[T]) notifyFallenNode(clientID int, cleanAction int) error {
 			if h, ok := n.clients[i]; ok {
 				err := n.freeResources(i, h)
 				if err != nil {
-					return err
+					log.Errorf("Error freeing resources for client %v: %v", i, err)
 				}
 			}
 		}
@@ -176,7 +176,7 @@ func (n *Node[T]) notifyFallenNode(clientID int, cleanAction int) error {
 			log.Infof("Client %v disconnected, cleaning its resources", clientID)
 			err := n.freeResources(clientID, h)
 			if err != nil {
-				return err
+				log.Errorf("Error freeing resources for client %v: %v", clientID, err)
 			}
 		}
 	}
@@ -186,10 +186,6 @@ func (n *Node[T]) notifyFallenNode(clientID int, cleanAction int) error {
 }
 
 func (n *Node[T]) propagateFallenNode(clientID int, cleanAction int) {
-	if n.isResultsNode() {
-		return
-	}
-
 	for _, key := range n.config.OutputConfig.Keys {
 		ch := &Channel{
 			Ch:          n.ch,
@@ -201,10 +197,6 @@ func (n *Node[T]) propagateFallenNode(clientID int, cleanAction int) {
 			log.Error("Failed to propagate to pipeline: %v", err)
 		}
 	}
-}
-
-func (n *Node[T]) isResultsNode() bool {
-	return len(n.config.OutputConfig.Exchange) == 0 && len(n.config.OutputConfig.Keys) == 0
 }
 
 func (n *Node[T]) freeResources(clientID int, h Handler) error {
