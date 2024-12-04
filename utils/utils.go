@@ -1,12 +1,15 @@
 package utils
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io/fs"
+	"iter"
 	"net"
 	"os"
 	"path"
+	"slices"
 
 	"github.com/op/go-logging"
 )
@@ -77,4 +80,27 @@ func InitLogger(logLevel string) error {
 	logging.SetBackend(leveled)
 
 	return nil
+}
+
+func ReadNodes(p string) ([]string, error) {
+	file, err := os.Open(p)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	nodes := slices.Collect(ScannerIterator(scanner))
+
+	return nodes, scanner.Err()
+}
+
+func ScannerIterator(scanner *bufio.Scanner) iter.Seq[string] {
+	return func(yield func(string) bool) {
+		for scanner.Scan() {
+			if !yield(scanner.Text()) {
+				return
+			}
+		}
+	}
 }

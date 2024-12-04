@@ -2,10 +2,11 @@ package main
 
 import (
 	"distribuidos/tp1/middleware"
-	"encoding/csv"
+	"distribuidos/tp1/utils"
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	logging "github.com/op/go-logging"
 )
@@ -49,40 +50,58 @@ func main() {
 	generateQ4()
 	generateQ5()
 	generateRestarter()
+	generateKiller()
 	generateNet()
 
-	writeNodeConfig(".node-config.csv")
+	writeRestarterConfig(".restarter-config")
+	writeKillerConfig(".killer-config")
 }
 
 func addNodeConfig(name string) {
 	names = append(names, name)
 }
 
-func writeNodeConfig(filename string) {
+func writeRestarterConfig(filename string) {
 	file, err := os.Create(filename)
-	if err != nil {
-		log.Errorf("Error creating file: %v\n", err)
-		return
-	}
+	utils.Expect(err, "Failed to create restarter config")
 	defer file.Close()
 
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
-
-	err = writer.Write([]string{"name"})
-	if err != nil {
-		log.Errorf("Error writing file: %v", err)
-		return
-	}
-
-	for _, containerName := range names {
-		err = writer.Write([]string{containerName})
-		if err != nil {
-			log.Errorf("Error writing file: %v", err)
-			return
+	for _, name := range names {
+		if strings.Contains(name, "restarter") {
+			continue
 		}
+
+		_, err = file.WriteString(name)
+		utils.Expect(err, "Failed to write restarter config")
+
+		_, err = file.Write([]byte{'\n'})
+		utils.Expect(err, "Failed to write restarter config")
 	}
-	log.Infof("Nodes configuration written to %s\n", filename)
+
+	log.Infof("Restarter configuration written to %s\n", filename)
+}
+
+func writeKillerConfig(filename string) {
+	file, err := os.Create(filename)
+	utils.Expect(err, "Failed to create killer config")
+	defer file.Close()
+
+	for _, name := range names {
+		if name == "restarter-0" {
+			continue
+		}
+		if name == "gateway" {
+			continue
+		}
+
+		_, err = file.WriteString(name)
+		utils.Expect(err, "failed to write killer config")
+
+		_, err = file.Write([]byte{'\n'})
+		utils.Expect(err, "failed to write killer config")
+	}
+
+	log.Infof("Killer configuration written to %s\n", filename)
 }
 
 func generateInit() {
@@ -592,13 +611,31 @@ func generateRestarter() {
 		fmt.Printf("      - ADDRESS=restarter-%v:14300\n", i)
 		fmt.Printf("      - REPLICAS=%v\n", RESTARTER)
 		fmt.Println("    volumes:")
-		fmt.Println("      - ./.node-config.csv:/work/.node-config.csv")
+		fmt.Println("      - ./.restarter-config:/work/.restarter-config")
 		fmt.Println("      - /var/run/docker.sock:/var/run/docker.sock")
 		fmt.Println("    depends_on:")
 		fmt.Println("      - gateway")
 		fmt.Println("    networks:")
 		fmt.Println("      - net")
+		addNodeConfig(fmt.Sprintf("restarter-%v", i))
 	}
+}
+
+func generateKiller() {
+	fmt.Println("  killer:")
+	fmt.Println("    container_name: killer")
+	fmt.Println("    image: tp1:latest")
+	fmt.Println("    entrypoint: /build/killer")
+	fmt.Println("    environment:")
+	fmt.Println("      - NODES_PATH=.killer-config")
+	fmt.Println("      - PERIOD=5000")
+	fmt.Println("    volumes:")
+	fmt.Println("      - ./.killer-config:/work/.killer-config")
+	fmt.Println("      - /var/run/docker.sock:/var/run/docker.sock")
+	fmt.Println("    depends_on:")
+	fmt.Println("      - gateway")
+	fmt.Println("    networks:")
+	fmt.Println("      - net")
 }
 
 func generateNet() {
