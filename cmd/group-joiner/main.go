@@ -204,6 +204,10 @@ func main() {
 			}
 		},
 		Endpoints: endpoints,
+		OutputConfig: middleware.Output{
+			Exchange: "",
+			Keys:     []string{cfg.Output},
+		},
 	}
 
 	node, err := middleware.NewNode(nodeCfg, conn)

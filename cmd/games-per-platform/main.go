@@ -205,6 +205,10 @@ func main() {
 		Endpoints: map[string]middleware.HandlerFunc[*handler]{
 			inputQ: (*handler).handleGame,
 		},
+		OutputConfig: middleware.Output{
+			Exchange: "",
+			Keys:     []string{outputQ},
+		},
 	}
 
 	node, err := middleware.NewNode(nodeCfg, conn)

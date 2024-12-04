@@ -20,6 +20,8 @@ type Config[T Handler] struct {
 	Builder HandlerBuilder[T]
 	// Each queue is registered to a particular HandlerFunc
 	Endpoints map[string]HandlerFunc[T]
+	// Registers all node outputs
+	OutputConfig Output
 }
 
 type Node[T Handler] struct {
@@ -101,6 +103,16 @@ func (n *Node[T]) Run(ctx context.Context) error {
 
 func (n *Node[T]) processDelivery(d Delivery) error {
 	clientID := int(d.Headers["clientID"].(int32))
+	cleanAction := int(d.Headers["cleanAction"].(int32))
+
+	if cleanAction != NotClean {
+		err := n.notifyFallenNode(clientID, cleanAction)
+		if err != nil {
+			return err
+		}
+		return d.Ack(false)
+	}
+
 	if n.doneClientsSet.Seen(clientID) {
 		return d.Ack(false)
 	}
@@ -113,9 +125,10 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 	}
 
 	ch := &Channel{
-		Ch:         n.ch,
-		ClientID:   clientID,
-		FinishFlag: false,
+		Ch:          n.ch,
+		ClientID:    clientID,
+		FinishFlag:  false,
+		CleanAction: NotClean,
 	}
 
 	err := n.config.Endpoints[d.Queue](h, ch, d.Body)
@@ -142,7 +155,51 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 	return d.Ack(false)
 }
 
-func (n *Node[T]) freeResources(clientID int, h T) error {
+func (n *Node[T]) notifyFallenNode(clientID int, cleanAction int) error {
+	switch cleanAction {
+	case CleanAll:
+		if len(n.clients) == 0 {
+			break
+		}
+		log.Infof("Cleaning all system resources")
+		for i := clientID; i > 0; i-- {
+			if h, ok := n.clients[i]; ok {
+				err := n.freeResources(i, h)
+				if err != nil {
+					log.Errorf("Error freeing resources for client %v: %v", i, err)
+				}
+			}
+		}
+
+	case CleanId:
+		if h, ok := n.clients[clientID]; ok {
+			log.Infof("Client %v disconnected, cleaning its resources", clientID)
+			err := n.freeResources(clientID, h)
+			if err != nil {
+				log.Errorf("Error freeing resources for client %v: %v", clientID, err)
+			}
+		}
+	}
+
+	n.propagateFallenNode(clientID, cleanAction)
+	return nil
+}
+
+func (n *Node[T]) propagateFallenNode(clientID int, cleanAction int) {
+	for _, key := range n.config.OutputConfig.Keys {
+		ch := &Channel{
+			Ch:          n.ch,
+			ClientID:    clientID,
+			CleanAction: cleanAction,
+		}
+		err := ch.Send([]byte{}, n.config.OutputConfig.Exchange, key)
+		if err != nil {
+			log.Error("Failed to propagate to pipeline: %v", err)
+		}
+	}
+}
+
+func (n *Node[T]) freeResources(clientID int, h Handler) error {
 	log.Infof("Freeing resources for client %v", clientID)
 	snapshot, err := n.db.NewSnapshot()
 	if err != nil {

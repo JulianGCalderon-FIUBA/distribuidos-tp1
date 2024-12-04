@@ -238,8 +238,7 @@ func (c *client) waitResults() error {
 			break
 		}
 	}
-
-	return nil
+	return c.conn.Send(protocol.Finish{})
 }
 
 func getFileSize(filePath string) (uint64, error) {

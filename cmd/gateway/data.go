@@ -14,8 +14,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 func (g *gateway) startDataEndpoint(ctx context.Context) (err error) {
@@ -30,31 +28,10 @@ func (g *gateway) startDataEndpoint(ctx context.Context) (err error) {
 		err = errors.Join(err, closeErr)
 	}()
 
-	topology := middleware.Topology{
-		Exchanges: []middleware.ExchangeConfig{
-			{Name: middleware.ExchangeGames, Type: amqp.ExchangeFanout},
-			{Name: middleware.ExchangeReviews, Type: amqp.ExchangeFanout},
-		},
-		Queues: []middleware.QueueConfig{
-			{Name: middleware.GamesQ1,
-				Bindings: map[string][]string{middleware.ExchangeGames: {""}}},
-			{Name: middleware.GamesGenre,
-				Bindings: map[string][]string{middleware.ExchangeGames: {""}}},
-			{Name: middleware.ReviewsScore,
-				Bindings: map[string][]string{middleware.ExchangeReviews: {""}}},
-		},
-	}
-	ch, err := g.rabbit.Channel()
-	if err != nil {
-		return err
-	}
-	err = topology.Declare(ch)
-	if err != nil {
-		return err
-	}
-
 	wg := &sync.WaitGroup{}
 	defer wg.Wait()
+
+	log.Infof("Starting accepting data connections")
 
 	for {
 		conn, err := listener.Accept()
@@ -108,8 +85,9 @@ func (g *gateway) handleClientData(ctx context.Context, rawConn net.Conn) (err e
 		return err
 	}
 	ch := middleware.Channel{
-		Ch:       rawCh,
-		ClientID: int(hello.ClientID),
+		Ch:          rawCh,
+		ClientID:    int(hello.ClientID),
+		CleanAction: middleware.NotClean,
 	}
 
 	wg := &sync.WaitGroup{}
@@ -167,9 +145,6 @@ func (g *gateway) receiveData(unm *protocol.Conn, w io.Writer) error {
 		}
 	}
 }
-
-// todo: refactor queue functions to avoid repeating code as they are almost
-// identical, except in the data type
 
 func (g *gateway) queueGames(r io.Reader, ch middleware.Channel) error {
 	csvReader := csv.NewReader(r)

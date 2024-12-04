@@ -2,13 +2,77 @@ package main
 
 import (
 	"context"
+	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/protocol"
 	"distribuidos/tp1/utils"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"sync"
 )
+
+func (g *gateway) updateClientCounter(clientCounter uint64) error {
+	snapshot, err := g.db.NewSnapshot()
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		switch err {
+		case nil:
+			cerr := snapshot.Commit()
+			utils.Expect(cerr, "unrecoverable error")
+		default:
+			cerr := snapshot.Abort()
+			utils.Expect(cerr, "unrecoverable error")
+		}
+	}()
+
+	counterFile, err := snapshot.Update("client-counter")
+	if err != nil {
+		return err
+	}
+
+	_, err = counterFile.Seek(0, io.SeekStart)
+	if err != nil {
+		return err
+	}
+
+	err = binary.Write(counterFile, binary.LittleEndian, clientCounter)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (g *gateway) loadClientCounter() (uint64, error) {
+	exists, err := g.db.Exists("client-counter")
+	if err != nil {
+		return 0, err
+	}
+
+	if !exists {
+		return 0, nil
+	}
+
+	counterFile, err := g.db.Get("client-counter")
+	if err != nil {
+		return 0, err
+	}
+
+	defer counterFile.Close()
+	var clientCounter uint64
+
+	err = binary.Read(counterFile, binary.LittleEndian, &clientCounter)
+	if err != nil {
+		return 0, err
+	}
+
+	return clientCounter, nil
+}
 
 func (g *gateway) startRequestEndpoint(ctx context.Context) (err error) {
 	address := fmt.Sprintf(":%d", g.config.ConnectionEndpointPort)
@@ -23,7 +87,9 @@ func (g *gateway) startRequestEndpoint(ctx context.Context) (err error) {
 		err = errors.Join(err, closeErr)
 	}()
 
-	clientCounter := 0
+	if err != nil {
+		return fmt.Errorf("Failed to load client counter: %v", err)
+	}
 
 	wg := &sync.WaitGroup{}
 	defer wg.Wait()
@@ -33,15 +99,21 @@ func (g *gateway) startRequestEndpoint(ctx context.Context) (err error) {
 		if err != nil {
 			return fmt.Errorf("Failed to accept connection: %v", err)
 		}
-		clientCounter += 1
+		g.clientCounter += 1
+		err = g.updateClientCounter(g.clientCounter)
+		if err != nil {
+			return fmt.Errorf("Failed to update client counter: %v", err)
+		}
+
 		wg.Add(1)
-		go func(clientID int) {
+		clientID := g.clientCounter
+		go func(clientID uint64) {
 			defer wg.Done()
-			err := g.handleClient(ctx, conn, clientID)
+			err := g.handleClient(ctx, conn, int(clientID))
 			if err != nil {
 				log.Errorf("Error while handling client: %v", err)
 			}
-		}(clientCounter)
+		}(clientID)
 	}
 }
 
@@ -76,6 +148,18 @@ func (g *gateway) handleClient(ctx context.Context, netConn net.Conn, clientID i
 		return err
 	}
 
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+
+	wg.Add(1)
+	go func(clientID int) {
+		defer wg.Done()
+		err = g.detectFallenClient(conn, clientID)
+		if err != nil {
+			log.Errorf("Failed monitoring client %v", err)
+		}
+	}(clientID)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -93,6 +177,15 @@ func (g *gateway) handleClient(ctx context.Context, netConn net.Conn, clientID i
 				log.Infof("Failed to send result to client")
 			}
 		}
-
 	}
+}
+
+// waits until the client finishes receiving all results to stop monitoring it
+func (g *gateway) detectFallenClient(conn *protocol.Conn, clientID int) error {
+	var finish protocol.Finish
+	err := conn.Recv(&finish)
+	if err != nil {
+		return g.notifyFallenNode(clientID, middleware.CleanId)
+	}
+	return nil
 }

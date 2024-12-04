@@ -285,7 +285,7 @@ func (r *Restarter) restartNode(ctx context.Context, containerName string) error
 		}
 	}
 
-	cmdStr := fmt.Sprintf("docker start %v", containerName)
+	cmdStr := fmt.Sprintf("docker restart %v", containerName)
 	err := exec.CommandContext(ctx, "/bin/sh", "-c", cmdStr).Run()
 	if err != nil {
 		return err

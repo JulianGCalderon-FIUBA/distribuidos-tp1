@@ -10,9 +10,10 @@ import (
 var log = logging.MustGetLogger("log")
 
 type Channel struct {
-	Ch         *amqp.Channel
-	ClientID   int
-	FinishFlag bool
+	Ch          *amqp.Channel
+	ClientID    int
+	FinishFlag  bool
+	CleanAction int
 }
 
 func (c *Channel) Send(msg any, exchange, key string) error {
@@ -24,7 +25,8 @@ func (c *Channel) Send(msg any, exchange, key string) error {
 		DeliveryMode: amqp.Persistent,
 		ContentType:  "",
 		Headers: amqp.Table{
-			"clientID": c.ClientID,
+			"clientID":    c.ClientID,
+			"cleanAction": c.CleanAction,
 		},
 		Body: buf,
 	})

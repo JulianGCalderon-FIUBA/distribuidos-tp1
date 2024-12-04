@@ -196,11 +196,12 @@ func main() {
 	utils.Expect(err, "Failed to dial rabbit")
 
 	qInput := middleware.GroupedQ5Percentile
+	qOutput := middleware.Results
 
 	err = middleware.Topology{
 		Queues: []middleware.QueueConfig{
 			{Name: qInput},
-			{Name: middleware.Results},
+			{Name: qOutput},
 		},
 	}.Declare(ch)
 	utils.Expect(err, "Failed to declare queues")
@@ -224,6 +225,10 @@ func main() {
 		},
 		Endpoints: map[string]middleware.HandlerFunc[*handler]{
 			middleware.GroupedQ5Percentile: (*handler).handleBatch,
+		},
+		OutputConfig: middleware.Output{
+			Exchange: "",
+			Keys:     []string{qOutput},
 		},
 	}
 

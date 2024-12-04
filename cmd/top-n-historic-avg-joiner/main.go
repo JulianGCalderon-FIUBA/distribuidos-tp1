@@ -128,6 +128,7 @@ func main() {
 	conn, ch, err := middleware.Dial(cfg.RabbitIP)
 	utils.Expect(err, "Failed to dial rabbit")
 
+	qOutput := middleware.Results
 	queues := make([]middleware.QueueConfig, 0)
 	endpoints := make(map[string]middleware.HandlerFunc[*handler], 0)
 
@@ -165,12 +166,16 @@ func main() {
 
 			return &handler{
 				db:     db,
-				output: middleware.Results,
+				output: qOutput,
 				joiner: joiner,
 				topN:   topN,
 			}
 		},
 		Endpoints: endpoints,
+		OutputConfig: middleware.Output{
+			Exchange: "",
+			Keys:     []string{qOutput},
+		},
 	}
 
 	node, err := middleware.NewNode(nConfig, conn)

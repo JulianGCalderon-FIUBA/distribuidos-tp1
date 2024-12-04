@@ -232,14 +232,14 @@ func main() {
 	conn, ch, err := middleware.Dial(cfg.RabbitIP)
 	utils.Expect(err, "Failed to dial rabbit")
 
-	output := middleware.Cat(cfg.Output, cfg.PartitionID)
+	qOutput := middleware.Cat(cfg.Output, cfg.PartitionID)
 	gameInput := middleware.Cat(cfg.GameInput, "x", cfg.PartitionID)
 	reviewInput := middleware.Cat(cfg.ReviewInput, "x", cfg.PartitionID)
 	err = middleware.Topology{
 		Queues: []middleware.QueueConfig{
 			{Name: gameInput},
 			{Name: reviewInput},
-			{Name: output},
+			{Name: qOutput},
 		},
 	}.Declare(ch)
 	utils.Expect(err, "Failed to declare queues")
@@ -266,12 +266,16 @@ func main() {
 				gameSequencer:   gameSequencer,
 				reviewSequencer: reviewSequencer,
 				batchSize:       cfg.BatchSize,
-				output:          output,
+				output:          qOutput,
 			}
 		},
 		Endpoints: map[string]middleware.HandlerFunc[*handler]{
 			gameInput:   (*handler).handleGame,
 			reviewInput: (*handler).handleReview,
+		},
+		OutputConfig: middleware.Output{
+			Exchange: "",
+			Keys:     []string{qOutput},
 		},
 	}
 

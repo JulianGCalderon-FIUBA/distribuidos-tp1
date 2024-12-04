@@ -162,6 +162,10 @@ func main() {
 		Endpoints: map[string]middleware.HandlerFunc[*handler]{
 			qInput: (*handler).handleBatch,
 		},
+		OutputConfig: middleware.Output{
+			Exchange: "",
+			Keys:     []string{qOutput},
+		},
 	}
 
 	node, err := middleware.NewNode(nodeCfg, conn)

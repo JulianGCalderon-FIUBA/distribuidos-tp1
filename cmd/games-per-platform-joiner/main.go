@@ -190,7 +190,8 @@ func main() {
 		endpoints[qName] = buildHandler(i)
 	}
 
-	queues = append(queues, middleware.QueueConfig{Name: middleware.Results})
+	qOutput := middleware.Results
+	queues = append(queues, middleware.QueueConfig{Name: qOutput})
 
 	err = middleware.Topology{
 		Queues: queues,
@@ -212,11 +213,15 @@ func main() {
 
 			return &handler{
 				db:     db,
-				output: middleware.Results,
+				output: qOutput,
 				joiner: joiner,
 			}
 		},
 		Endpoints: endpoints,
+		OutputConfig: middleware.Output{
+			Exchange: "",
+			Keys:     []string{qOutput},
+		},
 	}
 
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)

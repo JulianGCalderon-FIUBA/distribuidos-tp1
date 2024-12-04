@@ -80,6 +80,7 @@ func NewFilter[T any](config FilterConfig, f FilterFunc[T]) (*Node[*filterHandle
 		Type: amqp.ExchangeDirect,
 	}
 
+	allKeys := make([]string, 0)
 	queueConfigs := make([]QueueConfig, 0)
 	for queue, keys := range transpose(config.QueuesByKey) {
 		queueConfig := QueueConfig{
@@ -89,8 +90,14 @@ func NewFilter[T any](config FilterConfig, f FilterFunc[T]) (*Node[*filterHandle
 			},
 		}
 		queueConfigs = append(queueConfigs, queueConfig)
+		allKeys = append(allKeys, keys...)
 	}
 	queueConfigs = append(queueConfigs, QueueConfig{Name: config.Queue})
+
+	outputConfig := Output{
+		Exchange: config.Exchange,
+		Keys:     allKeys,
+	}
 
 	err = Topology{
 		Exchanges: []ExchangeConfig{exchangeConfig},
@@ -120,6 +127,7 @@ func NewFilter[T any](config FilterConfig, f FilterFunc[T]) (*Node[*filterHandle
 		Endpoints: map[string]HandlerFunc[*filterHandler[T]]{
 			config.Queue: (*filterHandler[T]).handle,
 		},
+		OutputConfig: outputConfig,
 	}
 
 	return NewNode(nConfig, conn)
