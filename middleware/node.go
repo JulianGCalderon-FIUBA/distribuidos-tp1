@@ -20,7 +20,7 @@ type Config[T Handler] struct {
 	Builder HandlerBuilder[T]
 	// Each queue is registered to a particular HandlerFunc
 	Endpoints map[string]HandlerFunc[T]
-
+	// Registers all node outputs
 	OutputConfig Output
 }
 
