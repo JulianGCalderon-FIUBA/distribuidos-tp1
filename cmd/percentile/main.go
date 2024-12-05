@@ -207,7 +207,7 @@ func main() {
 	utils.Expect(err, "Failed to declare queues")
 
 	nodeCfg := middleware.Config[*handler]{
-		Builder: func(clientID int) *handler {
+		Builder: func(clientID int) (*handler, error) {
 			database_path := middleware.Cat("client", clientID)
 			db, err := database.NewDatabase(database_path)
 			utils.Expect(err, "unrecoverable error")
@@ -221,7 +221,7 @@ func main() {
 				percentile: float64(cfg.Percentile),
 				db:         db,
 				sequencer:  sequencer,
-			}
+			}, nil
 		},
 		Endpoints: map[string]middleware.HandlerFunc[*handler]{
 			middleware.GroupedQ5Percentile: (*handler).handleBatch,

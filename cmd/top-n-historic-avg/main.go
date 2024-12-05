@@ -139,7 +139,7 @@ func main() {
 	}
 
 	nodeCfg := middleware.Config[*handler]{
-		Builder: func(clientID int) *handler {
+		Builder: func(clientID int) (*handler, error) {
 			database_path := middleware.Cat("client", clientID)
 			db, err := database.NewDatabase(database_path)
 			utils.Expect(err, "unrecoverable error")
@@ -157,7 +157,7 @@ func main() {
 				output:    qOutput,
 				sequencer: sequencer,
 				topN:      topN,
-			}
+			}, nil
 		},
 		Endpoints: map[string]middleware.HandlerFunc[*handler]{
 			qInput: (*handler).handleBatch,

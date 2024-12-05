@@ -4,6 +4,7 @@ import (
 	"context"
 	"distribuidos/tp1/middleware"
 	"distribuidos/tp1/protocol"
+	"errors"
 )
 
 const MAX_RESULTS = 5
@@ -73,16 +74,19 @@ func (h *resultsHandler) Free() error {
 }
 
 func (g *gateway) startResultsEndpoint(ctx context.Context) error {
-	newResultsHandler := func(clientID int) *resultsHandler {
+	newResultsHandler := func(clientID int) (*resultsHandler, error) {
 		g.mu.Lock()
-		chanResults := g.clients[clientID]
+		chanResults, exists := g.clients[clientID]
 		g.mu.Unlock()
+		if !exists {
+			return nil, errors.New("client does not exist")
+		}
 
 		return &resultsHandler{
 			ch:        chanResults,
 			results:   make(map[int]bool),
 			sequencer: middleware.NewSequencer(),
-		}
+		}, nil
 	}
 
 	topology := middleware.Topology{

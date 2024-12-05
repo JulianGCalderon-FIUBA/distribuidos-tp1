@@ -108,7 +108,7 @@ func NewFilter[T any](config FilterConfig, f FilterFunc[T]) (*Node[*filterHandle
 	}
 
 	nConfig := Config[*filterHandler[T]]{
-		Builder: func(clientID int) *filterHandler[T] {
+		Builder: func(clientID int) (*filterHandler[T], error) {
 			partitions := make(map[string]Batch[T])
 			for key := range config.QueuesByKey {
 				partitions[key] = Batch[T]{}
@@ -122,7 +122,7 @@ func NewFilter[T any](config FilterConfig, f FilterFunc[T]) (*Node[*filterHandle
 				partitions: partitions,
 				stats:      make(map[string]int),
 				sequencer:  NewSequencer(),
-			}
+			}, nil
 		},
 		Endpoints: map[string]HandlerFunc[*filterHandler[T]]{
 			config.Queue: (*filterHandler[T]).handle,
