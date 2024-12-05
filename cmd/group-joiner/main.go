@@ -185,7 +185,7 @@ func main() {
 	utils.Expect(err, "Failed to declare queues")
 
 	nodeCfg := middleware.Config[*handler]{
-		Builder: func(clientID int) *handler {
+		Builder: func(clientID int) (*handler, error) {
 			database_path := middleware.Cat("client", clientID)
 			db, err := database.NewDatabase(database_path)
 			utils.Expect(err, "unrecoverable error")
@@ -201,7 +201,7 @@ func main() {
 				output:      cfg.Output,
 				lastBatchId: 0,
 				sequencers:  sequencers,
-			}
+			}, nil
 		},
 		Endpoints: endpoints,
 		OutputConfig: middleware.Output{

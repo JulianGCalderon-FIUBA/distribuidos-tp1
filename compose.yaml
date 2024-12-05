@@ -152,6 +152,26 @@ services:
       - net
     depends_on:
       - gateway
+  language-filter-3:
+    container_name: language-filter-3
+    image: tp1:latest
+    entrypoint: /build/filter-language
+    environment:
+      - RABBIT_IP=rabbitmq
+    networks:
+      - net
+    depends_on:
+      - gateway
+  language-filter-4:
+    container_name: language-filter-4
+    image: tp1:latest
+    entrypoint: /build/filter-language
+    environment:
+      - RABBIT_IP=rabbitmq
+    networks:
+      - net
+    depends_on:
+      - gateway
   q1-partitioner:
     container_name: q1-partitioner
     image: tp1:latest
@@ -303,8 +323,21 @@ services:
       - net
     depends_on:
       - gateway
-  q3-reviews-partitioner:
-    container_name: q3-reviews-partitioner
+  q3-reviews-partitioner-1:
+    container_name: q3-reviews-partitioner-1
+    image: tp1:latest
+    entrypoint: /build/partitioner
+    environment:
+      - RABBIT_IP=rabbitmq
+      - INPUT=reviews-Q3
+      - PARTITIONS=3
+      - TYPE=review
+    networks:
+      - net
+    depends_on:
+      - gateway
+  q3-reviews-partitioner-2:
+    container_name: q3-reviews-partitioner-2
     image: tp1:latest
     entrypoint: /build/partitioner
     environment:
@@ -433,8 +466,21 @@ services:
       - net
     depends_on:
       - gateway
-  q4-reviews-partitioner:
-    container_name: q4-reviews-partitioner
+  q4-reviews-partitioner-1:
+    container_name: q4-reviews-partitioner-1
+    image: tp1:latest
+    entrypoint: /build/partitioner
+    environment:
+      - RABBIT_IP=rabbitmq
+      - INPUT=reviews-Q4
+      - PARTITIONS=3
+      - TYPE=review
+    networks:
+      - net
+    depends_on:
+      - gateway
+  q4-reviews-partitioner-2:
+    container_name: q4-reviews-partitioner-2
     image: tp1:latest
     entrypoint: /build/partitioner
     environment:
@@ -533,8 +579,21 @@ services:
       - net
     depends_on:
       - gateway
-  q5-reviews-partitioner:
-    container_name: q5-reviews-partitioner
+  q5-reviews-partitioner-1:
+    container_name: q5-reviews-partitioner-1
+    image: tp1:latest
+    entrypoint: /build/partitioner
+    environment:
+      - RABBIT_IP=rabbitmq
+      - INPUT=reviews-Q5
+      - PARTITIONS=3
+      - TYPE=review
+    networks:
+      - net
+    depends_on:
+      - gateway
+  q5-reviews-partitioner-2:
+    container_name: q5-reviews-partitioner-2
     image: tp1:latest
     entrypoint: /build/partitioner
     environment:

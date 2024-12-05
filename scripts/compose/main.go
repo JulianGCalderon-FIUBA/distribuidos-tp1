@@ -21,10 +21,11 @@ const Q3 = 3
 const Q4 = 3
 const Q5 = 3
 
-const LANGUAGE_FILTER = 2
+const LANGUAGE_FILTER = 4
 const DECADE_FILTER = 2
 const GENRE_FITLER = 2
 const SCORE_FILTER = 2
+const PARTITIONERS = 2
 
 const RESTARTER = 4
 
@@ -351,20 +352,22 @@ func generateQ3() {
 	fmt.Println("      - gateway")
 	addNodeConfig("q3-games-partitioner")
 
-	fmt.Println("  q3-reviews-partitioner:")
-	fmt.Println("    container_name: q3-reviews-partitioner")
-	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /build/partitioner")
-	fmt.Println("    environment:")
-	fmt.Println("      - RABBIT_IP=rabbitmq")
-	fmt.Printf("      - INPUT=%v\n", middleware.ReviewsQ3)
-	fmt.Printf("      - PARTITIONS=%v\n", Q3)
-	fmt.Println("      - TYPE=review")
-	fmt.Println("    networks:")
-	fmt.Println("      - net")
-	fmt.Println("    depends_on:")
-	fmt.Println("      - gateway")
-	addNodeConfig("q3-reviews-partitioner")
+	for i := 1; i <= PARTITIONERS; i++ {
+		fmt.Printf("  q3-reviews-partitioner-%v:\n", i)
+		fmt.Printf("    container_name: q3-reviews-partitioner-%v\n", i)
+		fmt.Println("    image: tp1:latest")
+		fmt.Println("    entrypoint: /build/partitioner")
+		fmt.Println("    environment:")
+		fmt.Println("      - RABBIT_IP=rabbitmq")
+		fmt.Printf("      - INPUT=%v\n", middleware.ReviewsQ3)
+		fmt.Printf("      - PARTITIONS=%v\n", Q3)
+		fmt.Println("      - TYPE=review")
+		fmt.Println("    networks:")
+		fmt.Println("      - net")
+		fmt.Println("    depends_on:")
+		fmt.Println("      - gateway")
+		addNodeConfig(fmt.Sprintf("q3-reviews-partitioner-%v", i))
+	}
 
 	for i := 1; i <= Q3; i++ {
 		fmt.Printf("  q3-group-%v:\n", i)
@@ -440,20 +443,22 @@ func generateQ4() {
 	fmt.Println("      - gateway")
 	addNodeConfig("q4-games-partitioner")
 
-	fmt.Println("  q4-reviews-partitioner:")
-	fmt.Println("    container_name: q4-reviews-partitioner")
-	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /build/partitioner")
-	fmt.Println("    environment:")
-	fmt.Println("      - RABBIT_IP=rabbitmq")
-	fmt.Printf("      - INPUT=%v\n", middleware.ReviewsQ4)
-	fmt.Printf("      - PARTITIONS=%v\n", Q4)
-	fmt.Println("      - TYPE=review")
-	fmt.Println("    networks:")
-	fmt.Println("      - net")
-	fmt.Println("    depends_on:")
-	fmt.Println("      - gateway")
-	addNodeConfig("q4-reviews-partitioner")
+	for i := 1; i <= PARTITIONERS; i++ {
+		fmt.Printf("  q4-reviews-partitioner-%v:\n", i)
+		fmt.Printf("    container_name: q4-reviews-partitioner-%v\n", i)
+		fmt.Println("    image: tp1:latest")
+		fmt.Println("    entrypoint: /build/partitioner")
+		fmt.Println("    environment:")
+		fmt.Println("      - RABBIT_IP=rabbitmq")
+		fmt.Printf("      - INPUT=%v\n", middleware.ReviewsQ4)
+		fmt.Printf("      - PARTITIONS=%v\n", Q4)
+		fmt.Println("      - TYPE=review")
+		fmt.Println("    networks:")
+		fmt.Println("      - net")
+		fmt.Println("    depends_on:")
+		fmt.Println("      - gateway")
+		addNodeConfig(fmt.Sprintf("q4-reviews-partitioner-%v", i))
+	}
 
 	for i := 1; i <= Q4; i++ {
 		fmt.Printf("  q4-group-%v:\n", i)
@@ -526,20 +531,22 @@ func generateQ5() {
 	fmt.Println("      - gateway")
 	addNodeConfig("q5-games-partitioner")
 
-	fmt.Println("  q5-reviews-partitioner:")
-	fmt.Println("    container_name: q5-reviews-partitioner")
-	fmt.Println("    image: tp1:latest")
-	fmt.Println("    entrypoint: /build/partitioner")
-	fmt.Println("    environment:")
-	fmt.Println("      - RABBIT_IP=rabbitmq")
-	fmt.Printf("      - INPUT=%v\n", middleware.ReviewsQ5)
-	fmt.Printf("      - PARTITIONS=%v\n", Q5)
-	fmt.Println("      - TYPE=review")
-	fmt.Println("    networks:")
-	fmt.Println("      - net")
-	fmt.Println("    depends_on:")
-	fmt.Println("      - gateway")
-	addNodeConfig("q5-reviews-partitioner")
+	for i := 1; i <= PARTITIONERS; i++ {
+		fmt.Printf("  q5-reviews-partitioner-%v:\n", i)
+		fmt.Printf("    container_name: q5-reviews-partitioner-%v\n", i)
+		fmt.Println("    image: tp1:latest")
+		fmt.Println("    entrypoint: /build/partitioner")
+		fmt.Println("    environment:")
+		fmt.Println("      - RABBIT_IP=rabbitmq")
+		fmt.Printf("      - INPUT=%v\n", middleware.ReviewsQ5)
+		fmt.Printf("      - PARTITIONS=%v\n", Q5)
+		fmt.Println("      - TYPE=review")
+		fmt.Println("    networks:")
+		fmt.Println("      - net")
+		fmt.Println("    depends_on:")
+		fmt.Println("      - gateway")
+		addNodeConfig(fmt.Sprintf("q5-reviews-partitioner-%v", i))
+	}
 
 	for i := 1; i <= Q5; i++ {
 		fmt.Printf("  q5-group-%v:\n", i)

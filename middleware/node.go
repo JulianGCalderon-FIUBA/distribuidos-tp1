@@ -120,7 +120,12 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 	h, ok := n.clients[clientID]
 	if !ok {
 		log.Infof("Building handler for client %v", clientID)
-		h = n.config.Builder(clientID)
+		var err error
+		h, err = n.config.Builder(clientID)
+		if err != nil {
+			log.Errorf("Error building handler: %v", err)
+			return d.Reject(false)
+		}
 		n.clients[clientID] = h
 	}
 
