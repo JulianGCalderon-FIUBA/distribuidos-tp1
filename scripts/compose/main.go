@@ -21,7 +21,7 @@ const Q3 = 3
 const Q4 = 3
 const Q5 = 3
 
-const LANGUAGE_FILTER = 2
+const LANGUAGE_FILTER = 4
 const DECADE_FILTER = 2
 const GENRE_FITLER = 2
 const SCORE_FILTER = 2

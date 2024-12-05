@@ -152,6 +152,26 @@ services:
       - net
     depends_on:
       - gateway
+  language-filter-3:
+    container_name: language-filter-3
+    image: tp1:latest
+    entrypoint: /build/filter-language
+    environment:
+      - RABBIT_IP=rabbitmq
+    networks:
+      - net
+    depends_on:
+      - gateway
+  language-filter-4:
+    container_name: language-filter-4
+    image: tp1:latest
+    entrypoint: /build/filter-language
+    environment:
+      - RABBIT_IP=rabbitmq
+    networks:
+      - net
+    depends_on:
+      - gateway
   q1-partitioner:
     container_name: q1-partitioner
     image: tp1:latest
