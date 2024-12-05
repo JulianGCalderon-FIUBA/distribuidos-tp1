@@ -123,6 +123,7 @@ func (n *Node[T]) processDelivery(d Delivery) error {
 		var err error
 		h, err = n.config.Builder(clientID)
 		if err != nil {
+			log.Errorf("Error building handler: %v", err)
 			return d.Reject(false)
 		}
 		n.clients[clientID] = h
