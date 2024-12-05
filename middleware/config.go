@@ -88,7 +88,7 @@ const (
 // Results
 const (
 	Results   string = "results"
-	ResultsQ4 string = "results-q4"
+	ResultsQ4 string = "results-Q4"
 )
 
 func Cat(v ...any) string {
