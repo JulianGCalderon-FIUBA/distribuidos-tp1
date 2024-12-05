@@ -533,7 +533,7 @@ func generateQ5() {
 
 	for i := 1; i <= PARTITIONERS; i++ {
 		fmt.Printf("  q5-reviews-partitioner-%v:\n", i)
-		fmt.Printf("    container_name: q5-reviews-partitioner-%v", i)
+		fmt.Printf("    container_name: q5-reviews-partitioner-%v\n", i)
 		fmt.Println("    image: tp1:latest")
 		fmt.Println("    entrypoint: /build/partitioner")
 		fmt.Println("    environment:")

@@ -580,7 +580,8 @@ services:
     depends_on:
       - gateway
   q5-reviews-partitioner-1:
-    container_name: q5-reviews-partitioner-1    image: tp1:latest
+    container_name: q5-reviews-partitioner-1
+    image: tp1:latest
     entrypoint: /build/partitioner
     environment:
       - RABBIT_IP=rabbitmq
@@ -592,7 +593,8 @@ services:
     depends_on:
       - gateway
   q5-reviews-partitioner-2:
-    container_name: q5-reviews-partitioner-2    image: tp1:latest
+    container_name: q5-reviews-partitioner-2
+    image: tp1:latest
     entrypoint: /build/partitioner
     environment:
       - RABBIT_IP=rabbitmq
