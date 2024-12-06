@@ -56,9 +56,7 @@ func NewNode[T Handler](config Config[T], rabbit *amqp.Connection) (*Node[T], er
 	err = doneClientsSet.LoadDisk(db)
 	utils.Expect(err, "unrecoverable error")
 
-	for client := range doneClientsSet.ids {
-		os.RemoveAll(fmt.Sprintf("client-%v", client))
-	}
+	cleanAllClients(doneClientsSet)
 
 	return &Node[T]{
 		config:         config,
@@ -233,6 +231,12 @@ func (n *Node[T]) freeResources(clientID int, h Handler) error {
 	delete(n.clients, clientID)
 
 	return nil
+}
+
+func cleanAllClients(clientsSet *DiskSet) {
+	for client := range clientsSet.ids {
+		os.RemoveAll(fmt.Sprintf("client-%v", client))
+	}
 }
 
 func (n *Node[T]) sendAlive(ctx context.Context) error {
