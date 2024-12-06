@@ -164,6 +164,16 @@ services:
       - net
     depends_on:
       - gateway
+  review-filter-4:
+    container_name: review-filter-4
+    image: tp1:latest
+    entrypoint: /build/filter-score
+    environment:
+      - RABBIT_IP=rabbitmq
+    networks:
+      - net
+    depends_on:
+      - gateway
   language-filter-1:
     container_name: language-filter-1
     image: tp1:latest
