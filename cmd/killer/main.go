@@ -21,7 +21,7 @@ func getConfig() (config, error) {
 	v := viper.New()
 
 	v.SetDefault("LogLevel", logging.INFO.String())
-	v.SetDefault("Period", 5)
+	v.SetDefault("Period", 6)
 
 	_ = v.BindEnv("NodesPath", "NODES_PATH")
 	_ = v.BindEnv("LogLevel", "LOG_LEVEL")
