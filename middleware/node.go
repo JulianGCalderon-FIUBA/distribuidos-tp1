@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"sync"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -54,6 +55,8 @@ func NewNode[T Handler](config Config[T], rabbit *amqp.Connection) (*Node[T], er
 	doneClientsSet := NewSetDisk("ids")
 	err = doneClientsSet.LoadDisk(db)
 	utils.Expect(err, "unrecoverable error")
+
+	cleanAllClients(doneClientsSet)
 
 	return &Node[T]{
 		config:         config,
@@ -228,6 +231,12 @@ func (n *Node[T]) freeResources(clientID int, h Handler) error {
 	delete(n.clients, clientID)
 
 	return nil
+}
+
+func cleanAllClients(clientsSet *DiskSet) {
+	for client := range clientsSet.ids {
+		os.RemoveAll(fmt.Sprintf("client-%v", client))
+	}
 }
 
 func (n *Node[T]) sendAlive(ctx context.Context) error {
