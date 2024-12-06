@@ -201,13 +201,25 @@ func (s *Snapshot) RegisterCommit() error {
 }
 
 func (s *Snapshot) ApplyCommit() error {
-	err := filepath.WalkDir(path.Join(s.root, DATA_DIR), s.commitFile)
+	exists, err := utils.PathExists(path.Join(s.root, DATA_DIR))
 	if err != nil {
 		return err
 	}
-	err = filepath.WalkDir(path.Join(s.root, APPENDS_DIR), s.commitAppendFile)
+	if exists {
+		err := filepath.WalkDir(path.Join(s.root, DATA_DIR), s.commitFile)
+		if err != nil {
+			return err
+		}
+	}
+	exists, err = utils.PathExists(path.Join(s.root, APPENDS_DIR))
 	if err != nil {
 		return err
+	}
+	if exists {
+		err = filepath.WalkDir(path.Join(s.root, APPENDS_DIR), s.commitAppendFile)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = os.RemoveAll(s.root)
