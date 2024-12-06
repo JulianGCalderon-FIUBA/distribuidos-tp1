@@ -22,10 +22,10 @@ const Q4 = 3
 const Q5 = 3
 
 const LANGUAGE_FILTER = 4
-const DECADE_FILTER = 2
-const GENRE_FITLER = 2
-const SCORE_FILTER = 2
-const PARTITIONERS = 2
+const DECADE_FILTER = 3
+const GENRE_FITLER = 3
+const SCORE_FILTER = 4
+const PARTITIONERS = 3
 
 const RESTARTER = 4
 

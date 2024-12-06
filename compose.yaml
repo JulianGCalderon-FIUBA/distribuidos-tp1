@@ -90,6 +90,17 @@ services:
       - net
     depends_on:
       - gateway
+  genre-filter-3:
+    container_name: genre-filter-3
+    image: tp1:latest
+    entrypoint: /build/filter-genre
+    environment:
+      - RABBIT_IP=rabbitmq
+      - ADDRESS=genre-filter-3:7000
+    networks:
+      - net
+    depends_on:
+      - gateway
   decade-filter-1:
     container_name: decade-filter-1
     image: tp1:latest
@@ -112,6 +123,17 @@ services:
       - net
     depends_on:
       - gateway
+  decade-filter-3:
+    container_name: decade-filter-3
+    image: tp1:latest
+    entrypoint: /build/filter-decade
+    environment:
+      - RABBIT_IP=rabbitmq
+      - DECADE=2010
+    networks:
+      - net
+    depends_on:
+      - gateway
   review-filter-1:
     container_name: review-filter-1
     image: tp1:latest
@@ -124,6 +146,26 @@ services:
       - gateway
   review-filter-2:
     container_name: review-filter-2
+    image: tp1:latest
+    entrypoint: /build/filter-score
+    environment:
+      - RABBIT_IP=rabbitmq
+    networks:
+      - net
+    depends_on:
+      - gateway
+  review-filter-3:
+    container_name: review-filter-3
+    image: tp1:latest
+    entrypoint: /build/filter-score
+    environment:
+      - RABBIT_IP=rabbitmq
+    networks:
+      - net
+    depends_on:
+      - gateway
+  review-filter-4:
+    container_name: review-filter-4
     image: tp1:latest
     entrypoint: /build/filter-score
     environment:
@@ -349,6 +391,19 @@ services:
       - net
     depends_on:
       - gateway
+  q3-reviews-partitioner-3:
+    container_name: q3-reviews-partitioner-3
+    image: tp1:latest
+    entrypoint: /build/partitioner
+    environment:
+      - RABBIT_IP=rabbitmq
+      - INPUT=reviews-Q3
+      - PARTITIONS=3
+      - TYPE=review
+    networks:
+      - net
+    depends_on:
+      - gateway
   q3-group-1:
     container_name: q3-group-1
     image: tp1:latest
@@ -492,6 +547,19 @@ services:
       - net
     depends_on:
       - gateway
+  q4-reviews-partitioner-3:
+    container_name: q4-reviews-partitioner-3
+    image: tp1:latest
+    entrypoint: /build/partitioner
+    environment:
+      - RABBIT_IP=rabbitmq
+      - INPUT=reviews-Q4
+      - PARTITIONS=3
+      - TYPE=review
+    networks:
+      - net
+    depends_on:
+      - gateway
   q4-group-1:
     container_name: q4-group-1
     image: tp1:latest
@@ -594,6 +662,19 @@ services:
       - gateway
   q5-reviews-partitioner-2:
     container_name: q5-reviews-partitioner-2
+    image: tp1:latest
+    entrypoint: /build/partitioner
+    environment:
+      - RABBIT_IP=rabbitmq
+      - INPUT=reviews-Q5
+      - PARTITIONS=3
+      - TYPE=review
+    networks:
+      - net
+    depends_on:
+      - gateway
+  q5-reviews-partitioner-3:
+    container_name: q5-reviews-partitioner-3
     image: tp1:latest
     entrypoint: /build/partitioner
     environment:
