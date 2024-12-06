@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"sync"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -54,6 +55,10 @@ func NewNode[T Handler](config Config[T], rabbit *amqp.Connection) (*Node[T], er
 	doneClientsSet := NewSetDisk("ids")
 	err = doneClientsSet.LoadDisk(db)
 	utils.Expect(err, "unrecoverable error")
+
+	for client := range doneClientsSet.ids {
+		os.RemoveAll(fmt.Sprintf("client-%v", client))
+	}
 
 	return &Node[T]{
 		config:         config,
